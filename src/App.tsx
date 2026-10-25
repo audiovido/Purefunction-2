@@ -237,7 +237,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
           COACH DESKTOP SIDEBAR (Matches Mockups 1–9)
          ===================================================================== */}
       {role === 'coach' && (
-        <aside className="no-print hidden md:flex md:w-60 md:flex-col md:fixed md:inset-y-0 bg-[#F4F5F7] border-r border-gray-200/80 px-4 py-6 justify-between select-none z-30">
+        <aside className="no-print hidden md:flex md:w-60 md:flex-col md:fixed md:inset-y-0 bg-[#EAECEF] border-r border-gray-300/80 px-4 py-6 justify-between select-none z-30">
           <div>
             {/* Brand Logo placed directly above Clients */}
             <div
@@ -258,14 +258,14 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
                     onClick={() => setCoachTab(item.id)}
                     className={`w-full flex items-center justify-between px-4 py-2.5 rounded-full text-sm transition-all cursor-pointer ${
                       isActive
-                        ? 'bg-[#111827] text-white font-medium shadow-xs'
-                        : 'text-gray-600 hover:text-[#111827] hover:bg-gray-200/50 font-normal'
+                        ? 'bg-[#111827] text-white font-semibold shadow-xs'
+                        : 'text-[#1F2937] hover:text-[#111827] hover:bg-gray-300/60 font-medium'
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       <Icon
                         className={`w-4 h-4 ${
-                          isActive ? 'text-white' : 'text-gray-500'
+                          isActive ? 'text-white' : 'text-[#374151]'
                         }`}
                       />
                       <span className="whitespace-nowrap">{item.label}</span>
@@ -280,7 +280,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
           </div>
 
           {/* Bottom Active Client Context + Role Switcher (Coach / Client) */}
-          <div className="space-y-3 pt-4 border-t border-gray-200/80">
+          <div className="space-y-3 pt-4 border-t border-gray-300/80">
             {selectedClient && (
               <div className="px-2 flex items-center gap-2.5">
                 <ClientAvatar
@@ -289,7 +289,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
                   size="sm"
                 />
                 <div className="min-w-0">
-                  <div className="text-[11px] text-gray-400">Active Client</div>
+                  <div className="text-[11px] font-medium text-gray-600">Active Client</div>
                   <div className="text-xs font-semibold text-[#111827] truncate">
                     {selectedClient.name}
                   </div>
@@ -298,7 +298,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
             )}
 
             {/* Role Toggle Pill (coach can preview the client's view) */}
-            <div className="bg-gray-200/80 p-1 rounded-xl grid grid-cols-2 gap-1">
+            <div className="bg-gray-300/75 p-1 rounded-xl grid grid-cols-2 gap-1">
               <button
                 onClick={() => setRole('coach')}
                 className="py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer bg-white text-[#111827] shadow-2xs"
@@ -309,7 +309,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
                 onClick={() => setRole('client')}
                 disabled={!canPreviewClient}
                 title={profile ? "Preview this client's app" : undefined}
-                className="py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:text-[#111827] disabled:opacity-40 transition-colors cursor-pointer"
+                className="py-1.5 rounded-lg text-xs font-medium text-[#1F2937] hover:text-[#111827] disabled:opacity-40 transition-colors cursor-pointer"
               >
                 Client
               </button>
@@ -327,7 +327,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
                   onClick={() => void signOut()}
                   aria-label="Sign out"
                   title="Sign out"
-                  className="p-2 rounded-lg text-gray-400 hover:text-[#111827] hover:bg-gray-200/60 cursor-pointer"
+                  className="p-2 rounded-lg text-gray-600 hover:text-[#111827] hover:bg-gray-300/60 cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
@@ -521,7 +521,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
           COACH MOBILE BOTTOM NAVIGATION BAR (< md)
          ===================================================================== */}
       {role === 'coach' && (
-        <nav className="no-print md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 z-40 grid grid-cols-6 px-1 py-1.5">
+        <nav className="no-print md:hidden fixed bottom-0 inset-x-0 bg-[#EAECEF] border-t border-gray-300/80 z-40 grid grid-cols-6 px-1 py-1.5">
           {COACH_NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive = coachTab === item.id;
@@ -530,7 +530,9 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
                 key={item.id}
                 onClick={() => setCoachTab(item.id)}
                 className={`flex flex-col items-center justify-center py-1 rounded-xl transition-colors cursor-pointer ${
-                  isActive ? 'text-[#111827] font-semibold' : 'text-gray-400'
+                  isActive
+                    ? 'bg-[#111827] text-white font-semibold'
+                    : 'text-[#1F2937] font-medium'
                 }`}
               >
                 <div className="relative">
