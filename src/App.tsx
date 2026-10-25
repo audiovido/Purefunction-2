@@ -139,15 +139,39 @@ const NoClientsYet: React.FC<{ onAdd: () => void }> = ({ onAdd }) => (
   </div>
 );
 
+/** Tiny helpers: remember which page/client was open (per browser tab session). */
+function readSaved(key: string): string | null {
+  try {
+    return sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function writeSaved(key: string, value: string): void {
+  try {
+    sessionStorage.setItem(key, value);
+  } catch {
+    /* storage unavailable: the page just won't be remembered */
+  }
+}
+
 function Workspace({ store, profile }: { store: ClientsStore; profile: Profile | null }) {
   const { signOut } = useSession();
   const { clients, setClients, sync } = store;
   const isClientUser = profile?.role === 'client';
   const [roleState, setRole] = useState<Role>(isClientUser ? 'client' : 'coach');
   const role: Role = isClientUser ? 'client' : roleState;
-  const [coachTab, setCoachTab] = useState<CoachTab>('clients');
+  const [coachTab, setCoachTab] = useState<CoachTab>(() => {
+    const saved = readSaved('pf.coachTab');
+    return COACH_NAV_ITEMS.some((i) => i.id === saved) ? (saved as CoachTab) : 'clients';
+  });
   const [clientTab, setClientTab] = useState<ClientTab>('today');
-  const [selectedClientIdState, setSelectedClientId] = useState<string>(() => clients[0]?.id ?? '');
+  const [selectedClientIdState, setSelectedClientId] = useState<string>(() => {
+    const saved = readSaved('pf.clientId');
+    return saved && clients.some((c) => c.id === saved) ? saved : clients[0]?.id ?? '';
+  });
+  useEffect(() => writeSaved('pf.coachTab', coachTab), [coachTab]);
+  useEffect(() => writeSaved('pf.clientId', selectedClientIdState), [selectedClientIdState]);
   const selectedClientId = isClientUser ? profile!.clientId ?? '' : selectedClientIdState;
   const [clientPreviewFrame, setClientPreviewFrame] = useState<boolean>(false);
 

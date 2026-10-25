@@ -234,9 +234,8 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
         for (const r of arr) {
           if (!canWrite(prof, table, r)) return json(route, 403, { code: '42501', message: `new row violates row-level security policy for table "${table}"` });
           if (table === 'clients' && prof.role !== 'coach') {
-            const old = rows.find((x) => x.id === r.id);
-            if (!old) return json(route, 403, { code: '42501', message: 'RLS' });
-            if ((old.email || '') !== (r.email || '')) return json(route, 400, { message: "Only the coach can change a client's email" });
+            // Real database: INSERT ... ON CONFLICT also checks the INSERT policy (coach only), so a client can never POST here.
+            return json(route, 403, { code: '42501', message: 'new row violates row-level security policy for table "clients"' });
           }
           if (table === 'workouts') {
             if (!db.clients.some((c) => c.id === r.client_id)) return json(route, 409, { code: '23503', message: 'foreign key' });
@@ -256,6 +255,19 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
           broadcast(table, i >= 0 ? 'UPDATE' : 'INSERT', row);
         }
         return route.fulfill({ status: 201, headers: cors, body: '' });
+      }
+      if (method === 'PATCH') {
+        const patch = JSON.parse(req.postData() || '{}');
+        const hit = rows.filter((r) => matches(r, url.searchParams) && canRead(prof, table, r) && (prof.role === 'coach' ? table !== 'profiles' : canWrite(prof, table, r)));
+        for (const r of hit) {
+          if (table === 'clients' && prof.role !== 'coach' && 'email' in patch && (patch.email || '') !== (r.email || '')) {
+            return json(route, 400, { message: "Only the coach can change a client's email" });
+          }
+          Object.assign(r, patch, { updated_at: new Date().toISOString() });
+          broadcast(table, 'UPDATE', r);
+        }
+        if ((req.headers()['prefer'] || '').includes('return=representation')) return json(route, 200, hit);
+        return route.fulfill({ status: 204, headers: cors });
       }
       if (method === 'DELETE') {
         if (!prof || prof.role !== 'coach') return route.fulfill({ status: 204, headers: cors }); // RLS: silently nothing
