@@ -280,6 +280,21 @@ export interface MonthlyReportData {
   };
 }
 
+/** One completed assessment, frozen on the day it was saved (for comparisons). */
+export interface AssessmentSnapshot {
+  id: string;
+  /** YYYY-MM-DD */
+  date: string;
+  /** weeks since the first assessment (0 for the first) */
+  week: number;
+  inBody: InBodyData;
+  rom: RomMovement[];
+  priTests: PriTestItem[];
+  gaitPosture: GaitPostureItem[];
+  strengthTests: StrengthTestItem[];
+  videos: VideoAssessmentItem[];
+}
+
 export interface ClientProfile {
   id: string;
   name: string;
@@ -300,6 +315,8 @@ export interface ClientProfile {
   gaitPosture: GaitPostureItem[];
   strengthTests: StrengthTestItem[];
   videos: VideoAssessmentItem[];
+  /** Completed assessments, oldest first. */
+  assessments?: AssessmentSnapshot[];
   /** Workouts on real dates (sorted by date). */
   workouts?: Workout[];
   /** @deprecated old Mon–Sun template; converted into `workouts` on load. */
