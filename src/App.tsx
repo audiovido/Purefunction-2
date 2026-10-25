@@ -63,7 +63,7 @@ export default function App() {
   const [selectedClientId, setSelectedClientId] = useState<string>(
     INITIAL_CLIENTS[0].id
   );
-  const [clientPreviewFrame, setClientPreviewFrame] = useState<boolean>(true);
+  const [clientPreviewFrame, setClientPreviewFrame] = useState<boolean>(false);
 
   const selectedClient =
     clients.find((c) => c.id === selectedClientId) || clients[0];
@@ -150,7 +150,11 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F8FA] text-[#111827] flex flex-col md:flex-row">
+    <div
+      className={`min-h-screen bg-[#F7F8FA] text-[#111827] flex flex-col ${
+        role === 'coach' ? 'md:flex-row' : ''
+      }`}
+    >
       {/* =====================================================================
           COACH DESKTOP SIDEBAR (Matches Mockups 1–9)
          ===================================================================== */}
@@ -364,7 +368,7 @@ export default function App() {
             className={
               clientPreviewFrame
                 ? 'md:max-w-[430px] md:mx-auto md:bg-[#F7F8FA] md:rounded-[32px] md:border-[6px] md:border-[#111827] md:shadow-xl md:p-5 md:my-2'
-                : 'max-w-xl mx-auto'
+                : 'max-w-xl mx-auto md:pt-4'
             }
           >
             {clientTab === 'today' ? (
