@@ -8,3 +8,12 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </SessionProvider>
 );
+
+// Offline shell + installability. Production only, so development never serves stale files.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
+      /* not available (private mode, http): the app works without it */
+    });
+  });
+}
