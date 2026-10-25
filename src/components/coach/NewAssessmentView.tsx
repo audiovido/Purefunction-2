@@ -567,9 +567,12 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                 Assess Left AIC / Right BC tri-planar pelvic and ribcage orientation before loading.
               </p>
             </div>
-            <span className="inline-flex items-center bg-[#FEF3C7] text-[#92400E] text-xs font-semibold px-3 py-1 rounded-full self-start sm:self-auto">
-              Primary Pattern: Left AIC · Right BC
-            </span>
+            {priList.some((t) => t.status === 'Asymmetric') && (
+              <span className="inline-flex items-center bg-[#FEF3C7] text-[#92400E] text-xs font-semibold px-3 py-1 rounded-full self-start sm:self-auto">
+                {priList.filter((t) => t.status === 'Asymmetric').length} asymmetric finding
+                {priList.filter((t) => t.status === 'Asymmetric').length === 1 ? '' : 's'}
+              </span>
+            )}
           </div>
 
           <div className="divide-y divide-gray-100">
@@ -588,6 +591,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                   <input
                     type="text"
                     value={test.leftResult}
+                    placeholder="e.g. Positive / 3 of 5 / 54°"
                     onChange={(e) => updatePriItem(test.id, 'leftResult', e.target.value)}
                     className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium text-[#111827] focus:outline-none focus:border-[#111827]"
                   />
@@ -598,6 +602,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                   <input
                     type="text"
                     value={test.rightResult}
+                    placeholder="Result"
                     onChange={(e) => updatePriItem(test.id, 'rightResult', e.target.value)}
                     className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium text-[#111827] focus:outline-none focus:border-[#111827]"
                   />
@@ -613,6 +618,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                         : 'bg-[#E5E7EB] text-[#374151]'
                     }`}
                   >
+                    <option value="Not tested">Not tested</option>
                     <option value="Asymmetric">Asymmetric</option>
                     <option value="Improved">Improved</option>
                     <option value="Neutral">Neutral</option>
@@ -776,6 +782,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                   <input
                     type="text"
                     value={item.finding}
+                    placeholder="What you see (e.g. right iliac crest 1 cm higher)"
                     onChange={(e) => updateGaitItem(item.id, 'finding', e.target.value)}
                     className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2 text-xs text-[#111827] focus:outline-none focus:border-[#111827]"
                   />
@@ -791,6 +798,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                         : 'bg-[#E5E7EB] text-[#374151]'
                     }`}
                   >
+                    <option value="Not assessed">Not assessed</option>
                     <option value="Optimal">Optimal</option>
                     <option value="Mild">Mild</option>
                     <option value="Moderate">Moderate</option>
@@ -868,7 +876,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                       </td>
                       <td className="py-4 pl-4 pr-6 text-right">
                         <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#FEF3C7] text-[#111827] font-bold text-sm tabular-nums">
-                          {est1Rm} kg
+                          {est1Rm > 0 ? `${est1Rm} kg` : '—'}
                         </span>
                       </td>
                     </tr>
@@ -883,7 +891,17 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
       {/* =====================================================================
           STEP 6: VIDEO CAPTURE & KINEMATIC TAGGING
          ===================================================================== */}
-      {activeStep === 6 && (
+      {activeStep === 6 && client.videos.length === 0 && (
+        <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-8 text-center">
+          <p className="text-base font-semibold text-[#111827] mb-1">Before / after video</p>
+          <p className="text-sm text-gray-500 max-w-md mx-auto">
+            Recording and storing this client’s assessment videos (privately, only visible to you and them) comes in the
+            next update. For now, tap “Complete Assessment” to save the numbers above.
+          </p>
+        </div>
+      )}
+
+      {activeStep === 6 && client.videos.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-5 space-y-3">
             {videoList.map((vid, idx) => (
@@ -1008,64 +1026,24 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
   );
 };
 
+// Blank templates for a new client: the tests and checkpoints to do, no results yet.
 const DEFAULT_PRI_TESTS: PriTestItem[] = [
-  {
-    id: 'pri-def-1',
-    name: 'Adduction Drop Test (ADT)',
-    category: 'Pelvis',
-    leftResult: 'Positive (Restricted)',
-    rightResult: 'Negative (Neutral)',
-    status: 'Asymmetric',
-    notes: 'Left AIC pattern'
-  },
-  {
-    id: 'pri-def-2',
-    name: 'Hruska Adduction Lift Test (HALT)',
-    category: 'Pelvis',
-    leftResult: '2 / 5',
-    rightResult: '4 / 5',
-    status: 'Asymmetric',
-    notes: 'Left AFIR weakness'
-  },
-  {
-    id: 'pri-def-3',
-    name: 'Passive Glenohumeral IR (HGIR)',
-    category: 'Shoulder',
-    leftResult: '54°',
-    rightResult: '62°',
-    status: 'Asymmetric',
-    notes: 'Right BC pattern'
-  }
+  { id: 'pri-def-1', name: 'Adduction Drop Test (ADT)', category: 'Pelvis', leftResult: '', rightResult: '', status: 'Not tested', notes: '' },
+  { id: 'pri-def-2', name: 'Extension Drop Test', category: 'Pelvis', leftResult: '', rightResult: '', status: 'Not tested', notes: '' },
+  { id: 'pri-def-3', name: 'Hruska Adduction Lift Test (HALT)', category: 'Pelvis', leftResult: '', rightResult: '', status: 'Not tested', notes: '' },
+  { id: 'pri-def-4', name: 'Passive Glenohumeral IR (HGIR)', category: 'Shoulder', leftResult: '', rightResult: '', status: 'Not tested', notes: '' }
 ];
 
 const DEFAULT_GAIT_ITEMS: GaitPostureItem[] = [
-  {
-    id: 'gp-def-1',
-    view: 'Anterior',
-    checkpoint: 'Pelvic & Iliac Crest Symmetry',
-    finding: 'Right iliac crest elevated 1 cm; left hemipelvis rotated forward',
-    severity: 'Moderate'
-  },
-  {
-    id: 'gp-def-2',
-    view: 'Lateral',
-    checkpoint: 'Thoracolumbar & Zone of Apposition',
-    finding: 'Mild lower rib flare with anterior pelvic tilt',
-    severity: 'Mild'
-  },
-  {
-    id: 'gp-def-3',
-    view: 'Dynamic Gait',
-    checkpoint: 'Left Stance Phase & Right Arm Swing',
-    finding: 'Early heel rise on left; decreased right arm counter-swing',
-    severity: 'Mild'
-  }
+  { id: 'gp-def-1', view: 'Anterior', checkpoint: 'Pelvic & Iliac Crest Symmetry', finding: '', severity: 'Not assessed' },
+  { id: 'gp-def-2', view: 'Lateral', checkpoint: 'Thoracolumbar & Zone of Apposition', finding: '', severity: 'Not assessed' },
+  { id: 'gp-def-3', view: 'Dynamic Gait', checkpoint: 'Left Stance Phase & Right Arm Swing', finding: '', severity: 'Not assessed' }
 ];
 
 const DEFAULT_STRENGTH_ITEMS: StrengthTestItem[] = [
-  { id: 'str-def-1', exercise: 'Goblet / Back Squat', loadKg: 70, reps: 5 },
-  { id: 'str-def-2', exercise: 'Romanian Deadlift', loadKg: 82.5, reps: 6 },
-  { id: 'str-def-3', exercise: 'DB Bench Press', loadKg: 60, reps: 6 }
+  { id: 'str-def-1', exercise: 'Goblet / Back Squat', loadKg: 0, reps: 0 },
+  { id: 'str-def-2', exercise: 'Romanian Deadlift', loadKg: 0, reps: 0 },
+  { id: 'str-def-3', exercise: 'DB Bench Press', loadKg: 0, reps: 0 }
 ];
 
 const DEFAULT_VIDEO_ITEMS = [
