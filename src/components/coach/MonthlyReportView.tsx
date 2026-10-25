@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { EmptyProgress } from '../EmptyProgress';
 import {
   Printer,
   ChevronDown,
@@ -26,6 +27,28 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
   const [savedNotice, setSavedNotice] = useState(false);
 
   const report = client.monthlyReports[selectedMonth];
+  if (client.progressHistory.length === 0) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <select
+          value={client.id}
+          onChange={(e) => onSelectClientId(e.target.value)}
+          aria-label="Client"
+          className="text-base font-semibold text-[#111827] bg-transparent focus:outline-none cursor-pointer mb-2"
+        >
+          {clients.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <EmptyProgress
+          title={`No report for ${client.name} yet`}
+          text="The first monthly report is built after the week 4 re-assessment, compared with week 0."
+        />
+      </div>
+    );
+  }
 
   const handleUpdateCoachNotes = (newSummary: string) => {
     onUpdateClient({

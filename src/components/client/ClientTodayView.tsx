@@ -1,474 +1,555 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Check,
-  TrendingUp,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Play,
   X,
-  CheckCircle2,
-  RotateCcw
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  AlertTriangle,
+  MessageSquare,
+  PartyPopper
 } from 'lucide-react';
-import {
-  ClientProfile,
-  DayWorkout,
-  WorkoutExerciseBlock,
-  getSuggestedLoad
-} from '../../types';
+import { ClientProfile, SetLog, Workout, WorkoutBlock } from '../../types';
 import { useExerciseLibrary } from '../../state/ExerciseLibrary';
 import { ExerciseVideoPlayer } from '../ExerciseMedia';
+import {
+  addDays,
+  dayShort,
+  effectiveStatus,
+  formatDate,
+  formatPerformance,
+  lastPerformance,
+  orderLabels,
+  parseISODate,
+  parseReps,
+  startOfWeek,
+  suggestLoad,
+  todayISO,
+  upsertWorkout,
+  weekDates,
+  workoutOn
+} from '../../lib/workouts';
 
 interface ClientTodayViewProps {
   client: ClientProfile;
   onUpdateClient: (updated: ClientProfile) => void;
 }
 
-export const ClientTodayView: React.FC<ClientTodayViewProps> = ({
-  client,
-  onUpdateClient
-}) => {
-  const [selectedDayKey, setSelectedDayKey] = useState<DayWorkout['dayKey']>('Mon');
-  const [restTimerSec, setRestTimerSec] = useState<number | null>(null);
-  const [previewExerciseId, setPreviewExerciseId] = useState<string | null>(null);
-  const [workoutCompletedBanner, setWorkoutCompletedBanner] = useState(false);
-  const { getExercise } = useExerciseLibrary();
+const card = 'bg-white rounded-2xl p-4 sm:p-5 shadow-[0_2px_14px_rgba(0,0,0,0.04)] border border-gray-100';
+const cellInput =
+  'w-full min-w-0 bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-base text-[#111827] tabular-nums text-center focus:outline-none focus:border-[#111827] disabled:bg-gray-50 disabled:text-gray-500';
 
-  const currentWorkout =
-    client.weeklyWorkouts.find((d) => d.dayKey === selectedDayKey) ||
-    client.weeklyWorkouts[0];
+export const ClientTodayView: React.FC<ClientTodayViewProps> = ({ client, onUpdateClient }) => {
+  const today = todayISO();
+  const { getExercise } = useExerciseLibrary();
+  const [weekStart, setWeekStart] = useState(startOfWeek(today));
+  const [date, setDate] = useState(today);
+  const [rest, setRest] = useState<{ endsAt: number; total: number } | null>(null);
+  const [now, setNow] = useState(Date.now());
+  const [videoFor, setVideoFor] = useState<string | null>(null);
+  const [noteOpen, setNoteOpen] = useState<string | null>(null);
+  const [finishing, setFinishing] = useState(false);
+  const [sessionRpe, setSessionRpe] = useState<number | null>(null);
+  const [feedback, setFeedback] = useState('');
+
+  const workout = workoutOn(client, date);
 
   useEffect(() => {
-    if (restTimerSec === null || restTimerSec <= 0) return;
-    const timer = setInterval(() => {
-      setRestTimerSec((prev) => (prev !== null && prev > 1 ? prev - 1 : null));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [restTimerSec]);
+    if (!rest) return;
+    const t = window.setInterval(() => {
+      const n = Date.now();
+      setNow(n);
+      if (n >= rest.endsAt) setRest(null);
+    }, 250);
+    return () => window.clearInterval(t);
+  }, [rest]);
 
-  const totalSets = currentWorkout.blocks.reduce(
-    (acc, b) => acc + b.loggedSets.length,
-    0
-  );
-  const completedSets = currentWorkout.blocks.reduce(
-    (acc, b) => acc + b.loggedSets.filter((s) => s.completed).length,
-    0
-  );
-  const completionPct =
-    totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0;
+  /* ---------------- saving ---------------- */
 
-  const updateSetLog = (
-    blockId: string,
-    setNumber: number,
-    field: 'kg' | 'reps' | 'completed',
-    value: number | boolean
-  ) => {
-    const updatedWorkouts = client.weeklyWorkouts.map((day) => {
-      if (day.dayKey !== currentWorkout.dayKey) return day;
-      return {
-        ...day,
-        blocks: day.blocks.map((block) => {
-          if (block.id !== blockId) return block;
-          return {
-            ...block,
-            loggedSets: block.loggedSets.map((setItem) =>
-              setItem.setNumber === setNumber
-                ? { ...setItem, [field]: value }
-                : setItem
-            )
-          };
-        })
-      };
-    });
+  const save = (w: Workout) => onUpdateClient(upsertWorkout(client, w));
 
-    onUpdateClient({
-      ...client,
-      weeklyWorkouts: updatedWorkouts
+  const patchBlock = (blockId: string, patch: Partial<WorkoutBlock>) => {
+    if (!workout) return;
+    save({ ...workout, blocks: workout.blocks.map((b) => (b.id === blockId ? { ...b, ...patch } : b)) });
+  };
+
+  const patchSet = (block: WorkoutBlock, setNumber: number, patch: Partial<SetLog>) => {
+    patchBlock(block.id, {
+      loggedSets: block.loggedSets.map((s) => (s.setNumber === setNumber ? { ...s, ...patch } : s))
     });
   };
 
-  const handleToggleSetComplete = (
-    block: WorkoutExerciseBlock,
-    setNumber: number,
-    currentlyCompleted: boolean
-  ) => {
-    const nextState = !currentlyCompleted;
-    updateSetLog(block.id, setNumber, 'completed', nextState);
-    if (nextState && block.restSec > 0) {
-      setRestTimerSec(block.restSec);
+  const toggleSet = (block: WorkoutBlock, s: SetLog) => {
+    if (s.completed) {
+      patchSet(block, s.setNumber, { completed: false });
+      return;
+    }
+    const target = parseReps(block.reps);
+    const reps = s.reps ?? (target.kind === 'reps' && target.max > 0 ? target.max : target.kind === 'time' ? target.min : null);
+    patchSet(block, s.setNumber, { completed: true, reps, kg: s.kg ?? (block.loadKg || 0) });
+    if (block.restSec > 0) {
+      setRest({ endsAt: Date.now() + block.restSec * 1000, total: block.restSec });
+      setNow(Date.now());
     }
   };
 
-  const applySuggestedLoadToBlock = (blockId: string, suggestedKg: number) => {
-    const updatedWorkouts = client.weeklyWorkouts.map((day) => {
-      if (day.dayKey !== currentWorkout.dayKey) return day;
-      return {
-        ...day,
-        blocks: day.blocks.map((block) => {
-          if (block.id !== blockId) return block;
-          return {
-            ...block,
-            loadKg: suggestedKg,
-            loggedSets: block.loggedSets.map((s) => ({
-              ...s,
-              kg: suggestedKg
-            }))
-          };
-        })
-      };
-    });
-    onUpdateClient({
-      ...client,
-      weeklyWorkouts: updatedWorkouts
+  const useSuggested = (block: WorkoutBlock, kg: number) => {
+    patchBlock(block.id, {
+      loggedSets: block.loggedSets.map((s) => (s.completed ? s : { ...s, kg }))
     });
   };
 
-  const previewExercise = previewExerciseId
-    ? getExercise(previewExerciseId) || null
-    : null;
+  const finish = () => {
+    if (!workout) return;
+    save({
+      ...workout,
+      status: 'completed',
+      completedAt: new Date().toISOString(),
+      sessionRpe: sessionRpe ?? undefined,
+      clientFeedback: feedback.trim() || undefined
+    });
+    setFinishing(false);
+    setRest(null);
+  };
+
+  /* ---------------- derived ---------------- */
+
+  const totalSets = workout?.blocks.reduce((a, b) => a + b.loggedSets.length, 0) ?? 0;
+  const doneSets = workout?.blocks.reduce((a, b) => a + b.loggedSets.filter((s) => s.completed).length, 0) ?? 0;
+  const pct = totalSets ? Math.round((doneSets / totalSets) * 100) : 0;
+  const labels = workout ? orderLabels(workout.blocks) : [];
+  const status = workout ? effectiveStatus(workout, today) : null;
+  const nextWorkout = (client.workouts ?? []).find((w) => w.date > date && w.status === 'planned');
+  const restLeft = rest ? Math.max(0, Math.ceil((rest.endsAt - now) / 1000)) : 0;
+  const videoExercise = videoFor ? getExercise(videoFor) : undefined;
 
   return (
     <div className="max-w-lg mx-auto pb-8">
-      {/* Top Session Header */}
-      <div className="mb-5">
+      {/* Header */}
+      <div className="mb-4">
         <div className="flex items-center justify-between gap-2 mb-1.5">
           <span className="text-xs font-semibold text-gray-500">
-            Today · Week {client.currentWeek}
+            {date === today ? 'Today' : formatDate(date, { weekday: true })}
           </span>
           <span className="inline-flex items-center bg-[#F3F4F6] text-[#111827] text-xs font-medium px-3 py-1 rounded-full">
             Phase {client.phaseNumber} · {client.phaseName}
           </span>
         </div>
-
-        <h1 className="text-2xl font-bold tracking-tight text-[#111827]">
-          {currentWorkout.title}
-        </h1>
-        <p className="text-xs text-gray-500 mt-0.5">
-          {currentWorkout.focus} · {currentWorkout.durationMin} min
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight text-[#111827]">{workout ? workout.title : 'Rest day'}</h1>
+        {workout?.focus && (
+          <p className="text-xs text-gray-500 mt-0.5">
+            {workout.focus}
+            {workout.durationMin ? ` · ${workout.durationMin} min` : ''}
+          </p>
+        )}
       </div>
 
-      {/* Day Switcher Strip */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-4">
-        {client.weeklyWorkouts
-          .filter((d) => !d.isRestDay)
-          .map((day) => {
-            const isActive = day.dayKey === currentWorkout.dayKey;
+      {/* Week strip */}
+      <div className="flex items-center gap-1 mb-4">
+        <button
+          onClick={() => {
+            const ws = addDays(weekStart, -7);
+            setWeekStart(ws);
+            setDate(ws);
+          }}
+          aria-label="Previous week"
+          className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 cursor-pointer shrink-0"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <div className="grid grid-cols-7 gap-1 flex-1">
+          {weekDates(weekStart).map((d) => {
+            const w = workoutOn(client, d);
+            const st = w ? effectiveStatus(w, today) : null;
+            const active = d === date;
             return (
               <button
-                key={day.dayKey}
+                key={d}
                 onClick={() => {
-                  setSelectedDayKey(day.dayKey);
-                  setWorkoutCompletedBanner(false);
+                  setDate(d);
+                  setFinishing(false);
                 }}
-                className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
-                  isActive
-                    ? 'bg-[#111827] text-white'
-                    : 'bg-white text-gray-600 border border-gray-100 hover:border-gray-300'
+                aria-label={formatDate(d, { weekday: true })}
+                aria-pressed={active}
+                className={`py-1.5 rounded-xl text-center cursor-pointer ${
+                  active ? 'bg-[#111827] text-white' : d === today ? 'bg-[#FEF3C7] text-[#111827]' : 'text-gray-600'
                 }`}
               >
-                {day.dayKey}
+                <div className="text-[10px] font-semibold">{dayShort(d)}</div>
+                <div className="text-sm font-bold tabular-nums">{parseISODate(d).getDate()}</div>
+                <div className="h-1.5 flex justify-center mt-0.5">
+                  {st && (
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        st === 'completed' ? 'bg-[#16A34A]' : st === 'missed' ? 'bg-[#DC2626]' : active ? 'bg-[#FFC809]' : 'bg-gray-400'
+                      }`}
+                    />
+                  )}
+                </div>
               </button>
             );
           })}
+        </div>
+        <button
+          onClick={() => {
+            const ws = addDays(weekStart, 7);
+            setWeekStart(ws);
+            setDate(ws);
+          }}
+          aria-label="Next week"
+          className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 cursor-pointer shrink-0"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
       </div>
 
-      {/* Session Progress & Active Rest Timer Bar */}
-      <div className="bg-white rounded-2xl p-4 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100 mb-5">
-        <div className="flex items-center justify-between text-xs font-medium mb-2">
-          <span className="text-gray-600">
-            Session Progress ({completedSets}/{totalSets} sets)
-          </span>
-          <span className="font-bold text-[#111827] tabular-nums">
-            {completionPct}%
-          </span>
-        </div>
-        <div className="h-2 w-full bg-[#E5E7EB] rounded-full overflow-hidden">
-          <div
-            className="h-full bg-[#FFC809] transition-all duration-200 rounded-full"
-            style={{ width: `${completionPct}%` }}
-          />
-        </div>
-
-        {restTimerSec !== null && (
-          <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs font-semibold text-[#111827]">
-              <Clock className="w-3.5 h-3.5 text-[#F5B800]" />
-              <span>Rest Timer: {restTimerSec}s remaining</span>
-            </div>
+      {!workout ? (
+        <div className={`${card} text-center py-10`}>
+          <p className="text-base font-semibold text-[#111827] mb-1">No workout scheduled</p>
+          <p className="text-sm text-gray-500">Recover well — walk, breathe, sleep.</p>
+          {nextWorkout && (
             <button
-              onClick={() => setRestTimerSec(null)}
-              className="text-xs font-medium text-gray-400 hover:text-[#111827] cursor-pointer"
+              onClick={() => {
+                setWeekStart(startOfWeek(nextWorkout.date));
+                setDate(nextWorkout.date);
+              }}
+              className="mt-5 inline-flex items-center gap-2 bg-[#111827] text-white text-sm font-semibold px-4 py-2.5 rounded-xl cursor-pointer"
             >
-              Skip
+              Next: {formatDate(nextWorkout.date, { weekday: true })} · {nextWorkout.title}
             </button>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* Completed banner */}
+          {workout.status === 'completed' && (
+            <div className="mb-4 flex items-center gap-3 p-4 rounded-2xl bg-[#DCFCE7] text-[#166534]">
+              <PartyPopper className="w-5 h-5 shrink-0" />
+              <div className="text-sm">
+                <div className="font-semibold">Workout completed</div>
+                <div className="text-xs">
+                  {workout.sessionRpe ? `Session RPE ${workout.sessionRpe}/10 · ` : ''}You can still correct your numbers below.
+                </div>
+              </div>
+            </div>
+          )}
+          {status === 'missed' && workout.status !== 'completed' && (
+            <div className="mb-4 p-3 rounded-2xl bg-[#FEF2F2] text-[#991B1B] text-xs font-medium">
+              This day was missed. You can still log it if you trained.
+            </div>
+          )}
+
+          {/* Progress + rest timer */}
+          <div className={`${card} mb-4 !p-4`}>
+            <div className="flex items-center justify-between text-xs font-medium mb-2">
+              <span className="text-gray-600">
+                {doneSets}/{totalSets} sets
+              </span>
+              <span className="font-bold text-[#111827] tabular-nums">{pct}%</span>
+            </div>
+            <div className="h-2 w-full bg-[#E5E7EB] rounded-full overflow-hidden">
+              <div className="h-full bg-[#FFC809] transition-all rounded-full" style={{ width: `${pct}%` }} />
+            </div>
           </div>
-        )}
-      </div>
 
-      {/* Exercise Logging Cards */}
-      <div className="space-y-4">
-        {currentWorkout.blocks.map((block, index) => {
-          const { suggestedKg, allRepsHitLastTime, deltaKg } =
-            getSuggestedLoad(block);
-          const isBodyweight = block.lastTimeLoadKg === 0 && block.loadKg === 0;
+          {workout.coachNotes && (
+            <div className="mb-4 p-3.5 rounded-2xl bg-[#FFFDF5] border border-[#FEF3C7] text-sm text-gray-700">
+              <span className="font-semibold text-[#111827]">Coach: </span>
+              {workout.coachNotes}
+            </div>
+          )}
 
-          return (
-            <div
-              key={block.id}
-              className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_2px_14px_rgba(0,0,0,0.04)] border border-gray-100"
-            >
-              {/* Card Header: Exercise Name + Video Cues Button */}
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <div className="flex items-start gap-2.5 min-w-0">
-                  <span className="w-6 h-6 rounded-lg bg-[#111827] text-[#FFC809] text-xs font-bold flex items-center justify-center shrink-0 mt-0.5 tabular-nums">
-                    {index + 1}
-                  </span>
-                  <div className="min-w-0">
-                    <h2 className="text-base font-bold text-[#111827] leading-snug">
-                      {block.name}
-                    </h2>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {block.sets} sets × {block.targetReps}{' '}
-                      {isBodyweight ? 'breaths / reps' : 'reps'} · {block.restSec}s rest
-                    </p>
-                  </div>
-                </div>
+          {/* Exercises */}
+          <div className="space-y-4">
+            {workout.blocks.map((block, i) => {
+              const exercise = getExercise(block.exerciseId);
+              const last = lastPerformance(client, block.exerciseId, date);
+              const suggestion = suggestLoad(block, last, exercise?.bodyPart);
+              const target = parseReps(block.reps);
+              const anyDone = block.loggedSets.some((s) => s.completed);
+              const allDone = block.loggedSets.length > 0 && block.loggedSets.every((s) => s.completed);
+              const paired = block.supersetWithPrevious;
 
-                <button
-                  onClick={() => setPreviewExerciseId(block.exerciseId)}
-                  className="inline-flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-[#111827] text-xs font-medium px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0"
-                >
-                  <Play className="w-3 h-3 fill-[#111827]" />
-                  <span>Demo</span>
-                </button>
-              </div>
-
-              {/* Coaching Cue */}
-              <p className="text-xs text-gray-600 bg-gray-50 rounded-xl px-3 py-2 mb-3">
-                {block.cue}
-              </p>
-
-              {/* "Last time" & "Suggested load (+2.5 kg if all reps hit)" Strip */}
-              <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-[#F9FAFB] border border-gray-100 mb-3.5 text-xs">
-                <div className="text-gray-600 tabular-nums">
-                  <span className="font-medium text-gray-400">Last time: </span>
-                  {isBodyweight ? (
-                    <span className="font-semibold text-[#111827]">
-                      Bodyweight × {block.lastTimeRepsPerSet.join(', ')}
-                    </span>
-                  ) : (
-                    <span className="font-semibold text-[#111827]">
-                      {block.lastTimeLoadKg} kg ×{' '}
-                      {block.lastTimeRepsPerSet.join(', ')}
-                    </span>
-                  )}
-                </div>
-
-                {!isBodyweight ? (
-                  allRepsHitLastTime ? (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        applySuggestedLoadToBlock(block.id, suggestedKg)
-                      }
-                      title="Tap to apply suggested load to all sets"
-                      className="inline-flex items-center gap-1 bg-[#FFC809] text-[#111827] font-semibold px-2.5 py-1 rounded-full tabular-nums cursor-pointer"
-                    >
-                      <TrendingUp className="w-3.5 h-3.5" />
-                      <span>
-                        Suggested: {suggestedKg} kg (+{deltaKg} kg)
-                      </span>
-                    </button>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 bg-[#E5E7EB] text-[#374151] font-medium px-2.5 py-1 rounded-full tabular-nums">
-                      Suggested: {suggestedKg} kg (match & hit all {block.targetReps}s)
-                    </span>
-                  )
-                ) : (
-                  <span className="inline-flex items-center bg-[#FEF3C7] text-[#92400E] font-medium px-2.5 py-0.5 rounded-full">
-                    PRI Position Reset
-                  </span>
-                )}
-              </div>
-
-              {/* Set Logging Table (Set | kg | Reps | Check) */}
-              <div className="space-y-2">
-                <div className="grid grid-cols-12 gap-2 px-2 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                  <div className="col-span-2">Set</div>
-                  <div className="col-span-4">Load (kg)</div>
-                  <div className="col-span-4">Reps</div>
-                  <div className="col-span-2 text-right">Done</div>
-                </div>
-
-                {block.loggedSets.map((setRow) => (
-                  <div
-                    key={setRow.setNumber}
-                    className={`grid grid-cols-12 gap-2 items-center p-2 rounded-xl border transition-colors ${
-                      setRow.completed
-                        ? 'bg-gray-50/90 border-gray-200'
-                        : 'bg-white border-gray-100'
-                    }`}
-                  >
-                    <div className="col-span-2 pl-1">
-                      <span className="text-xs font-bold text-[#111827] tabular-nums">
-                        {setRow.setNumber}
-                      </span>
-                    </div>
-
-                    <div className="col-span-4">
-                      <input
-                        type="number"
-                        step="2.5"
-                        min="0"
-                        value={setRow.kg}
-                        onChange={(e) =>
-                          updateSetLog(
-                            block.id,
-                            setRow.setNumber,
-                            'kg',
-                            parseFloat(e.target.value) || 0
-                          )
-                        }
-                        aria-label={`${block.name} Set ${setRow.setNumber} kg`}
-                        className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-[#111827] tabular-nums focus:outline-none focus:border-[#111827]"
-                      />
-                    </div>
-
-                    <div className="col-span-4">
-                      <input
-                        type="number"
-                        step="1"
-                        min="0"
-                        value={setRow.reps}
-                        onChange={(e) =>
-                          updateSetLog(
-                            block.id,
-                            setRow.setNumber,
-                            'reps',
-                            parseInt(e.target.value, 10) || 0
-                          )
-                        }
-                        aria-label={`${block.name} Set ${setRow.setNumber} reps`}
-                        className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-[#111827] tabular-nums focus:outline-none focus:border-[#111827]"
-                      />
-                    </div>
-
-                    <div className="col-span-2 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleToggleSetComplete(
-                            block,
-                            setRow.setNumber,
-                            setRow.completed
-                          )
-                        }
-                        aria-label={`Mark set ${setRow.setNumber} complete`}
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
-                          setRow.completed
-                            ? 'bg-[#111827] text-[#FFC809]'
-                            : 'bg-gray-100 text-gray-400 hover:text-[#111827] hover:bg-gray-200'
+              return (
+                <div key={block.id} className={`${card} ${paired ? 'border-l-4 border-l-[#FFC809]' : ''} ${allDone ? 'opacity-90' : ''}`}>
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <span
+                        className={`min-w-7 h-7 px-1.5 rounded-lg text-xs font-bold flex items-center justify-center shrink-0 ${
+                          allDone ? 'bg-[#16A34A] text-white' : 'bg-[#111827] text-[#FFC809]'
                         }`}
                       >
-                        <Check className="w-4 h-4 stroke-[2.8]" />
-                      </button>
+                        {allDone ? <Check className="w-4 h-4" /> : labels[i]}
+                      </span>
+                      <div className="min-w-0">
+                        <h2 className="text-base font-bold text-[#111827] leading-snug">{block.name}</h2>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {block.sets} × {block.reps || '–'}
+                          {block.loadKg > 0 ? ` @ ${block.loadKg} kg` : ''}
+                          {block.restSec ? ` · ${block.restSec}s rest` : ''}
+                          {paired ? ' · superset' : ''}
+                        </p>
+                      </div>
                     </div>
+                    <button
+                      onClick={() => setVideoFor(block.exerciseId)}
+                      className="inline-flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-[#111827] text-xs font-medium px-2.5 py-2 rounded-lg cursor-pointer shrink-0"
+                    >
+                      <Play className="w-3 h-3 fill-[#111827]" />
+                      <span>Demo</span>
+                    </button>
                   </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
 
-      {/* Complete Workout Button */}
-      <div className="mt-6">
-        {workoutCompletedBanner ? (
-          <div className="bg-[#111827] text-white rounded-2xl p-5 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#FFC809] text-[#111827] flex items-center justify-center shrink-0">
-                <CheckCircle2 className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="text-sm font-bold">
-                  Session Logged · Great Work, {client.name.split(' ')[0]}!
+                  {block.notes && (
+                    <p className="text-xs text-gray-600 bg-gray-50 rounded-xl px-3 py-2 mb-3">{block.notes}</p>
+                  )}
+
+                  {/* Last time + suggestion */}
+                  {(last || suggestion) && (
+                    <div className="flex flex-wrap items-center gap-2 mb-3 text-xs">
+                      {last && (
+                        <span className="text-gray-500">
+                          Last time <span className="font-semibold text-[#111827]">{formatPerformance(last)}</span>
+                        </span>
+                      )}
+                      {suggestion && !allDone && (
+                        <button
+                          onClick={() => useSuggested(block, suggestion.kg)}
+                          title={suggestion.reason}
+                          className={`inline-flex items-center gap-1.5 font-semibold px-2.5 py-1 rounded-full cursor-pointer ${
+                            suggestion.action === 'increase'
+                              ? 'bg-[#FFC809] text-[#111827]'
+                              : suggestion.action === 'reduce'
+                              ? 'bg-[#FEE2E2] text-[#991B1B]'
+                              : 'bg-[#F3F4F6] text-[#111827]'
+                          }`}
+                        >
+                          {suggestion.action === 'increase' ? (
+                            <TrendingUp className="w-3.5 h-3.5" />
+                          ) : suggestion.action === 'reduce' ? (
+                            <TrendingDown className="w-3.5 h-3.5" />
+                          ) : (
+                            <Minus className="w-3.5 h-3.5" />
+                          )}
+                          Use {suggestion.kg} kg
+                        </button>
+                      )}
+                      {suggestion && !allDone && <p className="basis-full text-[11px] text-gray-500">{suggestion.reason}</p>}
+                    </div>
+                  )}
+
+                  {/* Sets */}
+                  <div className="grid grid-cols-[2rem_1fr_1fr_2.75rem] gap-2 items-center text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1.5 px-0.5">
+                    <span>Set</span>
+                    <span className="text-center">kg</span>
+                    <span className="text-center">{target.kind === 'time' ? 'sec' : 'reps'}</span>
+                    <span />
+                  </div>
+                  <div className="space-y-2">
+                    {block.loggedSets.map((s) => (
+                      <div key={s.setNumber} className="grid grid-cols-[2rem_1fr_1fr_2.75rem] gap-2 items-center">
+                        <span className="text-sm font-semibold text-gray-500 tabular-nums text-center">{s.setNumber}</span>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          min={0}
+                          step={0.5}
+                          value={s.kg ?? ''}
+                          placeholder={block.loadKg ? String(block.loadKg) : 'BW'}
+                          onChange={(e) =>
+                            patchSet(block, s.setNumber, { kg: e.target.value === '' ? null : Math.max(0, Number(e.target.value)) })
+                          }
+                          aria-label={`Set ${s.setNumber} weight`}
+                          className={cellInput}
+                        />
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          value={s.reps ?? ''}
+                          placeholder={target.kind === 'reps' && target.max ? String(target.max) : target.kind === 'time' ? String(target.min) : '–'}
+                          onChange={(e) =>
+                            patchSet(block, s.setNumber, {
+                              reps: e.target.value === '' ? null : Math.max(0, Math.round(Number(e.target.value)))
+                            })
+                          }
+                          aria-label={`Set ${s.setNumber} ${target.kind === 'time' ? 'seconds' : 'reps'}`}
+                          className={cellInput}
+                        />
+                        <button
+                          onClick={() => toggleSet(block, s)}
+                          aria-label={s.completed ? `Undo set ${s.setNumber}` : `Complete set ${s.setNumber}`}
+                          aria-pressed={s.completed}
+                          className={`w-11 h-11 rounded-xl flex items-center justify-center cursor-pointer transition-colors ${
+                            s.completed ? 'bg-[#111827] text-[#FFC809]' : 'bg-white border-2 border-gray-200 text-gray-300 hover:border-[#111827]'
+                          }`}
+                        >
+                          <Check className="w-5 h-5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Effort, pain, note */}
+                  {anyDone && (
+                    <div className="mt-4 pt-3 border-t border-gray-100">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span className="text-xs font-semibold text-[#111827]">How hard was it? (RPE)</span>
+                        <span className="text-[11px] text-gray-400">10 = nothing left</span>
+                      </div>
+                      <div className="grid grid-cols-5 gap-1.5 mb-3">
+                        {[6, 7, 8, 9, 10].map((r) => (
+                          <button
+                            key={r}
+                            onClick={() => patchBlock(block.id, { rpe: block.rpe === r ? undefined : r })}
+                            aria-pressed={block.rpe === r}
+                            className={`py-2 rounded-lg text-sm font-semibold tabular-nums cursor-pointer ${
+                              block.rpe === r ? 'bg-[#111827] text-white' : 'bg-[#F3F4F6] text-[#111827]'
+                            }`}
+                          >
+                            {r}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={() => patchBlock(block.id, { pain: !block.pain })}
+                          aria-pressed={!!block.pain}
+                          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer ${
+                            block.pain ? 'bg-[#DC2626] text-white' : 'bg-[#F3F4F6] text-[#111827]'
+                          }`}
+                        >
+                          <AlertTriangle className="w-3.5 h-3.5" /> {block.pain ? 'Pain reported' : 'I felt pain'}
+                        </button>
+                        <button
+                          onClick={() => setNoteOpen(noteOpen === block.id ? null : block.id)}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-[#F3F4F6] text-[#111827] cursor-pointer"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" /> {block.clientNote ? 'Edit note' : 'Note for coach'}
+                        </button>
+                      </div>
+                      {(noteOpen === block.id || block.pain) && (
+                        <textarea
+                          value={block.clientNote ?? ''}
+                          onChange={(e) => patchBlock(block.id, { clientNote: e.target.value })}
+                          placeholder={block.pain ? 'Where and when did it hurt?' : 'Anything your coach should know'}
+                          rows={2}
+                          className="mt-2 w-full text-base bg-white border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-[#111827]"
+                        />
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div className="text-xs text-gray-300 mt-0.5">
-                  Weekly adherence updated ({client.adherenceCompleted}/{client.adherenceTotal} sessions).
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={() => setWorkoutCompletedBanner(false)}
-              className="text-xs text-gray-300 hover:text-white underline cursor-pointer shrink-0"
-            >
-              Edit
-            </button>
+              );
+            })}
           </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              setWorkoutCompletedBanner(true);
-              if (client.adherenceCompleted < client.adherenceTotal) {
-                onUpdateClient({
-                  ...client,
-                  adherenceCompleted: Math.min(
-                    client.adherenceTotal,
-                    client.adherenceCompleted + 1
-                  )
-                });
-              }
-            }}
-            className="w-full bg-[#111827] hover:bg-[#1F2937] text-white font-semibold text-sm py-3.5 px-6 rounded-2xl shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2"
-          >
-            <Check className="w-4 h-4 text-[#FFC809]" />
-            <span>Complete & Save Workout</span>
-          </button>
-        )}
-      </div>
 
-      {/* Exercise Demo Modal */}
-      {previewExercise && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl border border-gray-100">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h3 className="text-base font-bold text-[#111827]">
-                  {previewExercise.name}
-                </h3>
-                <p className="text-xs text-gray-500">
-                  {previewExercise.bodyPart} · {previewExercise.plane} Plane
-                </p>
-              </div>
-              <button
-                onClick={() => setPreviewExerciseId(null)}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-[#111827] cursor-pointer"
-              >
-                <X className="w-4 h-4" />
+          {/* Finish */}
+          {workout.blocks.length > 0 && workout.status !== 'completed' && (
+            <button
+              onClick={() => setFinishing(true)}
+              disabled={doneSets === 0}
+              className="mt-5 w-full bg-[#111827] disabled:bg-gray-300 text-white text-sm font-semibold py-3.5 rounded-2xl cursor-pointer"
+            >
+              {doneSets === 0 ? 'Log at least one set to finish' : 'Finish workout'}
+            </button>
+          )}
+        </>
+      )}
+
+      {/* Rest timer */}
+      {rest && (
+        <div className="fixed left-1/2 -translate-x-1/2 bottom-24 z-40 w-[calc(100%-2rem)] max-w-sm bg-[#111827] text-white rounded-2xl shadow-xl px-4 py-3 flex items-center gap-3">
+          <Clock className="w-5 h-5 text-[#FFC809] shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-semibold tabular-nums">
+              Rest {Math.floor(restLeft / 60)}:{String(restLeft % 60).padStart(2, '0')}
+            </div>
+            <div className="h-1 bg-white/20 rounded-full mt-1.5 overflow-hidden">
+              <div className="h-full bg-[#FFC809]" style={{ width: `${(restLeft / rest.total) * 100}%` }} />
+            </div>
+          </div>
+          <button onClick={() => setRest({ ...rest, endsAt: rest.endsAt + 15000, total: rest.total + 15 })} className="text-xs font-semibold px-2 py-1.5 rounded-lg bg-white/10 cursor-pointer">
+            +15s
+          </button>
+          <button onClick={() => setRest(null)} className="text-xs font-semibold px-2 py-1.5 rounded-lg bg-white/10 cursor-pointer">
+            Skip
+          </button>
+        </div>
+      )}
+
+      {/* Finish sheet */}
+      {finishing && workout && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center sm:p-4">
+          <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-[#111827]">Nice work 👏</h3>
+              <button onClick={() => setFinishing(false)} aria-label="Close" className="p-1.5 text-gray-400 cursor-pointer">
+                <X className="w-5 h-5" />
               </button>
             </div>
-
-            <ExerciseVideoPlayer
-              video={previewExercise.video}
-              title={previewExercise.name}
-              className="w-full aspect-video mb-4"
-            />
-
-            <div className="space-y-2 mb-4">
-              {previewExercise.cues.map((cue, idx) => (
-                <div key={idx} className="flex items-start gap-2 text-xs text-gray-700">
-                  <span className="w-4 h-4 rounded-full bg-[#111827] text-[#FFC809] text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
-                    {idx + 1}
-                  </span>
-                  <span>{cue}</span>
-                </div>
+            <p className="text-sm font-semibold text-[#111827] mb-2">How hard was the whole session?</p>
+            <div className="grid grid-cols-5 gap-1.5 mb-1">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setSessionRpe(r)}
+                  aria-pressed={sessionRpe === r}
+                  className={`py-2.5 rounded-lg text-sm font-semibold tabular-nums cursor-pointer ${
+                    sessionRpe === r ? 'bg-[#111827] text-white' : 'bg-[#F3F4F6] text-[#111827]'
+                  }`}
+                >
+                  {r}
+                </button>
               ))}
             </div>
+            <div className="flex justify-between text-[11px] text-gray-400 mb-4">
+              <span>Very easy</span>
+              <span>Max effort</span>
+            </div>
+            <textarea
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              placeholder="How did it feel? Anything for your coach?"
+              rows={3}
+              className="w-full text-base bg-white border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-[#111827] mb-4"
+            />
+            <button onClick={finish} className="w-full bg-[#111827] text-white text-sm font-semibold py-3.5 rounded-2xl cursor-pointer">
+              Finish workout ({doneSets}/{totalSets} sets)
+            </button>
+          </div>
+        </div>
+      )}
 
-            <button
-              onClick={() => setPreviewExerciseId(null)}
-              className="w-full bg-[#111827] text-white text-xs font-semibold py-2.5 rounded-xl cursor-pointer"
-            >
+      {/* Demo video */}
+      {videoFor && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center sm:p-4" onClick={() => setVideoFor(null)}>
+          <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl p-5 max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-base font-bold text-[#111827]">{videoExercise?.name ?? 'Exercise'}</h3>
+              <button onClick={() => setVideoFor(null)} aria-label="Close" className="p-1.5 text-gray-400 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <ExerciseVideoPlayer video={videoExercise?.video} title={videoExercise?.name ?? 'Exercise'} className="w-full aspect-video mb-4" />
+            {videoExercise && videoExercise.cues.length > 0 && (
+              <ol className="space-y-2 mb-4">
+                {videoExercise.cues.map((cue, idx) => (
+                  <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
+                    <span className="w-5 h-5 rounded-full bg-[#111827] text-[#FFC809] text-[11px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                      {idx + 1}
+                    </span>
+                    <span>{cue}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+            <button onClick={() => setVideoFor(null)} className="w-full bg-[#111827] text-white text-sm font-semibold py-3 rounded-xl cursor-pointer">
               Got it
             </button>
           </div>

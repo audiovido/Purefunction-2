@@ -25,7 +25,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
-  const [newPhase, setNewPhase] = useState<'1-Reposition' | '1-Foundations' | '2-Integrate' | '3-Performance'>('1-Reposition');
+  const [newPhase, setNewPhase] = useState<string>('1-Reposition');
+  const [formError, setFormError] = useState<string | null>(null);
 
   const filteredClients = clients.filter(
     (c) =>
@@ -36,10 +37,20 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   const handleCreateClient = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim()) return;
+    const email = newEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setFormError('Enter the email your client will sign in with.');
+      return;
+    }
+    if (clients.some((c) => (c.email ?? '').toLowerCase() === email)) {
+      setFormError('A client with this email already exists.');
+      return;
+    }
+    setFormError(null);
     const [numStr, pName] = newPhase.split('-');
     onAddClient({
       name: newName.trim(),
-      email: newEmail.trim() || `${newName.trim().toLowerCase().replace(/\s+/g, '.')}@purefunction.io`,
+      email,
       phaseNumber: Number(numStr) as 1 | 2 | 3 | 4,
       phaseName: pName as ClientProfile['phaseName']
     });
@@ -48,10 +59,11 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     setIsAddModalOpen(false);
   };
 
-  // Top KPI summary numbers matching Mockup 6 (24 active, 3 assessments due, 5 unread messages)
-  const activeCount = 24 + Math.max(0, clients.length - 6);
-  const assessmentsDueCount = clients.filter((c) => c.nextAssessmentDays <= 5).length >= 3 ? 3 : clients.length;
-  const unreadMessagesCount = 5;
+  // Real numbers: clients, assessments due within 5 days, workouts completed this week
+  const activeCount = clients.length;
+  const assessmentsDueCount = clients.filter((c) => c.nextAssessmentDays <= 5).length;
+  const weekDone = clients.reduce((a, c) => a + c.adherenceCompleted, 0);
+  const weekTotal = clients.reduce((a, c) => a + c.adherenceTotal, 0);
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -64,7 +76,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       <div className="grid grid-cols-3 gap-3 sm:gap-5 max-w-2xl mb-7">
         <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-gray-100 flex flex-col justify-between">
           <div className="text-xs sm:text-[13px] font-medium text-gray-500 mb-1.5 leading-snug">
-            Active clients
+            Clients
           </div>
           <div className="text-2xl sm:text-[32px] font-bold text-[#F5B800] leading-none tabular-nums">
             {activeCount}
@@ -82,10 +94,11 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
 
         <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-gray-100 flex flex-col justify-between">
           <div className="text-xs sm:text-[13px] font-medium text-gray-500 mb-1.5 leading-snug">
-            Unread messages
+            Workouts this week
           </div>
           <div className="text-2xl sm:text-[32px] font-bold text-[#111827] leading-none tabular-nums">
-            {unreadMessagesCount}
+            {weekDone}
+            <span className="text-base sm:text-lg text-gray-400 font-semibold">/{weekTotal}</span>
           </div>
         </div>
       </div>
@@ -102,7 +115,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search clients..."
-            className="w-full bg-white border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-[#111827] transition-colors"
+            className="w-full bg-white border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-base sm:text-sm text-[#111827] placeholder:text-gray-400 focus:outline-none focus:border-[#111827] transition-colors"
           />
         </div>
 
@@ -120,14 +133,18 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         {filteredClients.length === 0 ? (
           <div className="py-12 px-6 text-center">
             <p className="text-sm text-gray-500 mb-3">
-              No clients match "{searchQuery}".
+              {clients.length === 0
+                ? 'No clients yet. Tap “Add client” and enter their email — they’ll use it to create their account.'
+                : `No clients match "${searchQuery}".`}
             </p>
-            <button
-              onClick={() => setSearchQuery('')}
-              className="text-xs font-medium text-[#111827] underline cursor-pointer"
-            >
-              Clear search
-            </button>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="text-xs font-medium text-[#111827] underline cursor-pointer"
+              >
+                Clear search
+              </button>
+            )}
           </div>
         ) : (
           filteredClients.map((client) => {
@@ -256,7 +273,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="e.g., Jordan Taylor"
-                  className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-[#111827] focus:outline-none focus:border-[#111827]"
+                  className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-[#111827] focus:outline-none focus:border-[#111827]"
                 />
               </div>
 
@@ -266,10 +283,12 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                 </label>
                 <input
                   type="email"
+                  required
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
                   placeholder="jordan.taylor@example.com"
-                  className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-[#111827] focus:outline-none focus:border-[#111827]"
+                  autoComplete="off"
+                  className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-[#111827] focus:outline-none focus:border-[#111827]"
                 />
               </div>
 
@@ -280,14 +299,23 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                 <select
                   value={newPhase}
                   onChange={(e) => setNewPhase(e.target.value as typeof newPhase)}
-                  className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-[#111827] bg-white focus:outline-none focus:border-[#111827]"
+                  className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-base sm:text-sm text-[#111827] bg-white focus:outline-none focus:border-[#111827]"
                 >
-                  <option value="1-Reposition">Phase 1 · Reposition (Week 0)</option>
-                  <option value="1-Foundations">Phase 1 · Foundations (Week 0)</option>
-                  <option value="2-Integrate">Phase 2 · Integrate (Week 4)</option>
-                  <option value="3-Performance">Phase 3 · Performance (Week 8)</option>
+                  <option value="1-Reposition">Phase 1 · Reposition</option>
+                  <option value="2-Integrate">Phase 2 · Integrate</option>
+                  <option value="3-Strength">Phase 3 · Strength</option>
+                  <option value="4-Performance">Phase 4 · Performance</option>
                 </select>
               </div>
+
+              <p className="text-xs text-gray-500 -mt-1">
+                Your client creates their account with this email to see their program.
+              </p>
+              {formError && (
+                <p className="text-sm text-red-700 bg-red-50 border border-red-100 rounded-xl px-3 py-2" role="alert">
+                  {formError}
+                </p>
+              )}
 
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button
