@@ -17,8 +17,8 @@ import {
   Exercise,
   WorkoutExerciseBlock
 } from '../../types';
-import { EXERCISES_LIBRARY } from '../../data/mockData';
-import { ExerciseIllustration } from '../VisualAssets';
+import { useExerciseLibrary } from '../../state/ExerciseLibrary';
+import { ExerciseThumb } from '../ExerciseMedia';
 
 interface WorkoutBuilderViewProps {
   clients: ClientProfile[];
@@ -33,6 +33,7 @@ export const WorkoutBuilderView: React.FC<WorkoutBuilderViewProps> = ({
   onSelectClientId,
   onUpdateClient
 }) => {
+  const { exercises } = useExerciseLibrary();
   const [selectedDayKey, setSelectedDayKey] = useState<DayWorkout['dayKey']>('Mon');
   const [selectedWeekNum, setSelectedWeekNum] = useState<number>(client.currentWeek || 6);
   const [librarySearch, setLibrarySearch] = useState('');
@@ -49,7 +50,7 @@ export const WorkoutBuilderView: React.FC<WorkoutBuilderViewProps> = ({
     setTimeout(() => setStatusToast(null), 2500);
   };
 
-  const filteredExercises = EXERCISES_LIBRARY.filter((ex) => {
+  const filteredExercises = exercises.filter((ex) => {
     const matchesSearch =
       ex.name.toLowerCase().includes(librarySearch.toLowerCase()) ||
       ex.bodyPart.toLowerCase().includes(librarySearch.toLowerCase()) ||
@@ -158,7 +159,7 @@ export const WorkoutBuilderView: React.FC<WorkoutBuilderViewProps> = ({
     e.preventDefault();
     setIsDragOver(false);
     const exerciseId = e.dataTransfer.getData('text/plain');
-    const found = EXERCISES_LIBRARY.find((ex) => ex.id === exerciseId);
+    const found = exercises.find((ex) => ex.id === exerciseId);
     if (found) {
       handleAddExerciseToDay(found);
     }
@@ -329,10 +330,7 @@ export const WorkoutBuilderView: React.FC<WorkoutBuilderViewProps> = ({
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <GripVertical className="w-4 h-4 text-gray-300 group-hover:text-gray-500 shrink-0" />
-                  <ExerciseIllustration
-                    type={ex.illustrationType}
-                    className="w-12 h-10 shrink-0"
-                  />
+                  <ExerciseThumb exercise={ex} compact className="w-12 h-10 shrink-0" />
                   <div className="min-w-0">
                     <div className="text-xs sm:text-sm font-semibold text-[#111827] truncate">
                       {ex.name}

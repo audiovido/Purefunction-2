@@ -19,110 +19,37 @@ export const PureFunctionLogo: React.FC<{ compact?: boolean }> = ({ compact = fa
   </div>
 );
 
+/**
+ * Client photo, or their initials when no photo has been added yet.
+ * (avatarId is kept for data compatibility; it no longer picks a drawn face.)
+ */
 export const ClientAvatar: React.FC<{
-  avatarId: string;
+  avatarId?: string;
   name: string;
+  photoUrl?: string;
   size?: 'sm' | 'md' | 'lg';
-}> = ({ avatarId, name, size = 'md' }) => {
+}> = ({ name, photoUrl, size = 'md' }) => {
   const dims =
-    size === 'sm' ? 'w-9 h-9 text-xs' : size === 'lg' ? 'w-14 h-14 text-base' : 'w-11 h-11 text-sm';
-
-  const palettes: Record<
-    string,
-    { bg: string; skin: string; hair: string; shirt: string; accent: string }
-  > = {
-    alex: {
-      bg: '#E5E7EB',
-      skin: '#E0AC8B',
-      hair: '#27201C',
-      shirt: '#1F2937',
-      accent: '#FFC809'
-    },
-    sarah: {
-      bg: '#F3E8E2',
-      skin: '#F1C6A7',
-      hair: '#5C3A21',
-      shirt: '#374151',
-      accent: '#FFC809'
-    },
-    marcus: {
-      bg: '#E2E8F0',
-      skin: '#8D5524',
-      hair: '#1A110B',
-      shirt: '#111827',
-      accent: '#FFC809'
-    },
-    elena: {
-      bg: '#ECEFF3',
-      skin: '#F5D0B5',
-      hair: '#1E1B18',
-      shirt: '#1E293B',
-      accent: '#FFC809'
-    },
-    daniel: {
-      bg: '#E5E7EB',
-      skin: '#EAC09E',
-      hair: '#111827',
-      shirt: '#0F172A',
-      accent: '#FFC809'
-    },
-    olivia: {
-      bg: '#EFECE6',
-      skin: '#ECC4A6',
-      hair: '#6D4C3D',
-      shirt: '#334155',
-      accent: '#FFC809'
-    }
-  };
-
-  const p = palettes[avatarId] || {
-    bg: '#E5E7EB',
-    skin: '#E0AC8B',
-    hair: '#1F2937',
-    shirt: '#111827',
-    accent: '#FFC809'
-  };
-
-  const isFemale = ['sarah', 'elena', 'olivia'].includes(avatarId);
+    size === 'sm' ? 'w-9 h-9 text-xs' : size === 'lg' ? 'w-14 h-14 text-lg' : 'w-11 h-11 text-sm';
+  const initials =
+    name
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? '')
+      .join('') || '?';
 
   return (
     <div
-      className={`${dims} rounded-full overflow-hidden shrink-0 bg-[#E5E7EB] border border-gray-200/80 flex items-center justify-center relative`}
+      className={`${dims} rounded-full overflow-hidden shrink-0 bg-[#F3F4F6] border border-gray-200/80 flex items-center justify-center font-semibold text-[#374151] select-none`}
       title={name}
     >
-      <svg viewBox="0 0 64 64" className="w-full h-full">
-        <rect width="64" height="64" fill={p.bg} />
-        {/* Shoulders / Shirt */}
-        <path d="M10 64 C10 47, 54 47, 54 64 Z" fill={p.shirt} />
-        {/* Neck */}
-        <rect x="27" y="36" width="10" height="10" rx="4" fill={p.skin} />
-        {/* Long Hair Back for female */}
-        {isFemale && <path d="M17 26 C15 40, 17 50, 21 53 L43 53 C47 50, 49 40, 47 26 Z" fill={p.hair} />}
-        {/* Head */}
-        <ellipse cx="32" cy="27" rx="11.5" ry="13.5" fill={p.skin} />
-        {/* Hair Top */}
-        {isFemale ? (
-          <path
-            d="M20 25 C20 13, 44 13, 44 25 C41 19, 34 18, 28 20 C24 21, 21 24, 20 25 Z"
-            fill={p.hair}
-          />
-        ) : (
-          <path
-            d="M20.5 24 C20.5 13, 43.5 13, 43.5 24 C41 19, 23 19, 20.5 24 Z"
-            fill={p.hair}
-          />
-        )}
-        {/* Eyes & Smile */}
-        <circle cx="28" cy="27" r="1.3" fill="#111827" />
-        <circle cx="36" cy="27" r="1.3" fill="#111827" />
-        <path
-          d="M28.5 33 Q32 35.8 35.5 33"
-          stroke="#111827"
-          strokeWidth="1.4"
-          fill="none"
-          strokeLinecap="round"
-        />
-      </svg>
+      {photoUrl ? (
+        <img src={photoUrl} alt={name} className="w-full h-full object-cover" />
+      ) : (
+        <span aria-hidden="true">{initials}</span>
+      )}
     </div>
   );
 };

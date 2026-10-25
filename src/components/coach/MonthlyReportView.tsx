@@ -160,7 +160,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
         {/* Report Banner Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-100">
           <div className="flex items-center gap-4">
-            <ClientAvatar avatarId={client.avatarId} name={client.name} size="lg" />
+            <ClientAvatar name={client.name} photoUrl={client.photoUrl} size="lg" />
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-xl sm:text-2xl font-bold text-[#111827]">
