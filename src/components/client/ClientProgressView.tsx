@@ -2,6 +2,7 @@ import React from 'react';
 import { Check, ArrowRight } from 'lucide-react';
 import { ClientProfile, calculateAsymmetryPercent } from '../../types';
 import { EmptyProgress } from '../EmptyProgress';
+import { GoalsPanel } from '../coach/GoalsPanel';
 
 interface ClientProgressViewProps {
   client: ClientProfile;
@@ -13,10 +14,15 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
   const history = client.progressHistory;
   if (history.length === 0) {
     return (
-      <EmptyProgress
-        title="Your progress starts here"
-        text="After your first assessment and a few logged workouts, your strength, body composition and symmetry charts show up here."
-      />
+      <div className="max-w-lg mx-auto">
+        {(client.goals?.length ?? 0) > 0 && (
+          <GoalsPanel goals={client.goals!} assessments={client.assessments ?? []} />
+        )}
+        <EmptyProgress
+          title="Your progress starts here"
+          text="After your first assessment and a few logged workouts, your strength, body composition and symmetry charts show up here."
+        />
+      </div>
     );
   }
   const firstPt = history[0] || {
@@ -44,6 +50,9 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
 
   return (
     <div className="max-w-lg mx-auto space-y-4 pb-8">
+      {(client.goals?.length ?? 0) > 0 && (
+        <GoalsPanel goals={client.goals!} assessments={client.assessments ?? []} />
+      )}
       {/* Page Title */}
       <div>
         <span className="text-xs font-semibold text-gray-500">

@@ -245,3 +245,25 @@ describe('assessments', () => {
     expect(verdict(get('InBody score'))).toBeNull(); // not measured
   });
 });
+
+import { goalStatus } from '../assessments';
+
+describe('goals', () => {
+  const base = createClientProfile({ name: 'G', email: 'g@x.com', phaseNumber: 1, phaseName: 'Reposition' });
+  const snap = (hipL: number, kg: number) => ({
+    inBody: { ...base.inBody, weight: kg },
+    rom: [{ id: 'r1', name: 'Hip IR', left: hipL, right: 40 }],
+    priTests: [], gaitPosture: [], strengthTests: [], videos: []
+  });
+  it('tracks progress toward a lower-is-better target from the latest assessment', () => {
+    let c = saveAssessment(base, snap(30, 82), '2026-10-01');
+    const goal = { id: 'g', metricKey: 'rom:Hip IR:asym', label: 'Hip IR asymmetry', unit: '%', direction: 'down' as const, start: 25, target: 10, createdAt: '2026-10-01' };
+    expect(goalStatus(goal, c.assessments!)).toMatchObject({ current: 25, percent: 0, achieved: false });
+    c = saveAssessment(c, snap(34, 81), '2026-10-29'); // 15%
+    expect(goalStatus(goal, c.assessments!)).toMatchObject({ current: 15, percent: 67, achieved: false, asOf: '2026-10-29' });
+    c = saveAssessment(c, snap(37, 80), '2026-11-26'); // 8%
+    expect(goalStatus(goal, c.assessments!)).toMatchObject({ achieved: true, percent: 100 });
+    const w = { ...goal, metricKey: 'body:weight', direction: 'down' as const, start: 82, target: 78 };
+    expect(goalStatus(w, c.assessments!).percent).toBe(50);
+  });
+});

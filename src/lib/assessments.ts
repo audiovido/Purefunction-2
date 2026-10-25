@@ -1,4 +1,4 @@
-import { AssessmentSnapshot, ClientProfile, calculateAsymmetryPercent } from '../types';
+import { AssessmentSnapshot, ClientProfile, Goal, calculateAsymmetryPercent } from '../types';
 import { estimated1RM, parseISODate, todayISO } from './workouts';
 
 /**
@@ -28,6 +28,8 @@ export function saveAssessment(
 }
 
 export interface ComparisonRow {
+  /** stable id of the measure across assessments, e.g. "rom:Hip internal rotation:asym" */
+  key: string;
   group: 'Body composition' | 'Range of motion' | 'Strength';
   label: string;
   unit: string;
@@ -51,7 +53,7 @@ export function compareAssessments(a: AssessmentSnapshot, b: AssessmentSnapshot)
     ['inBodyScore', 'InBody score', '', 'up']
   ];
   for (const [k, label, unit, better] of body) {
-    rows.push({ group: 'Body composition', label, unit, before: num(a.inBody[k]), after: num(b.inBody[k]), better });
+    rows.push({ key: `body:${String(k)}`, group: 'Body composition', label, unit, before: num(a.inBody[k]), after: num(b.inBody[k]), better });
   }
 
   const names = new Set([...a.rom, ...b.rom].map((r) => r.name));
@@ -61,9 +63,9 @@ export function compareAssessments(a: AssessmentSnapshot, b: AssessmentSnapshot)
     const asym = (r?: { left: number; right: number }) =>
       r && (r.left > 0 || r.right > 0) ? calculateAsymmetryPercent(r.left, r.right) : null;
     const side = (r: typeof ra, s: 'left' | 'right') => (r ? num(r[s]) : null);
-    rows.push({ group: 'Range of motion', label: `${name} — L`, unit: '°', before: side(ra, 'left'), after: side(rb, 'left'), better: 'up' });
-    rows.push({ group: 'Range of motion', label: `${name} — R`, unit: '°', before: side(ra, 'right'), after: side(rb, 'right'), better: 'up' });
-    rows.push({ group: 'Range of motion', label: `${name} — asymmetry`, unit: '%', before: asym(ra), after: asym(rb), better: 'down' });
+    rows.push({ key: `rom:${name}:L`, group: 'Range of motion', label: `${name} — L`, unit: '°', before: side(ra, 'left'), after: side(rb, 'left'), better: 'up' });
+    rows.push({ key: `rom:${name}:R`, group: 'Range of motion', label: `${name} — R`, unit: '°', before: side(ra, 'right'), after: side(rb, 'right'), better: 'up' });
+    rows.push({ key: `rom:${name}:asym`, group: 'Range of motion', label: `${name} — asymmetry`, unit: '%', before: asym(ra), after: asym(rb), better: 'down' });
   }
 
   const lifts = new Set([...a.strengthTests, ...b.strengthTests].map((s) => s.exercise));
@@ -72,7 +74,7 @@ export function compareAssessments(a: AssessmentSnapshot, b: AssessmentSnapshot)
       const t = list.find((s) => s.exercise === lift);
       return t ? num(Math.round(estimated1RM(t.loadKg, t.reps))) : null;
     };
-    rows.push({ group: 'Strength', label: `${lift} (est. 1RM)`, unit: 'kg', before: e(a.strengthTests), after: e(b.strengthTests), better: 'up' });
+    rows.push({ key: `str:${lift}`, group: 'Strength', label: `${lift} (est. 1RM)`, unit: 'kg', before: e(a.strengthTests), after: e(b.strengthTests), better: 'up' });
   }
   return rows;
 }
@@ -83,4 +85,41 @@ export function verdict(row: ComparisonRow): 'better' | 'worse' | 'same' | null 
   const d = row.after - row.before;
   if (Math.abs(d) < 1e-9) return 'same';
   return (d > 0) === (row.better === 'up') ? 'better' : 'worse';
+}
+
+/* ---------------------------------------------------------------------------
+ * Goals: a target for one measure, tracked automatically by each assessment
+ * ------------------------------------------------------------------------- */
+
+/** Every measure in one assessment, by key (value = that assessment's number). */
+export function measuresOf(a: AssessmentSnapshot): ComparisonRow[] {
+  return compareAssessments(a, a).filter((r) => r.after != null);
+}
+
+export interface GoalStatus {
+  current: number | null;
+  /** 0–100, how far from start to target */
+  percent: number;
+  achieved: boolean;
+  /** date of the assessment the current value comes from */
+  asOf: string | null;
+}
+
+export function goalStatus(goal: Goal, assessments: AssessmentSnapshot[]): GoalStatus {
+  const sorted = [...assessments].sort((a, b) => a.date.localeCompare(b.date));
+  let current: number | null = null;
+  let asOf: string | null = null;
+  for (const a of sorted) {
+    const m = measuresOf(a).find((r) => r.key === goal.metricKey);
+    if (m && m.after != null) {
+      current = m.after;
+      asOf = a.date;
+    }
+  }
+  if (current == null) return { current: null, percent: 0, achieved: false, asOf: null };
+  const up = goal.direction === 'up';
+  const achieved = up ? current >= goal.target : current <= goal.target;
+  const span = goal.target - goal.start;
+  const percent = achieved ? 100 : span === 0 ? 0 : Math.max(0, Math.min(100, Math.round(((current - goal.start) / span) * 100)));
+  return { current, percent, achieved, asOf };
 }

@@ -476,6 +476,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
                 clients={clients}
                 client={selectedClient}
                 onSelectClientId={setSelectedClientId}
+                onUpdateClient={handleUpdateClient}
               />
             )}
 
