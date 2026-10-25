@@ -346,3 +346,28 @@ describe('pattern spectrum', () => {
     expect(s.insights.join(' ')).toMatch(/Push : pull is 2.0 : 1/);
   });
 });
+
+import { buildReport } from '../report';
+
+describe('progress report', () => {
+  it('summarises two assessments, sessions and new records in between', () => {
+    const base = createClientProfile({ name: 'R', email: 'r@x.com', phaseNumber: 1, phaseName: 'Reposition' });
+    const v = (w: number, hipL: number) => ({ inBody: { ...base.inBody, weight: w, skeletalMuscleMass: 30 }, rom: [{ id: 'r', name: 'Hip IR', left: hipL, right: 40 }], priTests: [], gaitPosture: [], strengthTests: [], videos: [] });
+    let c = saveAssessment(base, v(82, 30), '2026-10-01');
+    c = saveAssessment(c, v(80, 36), '2026-10-29');
+    const blk = (kg: number) => ({ id: 'b' + kg, exerciseId: 'sq', name: 'Squat', sets: 1, reps: '5', loadKg: kg, restSec: 0, notes: '', loggedSets: [{ setNumber: 1, kg, reps: 5, completed: true }] });
+    c = { ...c, workouts: [
+      { id: 'a', date: '2026-09-20', title: '', focus: '', status: 'completed', blocks: [blk(80)] },
+      { id: 'b', date: '2026-10-08', title: '', focus: '', status: 'completed', blocks: [blk(90)] },
+      { id: 'c', date: '2026-10-15', title: '', focus: '', status: 'missed', blocks: [] }
+    ] };
+    const r = buildReport(c, c.assessments![0], c.assessments![1]);
+    expect(r.weeks).toBe(4);
+    expect(r.month).toBe(1);
+    expect(r.highlights.map((h) => h.label)).toContain('Hip IR — asymmetry');
+    expect(r.sessions).toEqual({ completed: 1, scheduled: 2, percent: 50 });
+    expect(r.newRecords).toHaveLength(1);
+    expect(r.newRecords[0].record.kg).toBe(90);
+    expect(r.newRecords[0].previous?.kg).toBe(80);
+  });
+});
