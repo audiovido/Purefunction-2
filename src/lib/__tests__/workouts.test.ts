@@ -324,3 +324,25 @@ describe('trends', () => {
     expect(s.e1rm[0].value).toBeCloseTo(116.7, 1);
   });
 });
+
+import { axisOf, patternSpectrum } from '../patterns';
+
+describe('pattern spectrum', () => {
+  it('classifies exercises into movement families', () => {
+    expect(axisOf({ pattern: 'Pull', bodyPart: 'Upper' } as never, 'x')).toBe('Pull');
+    expect(axisOf(undefined, 'Left AIC Split Squat')).toBe('Single leg');
+    expect(axisOf(undefined, 'Goblet Squat')).toBe('Squat');
+    expect(axisOf(undefined, 'Romanian Deadlift')).toBe('Hinge');
+    expect(axisOf(undefined, '90/90 Hip Lift')).toBe('Mobility & breathing');
+    expect(axisOf(undefined, 'Cable Pallof Press')).toBe('Core');
+  });
+  it('counts sets per family and flags gaps', () => {
+    const base = createClientProfile({ name: 'S', email: 's@x.com', phaseNumber: 1, phaseName: 'Reposition' });
+    const blk = (name: string, sets: number) => ({ id: name, exerciseId: name, name, sets, reps: '8', loadKg: 0, restSec: 0, notes: '', loggedSets: [] });
+    const c = { ...base, workouts: [{ id: 'w', date: '2026-10-20', title: '', focus: '', status: 'planned' as const, blocks: [blk('Goblet Squat', 3), blk('DB Bench Press', 4), blk('Push-up', 2), blk('Single-Arm Row', 3)] }] };
+    const s = patternSpectrum(c, () => undefined, '2026-10-19', '2026-10-25');
+    expect(s.sets).toMatchObject({ Squat: 3, Push: 6, Pull: 3, Hinge: 0 });
+    expect(s.insights.join(' ')).toMatch(/No hinge, single leg, core, mobility & breathing work/);
+    expect(s.insights.join(' ')).toMatch(/Push : pull is 2.0 : 1/);
+  });
+});
