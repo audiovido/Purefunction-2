@@ -13,7 +13,7 @@ interface ClientsViewProps {
     email: string;
     phaseNumber: 1 | 2 | 3 | 4;
     phaseName: ClientProfile['phaseName'];
-  }) => void;
+  }) => string | void;
   onUpdateClient?: (updated: ClientProfile) => void;
   /** client ids that have an account (cloud only; undefined in demo mode) */
   joinedIds?: Set<string>;
@@ -56,7 +56,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     }
     setFormError(null);
     const [numStr, pName] = newPhase.split('-');
-    onAddClient({
+    const newId = onAddClient({
       name: newName.trim(),
       email,
       phaseNumber: Number(numStr) as 1 | 2 | 3 | 4,
@@ -65,6 +65,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     setNewName('');
     setNewEmail('');
     setIsAddModalOpen(false);
+    // Cloud: right after adding, show the invite to send (like TrueCoach)
+    if (newId && joinedIds) setInviteFor(newId);
   };
 
   // Real numbers: clients, assessments due within 5 days, workouts completed this week
@@ -160,7 +162,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
             return (
               <div
                 key={client.id}
-                onClick={() => onSelectClient(client.id, 'progress')}
+                onClick={() => onSelectClient(client.id, 'workout-builder')}
                 className={`group px-4 sm:px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors cursor-pointer ${
                   isSelected ? 'bg-gray-50/70' : 'hover:bg-gray-50/60'
                 }`}
@@ -368,7 +370,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   type="submit"
                   className="bg-[#111827] hover:bg-[#1F2937] text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors cursor-pointer"
                 >
-                  Create & Start Assessment
+                  Add client
                 </button>
               </div>
             </form>

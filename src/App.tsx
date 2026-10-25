@@ -199,7 +199,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
     const created = createClientProfile(newClientData);
     setClients((prev) => [created, ...prev]);
     setSelectedClientId(created.id);
-    setCoachTab('assessment');
+    return created.id;
   };
 
   const handleAddExerciseToClientWorkout = (
