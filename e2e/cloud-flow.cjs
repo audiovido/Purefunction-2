@@ -74,9 +74,11 @@ const today = iso(new Date());
   await C.getByRole('button', { name: 'Add client' }).click();
   await C.getByPlaceholder('e.g., Jordan Taylor').fill('Ryan Lee');
   await C.getByPlaceholder('jordan.taylor@example.com').fill('ryan.typo@example.com');
-  await C.getByRole('button', { name: 'Create & Start Assessment' }).click();
-  await C.waitForTimeout(1500);
-  await C.getByRole('button', { name: 'Clients' }).first().click();
+  await C.locator('form button[type=submit]').click();
+  await C.waitForTimeout(800);
+  ok(await C.getByText('Not joined yet — send them the invite below.').isVisible(), 'after adding a client the invite sheet opens (no jump to Assessment)');
+  await C.getByRole('button', { name: 'Cancel' }).click();
+  await C.waitForTimeout(800);
   await C.getByRole('button', { name: /Not joined · Invite/ }).click();
   ok(await C.getByText('Not joined yet — send them the invite below.').isVisible(), 'coach sees the client has not joined');
   const emailBox = C.locator('input[type=email]');
@@ -88,7 +90,9 @@ const today = iso(new Date());
   ok(ryanRow && ryanRow.data && ryanRow.data.inBody.weight === 0, 'new client has empty assessment data (no sample numbers)');
 
   // build a workout for today
-  await C.getByRole('button', { name: 'Workouts' }).first().click();
+  await C.locator('main').getByText('Ryan Lee', { exact: true }).first().click();
+  await C.getByRole('heading', { name: 'Workout Builder' }).waitFor({ timeout: 5000 }).catch(() => {});
+  ok(await C.getByRole('heading', { name: 'Workout Builder' }).isVisible(), 'clicking a client opens their workouts');
   await C.getByRole('button', { name: 'Create workout' }).click();
   await C.getByPlaceholder('Search name, muscle, pattern…').fill('goblet squat');
   await C.waitForTimeout(300);
