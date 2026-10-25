@@ -43,7 +43,7 @@ export interface PriTestItem {
   category: 'Pelvis' | 'Ribcage' | 'Shoulder';
   leftResult: string;
   rightResult: string;
-  status: 'Asymmetric' | 'Neutral' | 'Improved';
+  status: 'Not tested' | 'Asymmetric' | 'Neutral' | 'Improved';
   notes: string;
 }
 
@@ -52,7 +52,7 @@ export interface GaitPostureItem {
   view: 'Anterior' | 'Lateral' | 'Posterior' | 'Dynamic Gait';
   checkpoint: string;
   finding: string;
-  severity: 'Optimal' | 'Mild' | 'Moderate';
+  severity: 'Not assessed' | 'Optimal' | 'Mild' | 'Moderate';
 }
 
 export interface StrengthTestItem {
