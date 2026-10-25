@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { X, Upload, Link2, Check, AlertCircle, Trash2, Loader2 } from 'lucide-react';
-import { Exercise, ExerciseVideo } from '../../types';
+import { BODY_PARTS, EQUIPMENT, Exercise, ExerciseVideo, PATTERNS, PHASES, PLANES } from '../../types';
 import {
   VIDEO_ACCEPT,
   VIDEO_MAX_BYTES,
@@ -31,9 +31,10 @@ export const ExerciseEditorModal: React.FC<Props> = ({ exercise, onSave, onDelet
   const isNew = !exercise;
   const [name, setName] = useState(exercise?.name ?? '');
   const [bodyPart, setBodyPart] = useState<Exercise['bodyPart']>(exercise?.bodyPart ?? 'Lower');
-  const [plane, setPlane] = useState<Exercise['plane']>(exercise?.plane ?? 'Sagittal');
+  const [plane, setPlane] = useState<string>(exercise?.plane ?? '');
+  const [pattern, setPattern] = useState<string>(exercise?.pattern ?? '');
   const [equipment, setEquipment] = useState<Exercise['equipment']>(exercise?.equipment ?? 'Bodyweight');
-  const [phase, setPhase] = useState<Exercise['phase']>(exercise?.phase ?? 'Integrate');
+  const [phase, setPhase] = useState<string>(exercise?.phase ?? '');
   const [cuesText, setCuesText] = useState((exercise?.cues ?? []).join('\n'));
   const [breathing, setBreathing] = useState(exercise?.breathingPattern ?? '');
   const [why, setWhy] = useState(exercise?.whyItMatters ?? '');
@@ -111,13 +112,14 @@ export const ExerciseEditorModal: React.FC<Props> = ({ exercise, onSave, onDelet
     }
 
     onSave({
-      ...(exercise ?? { durationSec: 0, isCustom: true }),
+      ...(exercise ?? { isCustom: true, source: 'coach' }),
       id,
       name: name.trim(),
       bodyPart,
-      plane,
+      plane: (plane || undefined) as Exercise['plane'],
+      pattern: (pattern || undefined) as Exercise['pattern'],
       equipment,
-      phase,
+      phase: (phase || undefined) as Exercise['phase'],
       cues: cuesText
         .split('\n')
         .map((c) => c.trim())
@@ -279,25 +281,34 @@ export const ExerciseEditorModal: React.FC<Props> = ({ exercise, onSave, onDelet
               <div>
                 <label className={labelCls}>Body part</label>
                 <select value={bodyPart} onChange={(e) => setBodyPart(e.target.value as Exercise['bodyPart'])} className={inputCls}>
-                  {['Hips', 'Lower', 'Upper', 'Core'].map((o) => <option key={o}>{o}</option>)}
+                  {BODY_PARTS.map((o) => <option key={o}>{o}</option>)}
                 </select>
               </div>
               <div>
                 <label className={labelCls}>Plane of motion</label>
-                <select value={plane} onChange={(e) => setPlane(e.target.value as Exercise['plane'])} className={inputCls}>
-                  {['Sagittal', 'Frontal', 'Transverse'].map((o) => <option key={o}>{o}</option>)}
+                <select value={plane} onChange={(e) => setPlane(e.target.value)} className={inputCls}>
+                  <option value="">—</option>
+                  {PLANES.map((o) => <option key={o}>{o}</option>)}
                 </select>
               </div>
               <div>
                 <label className={labelCls}>Equipment</label>
                 <select value={equipment} onChange={(e) => setEquipment(e.target.value as Exercise['equipment'])} className={inputCls}>
-                  {['Bodyweight', 'Dumbbell', 'Barbell', 'Cable / Band', 'Foam Roller'].map((o) => <option key={o}>{o}</option>)}
+                  {EQUIPMENT.map((o) => <option key={o}>{o}</option>)}
                 </select>
               </div>
               <div>
                 <label className={labelCls}>Phase</label>
-                <select value={phase} onChange={(e) => setPhase(e.target.value as Exercise['phase'])} className={inputCls}>
-                  {['Reposition', 'Integrate', 'Strength', 'Performance'].map((o) => <option key={o}>{o}</option>)}
+                <select value={phase} onChange={(e) => setPhase(e.target.value)} className={inputCls}>
+                  <option value="">—</option>
+                  {PHASES.map((o) => <option key={o}>{o}</option>)}
+                </select>
+              </div>
+              <div className="col-span-2">
+                <label className={labelCls}>Movement pattern</label>
+                <select value={pattern} onChange={(e) => setPattern(e.target.value)} className={inputCls}>
+                  <option value="">—</option>
+                  {PATTERNS.map((o) => <option key={o}>{o}</option>)}
                 </select>
               </div>
             </div>

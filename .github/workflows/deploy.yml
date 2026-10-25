@@ -24,6 +24,7 @@ jobs:
           node-version: 22
       - run: npm install --legacy-peer-deps
       - run: npm run lint
+      - run: npm test
       # Base path = /<repo name>/ so the app works at https://audiovido.github.io/Purefunction-2/
       - run: npx vite build --base=/${{ github.event.repository.name }}/
       - run: cp dist/index.html dist/404.html

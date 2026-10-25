@@ -87,34 +87,82 @@ export interface ExerciseVideo {
   addedAt: string;
 }
 
+export type BodyPart = 'Lower' | 'Upper' | 'Core' | 'Hips' | 'Full Body';
+export type PlaneOfMotion = 'Sagittal' | 'Frontal' | 'Transverse' | 'Multiplanar';
+export type Equipment =
+  | 'Bodyweight'
+  | 'Dumbbell'
+  | 'Kettlebell'
+  | 'Barbell'
+  | 'Cable / Band'
+  | 'Machine'
+  | 'Foam Roller'
+  | 'Other';
+export type MovementPattern =
+  | 'Squat'
+  | 'Hinge'
+  | 'Lunge / Single Leg'
+  | 'Push'
+  | 'Pull'
+  | 'Core'
+  | 'Mobility'
+  | 'Breathing'
+  | 'Locomotion'
+  | 'Complex'
+  | 'Conditioning';
+export type ProgramPhase = 'Reposition' | 'Integrate' | 'Strength' | 'Performance';
+
+export const BODY_PARTS: BodyPart[] = ['Lower', 'Upper', 'Core', 'Hips', 'Full Body'];
+export const PLANES: PlaneOfMotion[] = ['Sagittal', 'Frontal', 'Transverse', 'Multiplanar'];
+export const EQUIPMENT: Equipment[] = [
+  'Bodyweight',
+  'Dumbbell',
+  'Kettlebell',
+  'Barbell',
+  'Cable / Band',
+  'Machine',
+  'Foam Roller',
+  'Other'
+];
+export const PATTERNS: MovementPattern[] = [
+  'Squat',
+  'Hinge',
+  'Lunge / Single Leg',
+  'Push',
+  'Pull',
+  'Core',
+  'Mobility',
+  'Breathing',
+  'Locomotion',
+  'Complex',
+  'Conditioning'
+];
+export const PHASES: ProgramPhase[] = ['Reposition', 'Integrate', 'Strength', 'Performance'];
+
 export interface Exercise {
   id: string;
   name: string;
-  bodyPart: 'Hips' | 'Lower' | 'Upper' | 'Core';
-  plane: 'Sagittal' | 'Frontal' | 'Transverse';
-  equipment: 'Bodyweight' | 'Dumbbell' | 'Barbell' | 'Cable / Band' | 'Foam Roller';
-  phase: 'Reposition' | 'Integrate' | 'Strength' | 'Performance';
-  /** Coach's own demo video (none until the coach adds one). */
+  bodyPart: BodyPart;
+  equipment: Equipment;
+  plane?: PlaneOfMotion;
+  pattern?: MovementPattern;
+  muscles?: string[];
+  /** Phase this exercise is typically used in (PRI-based progression). */
+  phase?: ProgramPhase;
+  cues: string[];
+  breathingPattern?: string;
+  whyItMatters?: string;
+  /** Demo video (coach's own, or the catalog link). */
   video?: ExerciseVideo;
+  /** 'pf' = Pure Function core set, 'catalog' = imported 1,200+ library, 'coach' = created by the coach */
+  source?: 'pf' | 'catalog' | 'coach';
   /** true for exercises the coach created (can be deleted). */
   isCustom?: boolean;
-  illustrationType?:
-    | 'hip-lift'
-    | 'goblet-squat'
-    | 'clam'
-    | 'hip-rotation'
-    | 'rdl'
-    | 'belly-lift'
-    | 'split-squat'
-    | 'landmine-press'
-    | 'wall-squat'
-    | 'pallof-press';
-  durationSec: number;
-  cues: string[];
-  breathingPattern: string;
-  whyItMatters: string;
+  durationSec?: number;
+  illustrationType?: string;
 }
 
+/** @deprecated old template model (kept to read old saved data) */
 export interface WorkoutSetLog {
   setNumber: number;
   kg: number;
@@ -144,6 +192,59 @@ export interface DayWorkout {
   durationMin: number;
   isRestDay?: boolean;
   blocks: WorkoutExerciseBlock[];
+}
+
+/* ---------------------------------------------------------------------------
+ * Workouts on real calendar dates (current model)
+ * ------------------------------------------------------------------------- */
+
+export type WorkoutStatus = 'planned' | 'completed' | 'missed';
+
+export interface SetLog {
+  setNumber: number;
+  /** null = not entered yet */
+  kg: number | null;
+  reps: number | null;
+  completed: boolean;
+}
+
+export interface WorkoutBlock {
+  id: string;
+  exerciseId: string;
+  name: string;
+  /** true = done back-to-back with the previous exercise (A1 / A2) */
+  supersetWithPrevious?: boolean;
+  sets: number;
+  /** "8", "8-10", "30s" (time) or "AMRAP" */
+  reps: string;
+  /** prescribed load in kg (0 = bodyweight) */
+  loadKg: number;
+  restSec: number;
+  /** coach note shown to the client */
+  notes: string;
+  // ---- client results ----
+  loggedSets: SetLog[];
+  /** client effort for this exercise, 6–10 */
+  rpe?: number;
+  /** client reported pain on this exercise */
+  pain?: boolean;
+  clientNote?: string;
+}
+
+export interface Workout {
+  id: string;
+  /** local calendar date, YYYY-MM-DD */
+  date: string;
+  title: string;
+  focus: string;
+  coachNotes?: string;
+  durationMin?: number;
+  blocks: WorkoutBlock[];
+  status: WorkoutStatus;
+  completedAt?: string;
+  /** whole-session effort 1–10 */
+  sessionRpe?: number;
+  clientFeedback?: string;
 }
 
 export interface ProgressSeriesPoint {
@@ -198,7 +299,10 @@ export interface ClientProfile {
   gaitPosture: GaitPostureItem[];
   strengthTests: StrengthTestItem[];
   videos: VideoAssessmentItem[];
-  weeklyWorkouts: DayWorkout[];
+  /** Workouts on real dates (sorted by date). */
+  workouts?: Workout[];
+  /** @deprecated old Mon–Sun template; converted into `workouts` on load. */
+  weeklyWorkouts?: DayWorkout[];
   progressHistory: ProgressSeriesPoint[];
   monthlyReports: Record<1 | 2 | 3, MonthlyReportData>;
 }
@@ -213,33 +317,6 @@ export function calculateAsymmetryPercent(left: number, right: number): number {
   const maxVal = Math.max(l, r);
   if (maxVal === 0) return 0;
   return Math.round((Math.abs(l - r) / maxVal) * 100);
-}
-
-/**
- * Suggested load rule specified by user:
- * +2.5 kg if all target reps were hit last time.
- */
-export function getSuggestedLoad(block: WorkoutExerciseBlock): {
-  suggestedKg: number;
-  allRepsHitLastTime: boolean;
-  deltaKg: number;
-} {
-  const allHit =
-    block.lastTimeRepsPerSet.length > 0 &&
-    block.lastTimeRepsPerSet.every((r) => r >= block.targetReps);
-
-  if (allHit && block.lastTimeLoadKg > 0) {
-    return {
-      suggestedKg: Number((block.lastTimeLoadKg + 2.5).toFixed(1)),
-      allRepsHitLastTime: true,
-      deltaKg: 2.5,
-    };
-  }
-  return {
-    suggestedKg: block.lastTimeLoadKg,
-    allRepsHitLastTime: false,
-    deltaKg: 0,
-  };
 }
 
 /**

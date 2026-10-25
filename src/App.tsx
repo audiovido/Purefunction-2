@@ -17,12 +17,32 @@ import {
   ClientProfile,
   ClientTab,
   CoachTab,
-  DayWorkout,
   Exercise,
-  Role,
-  WorkoutExerciseBlock
+  Role
 } from './types';
 import { INITIAL_CLIENTS } from './data/mockData';
+import {
+  addDays,
+  adherence,
+  blankWorkout,
+  defaultBlockFor,
+  migrateClient,
+  startOfWeek,
+  todayISO,
+  upsertWorkout,
+  workoutOn
+} from './lib/workouts';
+
+/** Saved clients (older saves are upgraded), or the sample clients on first visit. */
+function loadInitialClients(): ClientProfile[] {
+  try {
+    const old = localStorage.getItem('pf.clients.v1');
+    if (old) return (JSON.parse(old) as ClientProfile[]).map((c) => migrateClient(c));
+  } catch {
+    /* ignore */
+  }
+  return INITIAL_CLIENTS.map((c) => migrateClient(c));
+}
 import { ClientAvatar, PureFunctionLogo } from './components/VisualAssets';
 import { ClientsView } from './components/coach/ClientsView';
 import { NewAssessmentView } from './components/coach/NewAssessmentView';
@@ -62,8 +82,8 @@ export default function App() {
   const [coachTab, setCoachTab] = useState<CoachTab>('clients');
   const [clientTab, setClientTab] = useState<ClientTab>('today');
   const [clients, setClients] = usePersistentState<ClientProfile[]>(
-    'pf.clients.v1',
-    () => INITIAL_CLIENTS
+    'pf.clients.v2',
+    loadInitialClients
   );
   const [selectedClientId, setSelectedClientId] = useState<string>(
     () => clients[0]?.id ?? INITIAL_CLIENTS[0].id
@@ -104,8 +124,10 @@ export default function App() {
       phaseName: newClientData.phaseName,
       currentWeek: 0,
       adherenceCompleted: 0,
-      adherenceTotal: 6,
-      nextAssessmentDays: 0
+      adherenceTotal: 0,
+      nextAssessmentDays: 0,
+      workouts: [],
+      weeklyWorkouts: undefined
     };
     setClients((prev) => [created, ...prev]);
     setSelectedClientId(created.id);
@@ -114,46 +136,27 @@ export default function App() {
 
   const handleAddExerciseToClientWorkout = (
     clientId: string,
-    dayKey: DayWorkout['dayKey'],
+    date: string,
     exercise: Exercise
   ) => {
     setClients((prev) =>
       prev.map((c) => {
         if (c.id !== clientId) return c;
-        const defaultLoad =
-          exercise.equipment === 'Bodyweight' ||
-          exercise.equipment === 'Foam Roller'
-            ? 0
-            : 25;
-        const newBlock: WorkoutExerciseBlock = {
-          id: `blk-${Date.now()}`,
-          exerciseId: exercise.id,
-          name: exercise.name,
-          sets: 3,
-          targetReps: 8,
-          loadKg: defaultLoad,
-          restSec: 60,
-          cue: exercise.cues[0] || 'Keep ribs stacked over pelvis',
-          lastTimeLoadKg: defaultLoad > 0 ? defaultLoad - 2.5 : 0,
-          lastTimeRepsPerSet: [8, 8, 8],
-          loggedSets: [
-            { setNumber: 1, kg: defaultLoad, reps: 8, completed: false },
-            { setNumber: 2, kg: defaultLoad, reps: 8, completed: false },
-            { setNumber: 3, kg: defaultLoad, reps: 8, completed: false }
-          ]
-        };
-
-        return {
-          ...c,
-          weeklyWorkouts: c.weeklyWorkouts.map((day) =>
-            day.dayKey === dayKey
-              ? { ...day, isRestDay: false, blocks: [...day.blocks, newBlock] }
-              : day
-          )
-        };
+        const existing = workoutOn(c, date) ?? blankWorkout(date);
+        return upsertWorkout(c, {
+          ...existing,
+          blocks: [...existing.blocks, defaultBlockFor(exercise)]
+        });
       })
     );
   };
+
+  // Weekly adherence on the Clients list comes from real workouts this week.
+  const weekStart = startOfWeek(todayISO());
+  const clientsWithStats = clients.map((c) => {
+    const a = adherence(c, weekStart, addDays(weekStart, 6));
+    return { ...c, adherenceCompleted: a.completed, adherenceTotal: a.scheduled };
+  });
 
   return (
     <div
@@ -319,7 +322,7 @@ export default function App() {
           <div className="px-4 sm:px-8 lg:px-12 py-6 sm:py-10">
             {coachTab === 'clients' && (
               <ClientsView
-                clients={clients}
+                clients={clientsWithStats}
                 selectedClientId={selectedClientId}
                 onSelectClient={handleSelectClient}
                 onAddClient={handleAddClient}

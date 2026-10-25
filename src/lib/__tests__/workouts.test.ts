@@ -1,0 +1,208 @@
+import { describe, expect, it } from 'vitest';
+import { ClientProfile, Workout } from '../../types';
+import {
+  addDays,
+  copyWeek,
+  effectiveStatus,
+  lastPerformance,
+  migrateClient,
+  orderLabels,
+  parseReps,
+  startOfWeek,
+  suggestLoad,
+  upsertWorkout,
+  weekDates
+} from '../workouts';
+import { parseVideoLink } from '../media';
+import { INITIAL_CLIENTS } from '../../data/mockData';
+
+const baseClient = { ...INITIAL_CLIENTS[0], workouts: [] } as ClientProfile;
+
+function wo(date: string, over: Partial<Workout> = {}): Workout {
+  return {
+    id: `w-${date}`,
+    date,
+    title: 'Lower',
+    focus: '',
+    status: 'planned',
+    blocks: [
+      {
+        id: `b-${date}`,
+        exerciseId: 'ex-goblet-squat',
+        name: 'Goblet Squat',
+        sets: 3,
+        reps: '8-10',
+        loadKg: 30,
+        restSec: 90,
+        notes: '',
+        loggedSets: [1, 2, 3].map((n) => ({ setNumber: n, kg: 30, reps: null, completed: false }))
+      }
+    ],
+    ...over
+  };
+}
+
+describe('dates', () => {
+  it('weeks start on Monday', () => {
+    expect(startOfWeek('2026-10-25')).toBe('2026-10-19'); // Sunday → previous Monday
+    expect(startOfWeek('2026-10-19')).toBe('2026-10-19');
+    expect(weekDates('2026-10-19')).toHaveLength(7);
+    expect(addDays('2026-10-31', 1)).toBe('2026-11-01');
+    expect(addDays('2026-03-08', 1)).toBe('2026-03-09'); // DST change day
+  });
+});
+
+describe('prescriptions', () => {
+  it('parses rep text', () => {
+    expect(parseReps('8')).toEqual({ kind: 'reps', min: 8, max: 8 });
+    expect(parseReps('8-10')).toEqual({ kind: 'reps', min: 8, max: 10 });
+    expect(parseReps('10–8')).toEqual({ kind: 'reps', min: 8, max: 10 });
+    expect(parseReps('30s').kind).toBe('time');
+    expect(parseReps('AMRAP').kind).toBe('amrap');
+  });
+
+  it('labels supersets A1/A2', () => {
+    expect(orderLabels([{}, { supersetWithPrevious: true }, {}, {}, { supersetWithPrevious: true }])).toEqual([
+      'A1',
+      'A2',
+      'B',
+      'C1',
+      'C2'
+    ]);
+  });
+});
+
+describe('load suggestions (double progression)', () => {
+  const block = { reps: '8-10', sets: 3 };
+  const perf = (reps: number[], extra = {}) => ({
+    date: '2026-10-12',
+    sets: reps.map((r) => ({ kg: 60, reps: r })),
+    reps: '8-10',
+    plannedSets: 3,
+    ...extra
+  });
+
+  it('adds ~5% for lower body when every set hit the top of the range at RPE ≤ 8', () => {
+    const s = suggestLoad(block, perf([10, 10, 10], { rpe: 8 }), 'Lower');
+    expect(s).toMatchObject({ action: 'increase', kg: 62.5 });
+  });
+  it('adds ~2.5% (min 2.5 kg) for upper body', () => {
+    expect(suggestLoad(block, perf([10, 10, 10]), 'Upper')).toMatchObject({ action: 'increase', kg: 62.5 });
+  });
+  it('uses 1.25 kg steps for light loads', () => {
+    const light = { ...perf([10, 10, 10]), sets: [10, 10, 10].map((r) => ({ kg: 10, reps: r })) };
+    expect(suggestLoad(block, light, 'Upper')).toMatchObject({ kg: 11.25 });
+  });
+  it('holds when effort was too high', () => {
+    expect(suggestLoad(block, perf([10, 10, 10], { rpe: 9.5 }), 'Lower')?.action).toBe('hold');
+  });
+  it('holds when pain was reported', () => {
+    const s = suggestLoad(block, perf([10, 10, 10], { pain: true }), 'Lower');
+    expect(s?.action).toBe('hold');
+    expect(s?.reason).toMatch(/Pain/);
+  });
+  it('holds inside the range (add reps first)', () => {
+    expect(suggestLoad(block, perf([10, 9, 8]), 'Lower')).toMatchObject({ action: 'hold', kg: 60 });
+  });
+  it('reduces after missed reps at max effort', () => {
+    expect(suggestLoad(block, perf([7, 6, 6], { rpe: 10 }), 'Lower')).toMatchObject({ action: 'reduce', kg: 57.5 });
+  });
+  it('needs all planned sets before increasing', () => {
+    expect(suggestLoad(block, perf([10, 10]), 'Lower')?.action).toBe('hold');
+  });
+  it('no suggestion without history, for bodyweight or timed work', () => {
+    expect(suggestLoad(block, null)).toBeNull();
+    expect(suggestLoad({ reps: '30s', sets: 3 }, perf([30, 30, 30]))).toBeNull();
+    const bw = { ...perf([10, 10, 10]), sets: [10, 10, 10].map((r) => ({ kg: 0, reps: r })) };
+    expect(suggestLoad(block, bw)).toBeNull();
+  });
+});
+
+describe('history & copying', () => {
+  it('finds the last logged performance before a date', () => {
+    const done = wo('2026-10-12', {
+      status: 'completed',
+      blocks: [
+        {
+          ...wo('x').blocks[0],
+          rpe: 8,
+          loggedSets: [
+            { setNumber: 1, kg: 30, reps: 10, completed: true },
+            { setNumber: 2, kg: 30, reps: 9, completed: true },
+            { setNumber: 3, kg: 30, reps: null, completed: false }
+          ]
+        }
+      ]
+    });
+    const c = upsertWorkout(upsertWorkout(baseClient, done), wo('2026-10-19'));
+    const p = lastPerformance(c, 'ex-goblet-squat', '2026-10-19');
+    expect(p?.date).toBe('2026-10-12');
+    expect(p?.sets).toEqual([
+      { kg: 30, reps: 10 },
+      { kg: 30, reps: 9 }
+    ]);
+    expect(lastPerformance(c, 'ex-goblet-squat', '2026-10-12')).toBeNull();
+  });
+
+  it('copies a week without overwriting logged days', () => {
+    let c = upsertWorkout(baseClient, wo('2026-10-19'));
+    c = upsertWorkout(c, wo('2026-10-21'));
+    c = upsertWorkout(c, wo('2026-10-28', { status: 'completed' })); // already done next Wed
+    const r = copyWeek(c, '2026-10-19', '2026-10-26');
+    expect(r.copied).toBe(1);
+    expect(r.skipped).toBe(1);
+    const mon = r.client.workouts!.find((w) => w.date === '2026-10-26')!;
+    expect(mon.status).toBe('planned');
+    expect(mon.id).not.toBe('w-2026-10-19');
+    expect(mon.blocks[0].loggedSets.every((s) => !s.completed)).toBe(true);
+    expect(r.client.workouts!.find((w) => w.date === '2026-10-28')!.status).toBe('completed');
+  });
+
+  it('one workout per day', () => {
+    const c = upsertWorkout(upsertWorkout(baseClient, wo('2026-10-19')), { ...wo('2026-10-19'), id: 'other' });
+    expect(c.workouts!.filter((w) => w.date === '2026-10-19')).toHaveLength(1);
+  });
+
+  it('past planned workout with nothing logged shows as missed', () => {
+    expect(effectiveStatus(wo('2026-10-12'), '2026-10-19')).toBe('missed');
+    expect(effectiveStatus(wo('2026-10-19'), '2026-10-19')).toBe('planned');
+  });
+});
+
+describe('migration from the old weekly template', () => {
+  it('creates dated workouts this week plus last week from "last time" numbers', () => {
+    const legacy = INITIAL_CLIENTS[0];
+    const c = migrateClient(legacy, '2026-10-25');
+    expect(c.weeklyWorkouts).toBeUndefined();
+    // Sunday → plan next week, last week (this week) becomes history
+    const monday = c.workouts!.find((w) => w.date === '2026-10-26')!;
+    expect(monday.status).toBe('planned');
+    const prev = c.workouts!.find((w) => w.date === '2026-10-19')!;
+    expect(prev.status).toBe('completed');
+    // Monday's goblet squat last week was 32.5 kg × 8, 8, 8
+    const mondayPrev = prev.blocks.find((b) => b.exerciseId === 'ex-goblet-squat')!;
+    expect(mondayPrev.loggedSets.map((s) => [s.kg, s.reps])).toEqual([
+      [32.5, 8],
+      [32.5, 8],
+      [32.5, 8]
+    ]);
+    // the most recent goblet squat before this Monday is the one from later last week
+    const p = lastPerformance(c, 'ex-goblet-squat', '2026-10-26');
+    expect(p!.date > '2026-10-19' && p!.date < '2026-10-26').toBe(true);
+    // early in the week the plan starts this week
+    expect(migrateClient(legacy, '2026-10-20').workouts!.some((w) => w.date === '2026-10-19' && w.status === 'planned')).toBe(true);
+    expect(migrateClient(c)).toBe(c); // idempotent
+  });
+});
+
+describe('video links', () => {
+  it('accepts YouTube, Vimeo, Drive and direct files; rejects others', () => {
+    expect(parseVideoLink('https://youtu.be/dQw4w9WgXcQ')).toMatchObject({ ok: true, video: { kind: 'youtube' } });
+    expect(parseVideoLink('https://www.youtube.com/shorts/dQw4w9WgXcQ')).toMatchObject({ ok: true });
+    expect(parseVideoLink('https://vimeo.com/558288571')).toMatchObject({ ok: true, video: { kind: 'vimeo', src: '558288571' } });
+    expect(parseVideoLink('https://drive.google.com/file/d/1AbCdEfGhIjK/view?usp=sharing')).toMatchObject({ ok: true, video: { kind: 'drive' } });
+    expect(parseVideoLink('https://cdn.example.com/a/squat.mp4')).toMatchObject({ ok: true, video: { kind: 'url' } });
+    expect(parseVideoLink('https://example.com/page').ok).toBe(false);
+    expect(parseVideoLink('http://cdn.example.com/a.mp4').ok).toBe(false);
+  });
+});
