@@ -3,11 +3,13 @@ import { ChevronDown } from 'lucide-react';
 import { ClientProfile } from '../../types';
 import { EmptyProgress } from '../EmptyProgress';
 import { AssessmentHistory } from './AssessmentHistory';
+import { GoalsPanel } from './GoalsPanel';
 
 interface ProgressViewProps {
   clients: ClientProfile[];
   client: ClientProfile;
   onSelectClientId: (id: string) => void;
+  onUpdateClient?: (c: ClientProfile) => void;
 }
 
 const PHASES = [
@@ -20,7 +22,8 @@ const PHASES = [
 export const ProgressView: React.FC<ProgressViewProps> = ({
   clients,
   client,
-  onSelectClientId
+  onSelectClientId,
+  onUpdateClient
 }) => {
   const [selectedLift, setSelectedLift] = useState<'squat' | 'rdl' | 'bench'>('squat');
 
@@ -43,7 +46,15 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
           </select>
         </div>
         {client.assessments?.length ? (
-          <AssessmentHistory key={client.id} assessments={client.assessments} />
+          <>
+            <GoalsPanel
+              goals={client.goals ?? []}
+              assessments={client.assessments}
+              onDelete={onUpdateClient ? (id) => onUpdateClient({ ...client, goals: (client.goals ?? []).filter((g) => g.id !== id) }) : undefined}
+              emptyText="No goals yet. Tap the note icon next to any measure below to add a note or set a goal."
+            />
+            <AssessmentHistory key={client.id} assessments={client.assessments} client={client} onUpdateClient={onUpdateClient} />
+          </>
         ) : (
           <EmptyProgress
             title={`No assessments for ${client.name} yet`}
@@ -123,7 +134,15 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
       </div>
 
       {client.assessments?.length ? (
-        <AssessmentHistory key={client.id} assessments={client.assessments} />
+        <>
+            <GoalsPanel
+              goals={client.goals ?? []}
+              assessments={client.assessments}
+              onDelete={onUpdateClient ? (id) => onUpdateClient({ ...client, goals: (client.goals ?? []).filter((g) => g.id !== id) }) : undefined}
+              emptyText="No goals yet. Tap the note icon next to any measure below to add a note or set a goal."
+            />
+            <AssessmentHistory key={client.id} assessments={client.assessments} client={client} onUpdateClient={onUpdateClient} />
+          </>
       ) : null}
 
       {/* Phase Timeline (Week 0 / 4 / 8 / 12) matching Mockup 5 */}

@@ -1,14 +1,22 @@
 import React, { useState } from 'react';
-import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react';
-import { AssessmentSnapshot } from '../../types';
-import { compareAssessments, verdict } from '../../lib/assessments';
+import { ArrowDownRight, ArrowUpRight, Minus, Target, MessageSquare } from 'lucide-react';
+import { AssessmentSnapshot, ClientProfile } from '../../types';
+import { ComparisonRow, compareAssessments, verdict } from '../../lib/assessments';
+import { MeasureSheet } from './MeasureSheet';
 import { formatDate } from '../../lib/workouts';
 
 const fmt = (v: number | null, unit: string) =>
   v == null ? '—' : `${Number(v.toFixed(1))}${unit && unit !== '%' && unit !== '°' ? ' ' : ''}${unit}`;
 
 /** Pick any two saved assessments and see every number side by side. */
-export const AssessmentHistory: React.FC<{ assessments: AssessmentSnapshot[] }> = ({ assessments }) => {
+export const AssessmentHistory: React.FC<{
+  assessments: AssessmentSnapshot[];
+  /** with these the coach can add notes and goals per measure */
+  client?: ClientProfile;
+  onUpdateClient?: (c: ClientProfile) => void;
+}> = ({ assessments, client, onUpdateClient }) => {
+  const [editing, setEditing] = useState<ComparisonRow | null>(null);
+  const canEdit = !!client && !!onUpdateClient;
   const [fromId, setFromId] = useState(assessments[0]?.id);
   const [toId, setToId] = useState(assessments[assessments.length - 1]?.id);
   const from = assessments.find((a) => a.id === fromId) ?? assessments[0];
@@ -89,7 +97,29 @@ export const AssessmentHistory: React.FC<{ assessments: AssessmentSnapshot[] }> 
                     const d = r.before != null && r.after != null ? r.after - r.before : null;
                     return (
                       <tr key={r.label} className="border-t border-gray-100">
-                        <td className="py-2 px-4 sm:px-0 text-gray-700">{r.label}</td>
+                        <td className="py-2 px-4 sm:px-0 text-gray-700">
+                          <div className="flex items-start gap-1.5">
+                            <span className="flex-1">
+                              {r.label}
+                              {client?.goals?.some((g) => g.metricKey === r.key) && (
+                                <Target className="inline w-3.5 h-3.5 ml-1 text-[#B45309] -mt-0.5" aria-label="has a goal" />
+                              )}
+                              {to.notes?.[r.key] && (
+                                <span className="block text-xs text-gray-500 mt-0.5">“{to.notes[r.key]}”</span>
+                              )}
+                            </span>
+                            {canEdit && (
+                              <button
+                                onClick={() => setEditing(r)}
+                                aria-label={`Note or goal for ${r.label}`}
+                                title="Note / goal"
+                                className="p-1 -my-0.5 rounded-md text-gray-300 hover:text-[#111827] hover:bg-gray-100 cursor-pointer shrink-0"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
                         {!single && <td className="py-2 px-2 text-right tabular-nums text-gray-500">{fmt(r.before, r.unit)}</td>}
                         <td className="py-2 px-2 text-right tabular-nums font-semibold text-[#111827]">{fmt(r.after, r.unit)}</td>
                         {!single && (
@@ -123,6 +153,15 @@ export const AssessmentHistory: React.FC<{ assessments: AssessmentSnapshot[] }> 
             ))}
           </table>
         </div>
+      )}
+      {canEdit && editing && (
+        <MeasureSheet
+          row={editing}
+          assessment={to}
+          client={client!}
+          onSave={onUpdateClient!}
+          onClose={() => setEditing(null)}
+        />
       )}
     </section>
   );

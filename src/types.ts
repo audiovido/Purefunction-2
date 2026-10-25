@@ -293,6 +293,24 @@ export interface AssessmentSnapshot {
   gaitPosture: GaitPostureItem[];
   strengthTests: StrengthTestItem[];
   videos: VideoAssessmentItem[];
+  /** coach notes for this assessment, per measure key ("" = general note) */
+  notes?: Record<string, string>;
+}
+
+/** A measurable target for one assessment measure (e.g. hip IR asymmetry under 10%). */
+export interface Goal {
+  id: string;
+  metricKey: string;
+  label: string;
+  unit: string;
+  direction: 'up' | 'down';
+  /** value when the goal was set */
+  start: number;
+  target: number;
+  /** YYYY-MM-DD */
+  dueDate?: string;
+  note?: string;
+  createdAt: string;
 }
 
 export interface ClientProfile {
@@ -317,6 +335,8 @@ export interface ClientProfile {
   videos: VideoAssessmentItem[];
   /** Completed assessments, oldest first. */
   assessments?: AssessmentSnapshot[];
+  /** Goals set from assessment measures. */
+  goals?: Goal[];
   /** Workouts on real dates (sorted by date). */
   workouts?: Workout[];
   /** @deprecated old Mon–Sun template; converted into `workouts` on load. */
