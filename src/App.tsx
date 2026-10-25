@@ -428,7 +428,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
           MAIN VIEWPORT CANVAS
          ===================================================================== */}
       {role === 'coach' ? (
-        <main className="flex-1 md:pl-60 pb-24 md:pb-12">
+        <main className="flex-1 min-w-0 md:pl-60 pb-24 md:pb-12">
           <div className="px-4 sm:px-8 lg:px-12 py-6 sm:py-10">
             {coachTab === 'clients' && (
               <ClientsView

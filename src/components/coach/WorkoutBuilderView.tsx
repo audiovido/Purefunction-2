@@ -15,8 +15,9 @@ import {
   X,
   AlertTriangle
 } from 'lucide-react';
-import { BODY_PARTS, ClientProfile, Exercise, Workout, WorkoutBlock } from '../../types';
+import { ClientProfile, Exercise, Workout, WorkoutBlock } from '../../types';
 import { searchExercises, useExerciseLibrary } from '../../state/ExerciseLibrary';
+import { MUSCLE_GROUPS, equipmentTypeOf, groupOf } from '../../lib/exerciseSearch';
 import { ExerciseThumb } from '../ExerciseMedia';
 import {
   addDays,
@@ -81,7 +82,7 @@ export const WorkoutBuilderView: React.FC<WorkoutBuilderViewProps> = ({
   const workout = workoutOn(client, selectedDate);
 
   const results = useMemo(
-    () => searchExercises(exercises, search, { bodyPart }),
+    () => searchExercises(exercises, search, { group: bodyPart }),
     [exercises, search, bodyPart]
   );
 
@@ -604,13 +605,13 @@ export const WorkoutBuilderView: React.FC<WorkoutBuilderViewProps> = ({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search name, muscle, pattern…"
+              placeholder="Search name or muscle (try “db press”, “rdl”)…"
               className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-9 pr-3 py-2.5 text-base sm:text-sm text-[#111827] focus:outline-none focus:bg-white focus:border-[#111827]"
             />
           </div>
 
           <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-2">
-            {['All', ...BODY_PARTS].map((part) => (
+            {['All', ...MUSCLE_GROUPS].map((part) => (
               <button
                 key={part}
                 onClick={() => setBodyPart(part)}
@@ -640,7 +641,7 @@ export const WorkoutBuilderView: React.FC<WorkoutBuilderViewProps> = ({
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-[#111827] truncate">{ex.name}</div>
                     <div className="text-[11px] text-gray-500 truncate">
-                      {[ex.bodyPart, ex.pattern, ex.equipment].filter(Boolean).join(' · ')}
+                      {[groupOf(ex), equipmentTypeOf(ex)].join(' · ')}
                     </div>
                   </div>
                 </div>

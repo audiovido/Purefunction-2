@@ -113,16 +113,39 @@ export const ExerciseLibraryProvider: React.FC<{ children: React.ReactNode }> = 
     };
   }, []);
 
+  // A few catalog exercises duplicate the Pure Function core set. Keep the core one (it has
+  // cues) and borrow the catalog video; old workouts that used the catalog id still resolve.
+  const { builtInList, aliases } = useMemo(() => {
+    const key = (n: string) => n.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const coreByName = new Map(CORE.map((e) => [key(e.name), e]));
+    const videoFor = new Map<string, Exercise['video']>();
+    const aliases = new Map<string, string>();
+    const rest: Exercise[] = [];
+    for (const e of catalog) {
+      const twin = coreByName.get(key(e.name));
+      if (twin) {
+        aliases.set(e.id, twin.id);
+        if (e.video) videoFor.set(twin.id, e.video);
+      } else rest.push(e);
+    }
+    const core = CORE.map((e) => (!e.video && videoFor.has(e.id) ? { ...e, video: videoFor.get(e.id) } : e));
+    return { builtInList: [...core, ...rest], aliases };
+  }, [catalog]);
+
   const exercises = useMemo(() => {
-    const builtIn = [...CORE, ...catalog];
+    const builtIn = builtInList;
     const builtInIds = new Set(builtIn.map((e) => e.id));
     const customs = Object.values(coach.edits)
       .filter((e) => !builtInIds.has(e.id))
       .sort((a, b) => b.id.localeCompare(a.id)); // newest first
     return [...customs, ...builtIn.map((e) => coach.edits[e.id] ?? e)];
-  }, [catalog, coach]);
+  }, [builtInList, coach]);
 
-  const byId = useMemo(() => new Map(exercises.map((e) => [e.id, e])), [exercises]);
+  const byId = useMemo(() => {
+    const m = new Map(exercises.map((e) => [e.id, e]));
+    for (const [from, to] of aliases) if (!m.has(from) && m.has(to)) m.set(from, m.get(to)!);
+    return m;
+  }, [exercises, aliases]);
 
   const saveExercise = (exercise: Exercise) => {
     const previous = byId.get(exercise.id);
@@ -167,20 +190,4 @@ export function useExerciseLibrary(): ExerciseLibraryValue {
   return ctx;
 }
 
-/** Shared search used by the library and the workout builder. */
-export function searchExercises(
-  list: Exercise[],
-  q: string,
-  filters: { bodyPart?: string; equipment?: string; plane?: string; pattern?: string } = {}
-): Exercise[] {
-  const words = q.toLowerCase().split(/\s+/).filter(Boolean);
-  return list.filter((ex) => {
-    if (filters.bodyPart && filters.bodyPart !== 'All' && ex.bodyPart !== filters.bodyPart) return false;
-    if (filters.equipment && filters.equipment !== 'All' && ex.equipment !== filters.equipment) return false;
-    if (filters.plane && filters.plane !== 'All' && ex.plane !== filters.plane) return false;
-    if (filters.pattern && filters.pattern !== 'All' && ex.pattern !== filters.pattern) return false;
-    if (!words.length) return true;
-    const hay = `${ex.name} ${ex.bodyPart} ${ex.pattern ?? ''} ${ex.plane ?? ''} ${ex.equipment} ${(ex.muscles ?? []).join(' ')}`.toLowerCase();
-    return words.every((w) => hay.includes(w));
-  });
-}
+export { searchExercises } from '../lib/exerciseSearch';
