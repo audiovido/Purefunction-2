@@ -1,6 +1,6 @@
 import { saveAssessment } from '../../lib/assessments';
 import { AssessmentClips } from './AssessmentClips';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Check,
   CloudUpload,
@@ -9,7 +9,8 @@ import {
   Play,
   Sparkles,
   CheckCircle2,
-  ChevronDown
+  ChevronDown,
+  FileText
 } from 'lucide-react';
 import {
   ClientProfile,
@@ -22,6 +23,53 @@ import {
   calculateEstimated1RM
 } from '../../types';
 import { InBodyPrintoutThumbnail, InBodySegmentSilhouette } from '../VisualAssets';
+import { isCloud } from '../../cloud/supabase';
+import { deletePrintout, printoutUrl, uploadPrintout } from '../../cloud/printouts';
+import { PRINTOUT_ACCEPT, blobToDataUrl, preparePrintout } from '../../lib/media';
+
+/** Shows the saved InBody printout (photo or PDF) so the coach can read the numbers from it. */
+const PrintoutPreview: React.FC<{ inBody: InBodyData }> = ({ inBody }) => {
+  const [url, setUrl] = useState<string | null>(inBody.printoutPreview ?? null);
+  useEffect(() => {
+    let alive = true;
+    if (inBody.printoutPath) {
+      printoutUrl(inBody.printoutPath).then((u) => alive && setUrl(u));
+    } else {
+      setUrl(inBody.printoutPreview ?? null);
+    }
+    return () => {
+      alive = false;
+    };
+  }, [inBody.printoutPath, inBody.printoutPreview]);
+
+  const isPdf = /\.pdf$/i.test(inBody.printoutPath ?? inBody.printoutFileName ?? '');
+  if (isPdf) {
+    return (
+      <a
+        href={url ?? undefined}
+        target="_blank"
+        rel="noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        className="flex flex-col items-center gap-2 text-sm font-medium text-[#111827]"
+      >
+        <FileText className="w-10 h-10 text-gray-500" />
+        <span className="max-w-[200px] truncate">{inBody.printoutFileName ?? 'InBody printout.pdf'}</span>
+        <span className="text-xs text-gray-500 underline">Open PDF</span>
+      </a>
+    );
+  }
+  if (!url) return <div className="text-xs text-gray-400">Loading photo…</div>;
+  return (
+    <a href={url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="block w-full">
+      <img
+        src={url}
+        alt="InBody printout"
+        className="w-full max-h-[320px] object-contain rounded-lg border border-gray-200 bg-white"
+      />
+      <span className="block mt-2 text-xs text-gray-500 underline">Tap to open full size</span>
+    </a>
+  );
+};
 
 interface NewAssessmentViewProps {
   clients: ClientProfile[];
@@ -53,6 +101,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
   const [savedToast, setSavedToast] = useState<string | null>(null);
   const [newMovementName, setNewMovementName] = useState('');
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
+  const [uploadingPrintout, setUploadingPrintout] = useState(false);
 
   const showToast = (msg: string) => {
     setSavedToast(msg);
@@ -86,18 +135,45 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
     });
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Saves the printout (photo or PDF). Numbers are NOT read from it: the coach types them in below.
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    onUpdateClient({
-      ...client,
-      inBody: {
-        ...client.inBody,
-        printoutUploaded: true,
-        printoutFileName: file.name
+    e.target.value = '';
+    if (!file || uploadingPrintout) return;
+    setUploadingPrintout(true);
+    try {
+      const prepared = await preparePrintout(file);
+      if (!prepared.ok) {
+        showToast(prepared.error);
+        return;
       }
-    });
-    showToast(`Parsed InBody 270 printout: ${file.name}`);
+      const baseName = file.name.replace(/\.[^.]+$/, '') || 'InBody printout';
+      const printoutFileName = `${baseName}.${prepared.ext}`;
+      const oldPath = client.inBody.printoutPath;
+      let printoutPath: string | undefined;
+      let printoutPreview: string | undefined;
+      if (isCloud) {
+        printoutPath = await uploadPrintout(client.id, prepared.blob, prepared.contentType, prepared.ext);
+      } else if (prepared.ext === 'jpg') {
+        printoutPreview = await blobToDataUrl(prepared.blob);
+      }
+      onUpdateClient({
+        ...client,
+        inBody: {
+          ...client.inBody,
+          printoutUploaded: true,
+          printoutFileName,
+          printoutPath,
+          printoutPreview
+        }
+      });
+      if (oldPath) void deletePrintout(oldPath).catch(() => undefined);
+      showToast('Printout saved. Type the numbers from it below.');
+    } catch (err) {
+      showToast(`Could not save the printout: ${(err as { message?: string }).message ?? 'try again'}`);
+    } finally {
+      setUploadingPrintout(false);
+    }
   };
 
   // Handlers for Step 3: Range of Motion
@@ -358,19 +434,24 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
             <label className="flex-1 border border-dashed border-gray-300 hover:border-[#111827] rounded-xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-colors min-h-[340px]">
               <input
                 type="file"
-                accept="image/*,.pdf"
+                accept={PRINTOUT_ACCEPT}
                 onChange={handleFileUpload}
+                disabled={uploadingPrintout}
                 className="hidden"
               />
               <CloudUpload className="w-9 h-9 text-gray-500 stroke-[1.6] mb-3" />
               <div className="text-[15px] font-medium text-[#111827] leading-snug max-w-[180px] mb-5">
-                Drop InBody printout photo or upload
+                {uploadingPrintout ? 'Saving…' : 'Drop InBody printout photo or upload'}
               </div>
 
-              <InBodyPrintoutThumbnail fileName={client.inBody.printoutFileName} />
+              {client.inBody.printoutPath || client.inBody.printoutPreview ? (
+                <PrintoutPreview inBody={client.inBody} />
+              ) : (
+                <InBodyPrintoutThumbnail fileName={client.inBody.printoutFileName} />
+              )}
 
               <span className="mt-4 text-xs font-medium text-gray-400 hover:text-[#111827] transition-colors">
-                Click to replace scan photo
+                {client.inBody.printoutPath || client.inBody.printoutPreview ? 'Click here to replace' : 'Click to add the printout'}
               </span>
             </label>
           </div>
@@ -378,7 +459,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
           {/* Right Card: Auto-filled InBody 270 Fields + 5-Segment Lean Mass Diagram */}
           <div className="lg:col-span-8 bg-white rounded-2xl p-5 sm:p-7 shadow-[0_2px_14px_rgba(0,0,0,0.04)] border border-gray-100">
             <div className="inline-flex items-center gap-1.5 bg-[#FEF3C7] text-[#92400E] text-xs font-medium px-3.5 py-1.5 rounded-full mb-5">
-              <span>Auto-filled — check and confirm</span>
+              <span>{client.inBody.printoutUploaded ? 'Printout saved — type the numbers from it' : 'Type the numbers from the printout'}</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">

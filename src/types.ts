@@ -35,6 +35,10 @@ export interface InBodyData {
   };
   printoutUploaded: boolean;
   printoutFileName?: string;
+  /** cloud mode: file path in the private 'inbody-printouts' bucket */
+  printoutPath?: string;
+  /** demo mode only (no cloud): small preview of the photo kept in this browser */
+  printoutPreview?: string;
 }
 
 export interface PriTestItem {

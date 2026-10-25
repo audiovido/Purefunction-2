@@ -170,8 +170,23 @@ export function useCloudClientsStore(profile: Profile | null): ClientsStore {
         })
         .filter((x) => pushedClients.current.get(x.row.id) !== x.json);
       if (changedClients.length) {
-        const { error } = await supabase.from('clients').upsert(changedClients.map((x) => x.row), { onConflict: 'id' });
-        if (error) throw error;
+        if (isCoach) {
+          const { error } = await supabase.from('clients').upsert(changedClients.map((x) => x.row), { onConflict: 'id' });
+          if (error) throw error;
+        } else {
+          // A client may only UPDATE their own row (inserting is coach-only), and may not touch the
+          // email column, so send just the profile data. An upsert here is rejected by the database
+          // and made the app retry forever (e.g. when changing the profile photo).
+          for (const x of changedClients) {
+            const { data: done, error } = await supabase
+              .from('clients')
+              .update({ data: x.row.data })
+              .eq('id', x.row.id)
+              .select('id');
+            if (error) throw error;
+            if (!done || done.length === 0) throw new Error('Could not save your profile.');
+          }
+        }
         changedClients.forEach((x) => pushedClients.current.set(x.row.id, x.json));
       }
 

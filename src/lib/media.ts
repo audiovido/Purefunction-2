@@ -228,3 +228,73 @@ export function preparePhoto(file: File, size = 256): Promise<PhotoCheck> {
     img.src = url;
   });
 }
+
+/* ---------------------------------------------------------------------------
+ * Document photos (e.g. an InBody printout): keep it readable, but small enough to upload fast
+ * ------------------------------------------------------------------------- */
+
+export const PRINTOUT_ACCEPT = 'image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf';
+export const PRINTOUT_MAX_BYTES = 10 * 1024 * 1024;
+
+export type PrintoutCheck =
+  | { ok: true; blob: Blob; contentType: string; ext: 'jpg' | 'pdf' }
+  | { ok: false; error: string };
+
+export function preparePrintout(file: File, maxSide = 1800): Promise<PrintoutCheck> {
+  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+  if (!isPdf && !file.type.startsWith('image/')) {
+    return Promise.resolve({ ok: false, error: 'Please choose a photo or a PDF of the printout.' });
+  }
+  if (file.size > PRINTOUT_MAX_BYTES) {
+    return Promise.resolve({ ok: false, error: `This file is ${formatBytes(file.size)}. The limit is 10 MB.` });
+  }
+  if (isPdf) return Promise.resolve({ ok: true, blob: file, contentType: 'application/pdf', ext: 'pdf' });
+
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.max(1, Math.round(img.naturalWidth * scale));
+      const h = Math.max(1, Math.round(img.naturalHeight * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        URL.revokeObjectURL(url);
+        resolve({ ok: false, error: "Couldn't read this photo." });
+        return;
+      }
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(
+        (blob) =>
+          resolve(
+            blob
+              ? { ok: true, blob, contentType: 'image/jpeg', ext: 'jpg' }
+              : { ok: false, error: "Couldn't read this photo." }
+          ),
+        'image/jpeg',
+        0.85
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve({ ok: false, error: "This photo format isn't supported here. Try a JPG or PNG, or a PDF." });
+    };
+    img.src = url;
+  });
+}
+
+/** Blob -> data URL (small previews in the local demo mode). */
+export function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(blob);
+  });
+}
