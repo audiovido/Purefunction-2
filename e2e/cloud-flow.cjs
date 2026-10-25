@@ -184,6 +184,23 @@ const today = iso(new Date());
   ok(/\/storage\/v1\/object\/sign\/exercise-videos\/.+\?token=/.test(src || ''), 'player uses a short-lived signed link to the private video');
   ok(mock.log.some((l) => l.startsWith('GET /storage/v1/object/sign/exercise-videos/')), 'browser fetched the video through that link');
 
+  /* ---------------- private assessment video for Ryan ---------------- */
+  await C.getByRole('button', { name: 'Assessment' }).first().click();
+  await C.getByRole('combobox').first().selectOption({ label: 'Ryan Lee' }).catch(() => {});
+  await C.getByRole('button', { name: 'Confirm & next' }).click();
+  for (let i = 0; i < 4; i++) await C.getByRole('button', { name: 'Save & next' }).click();
+  await C.locator('input[type=file][accept^="video"]').setInputFiles(path.join(__dirname, 'fixtures', 'demo.webm'));
+  await C.getByText('Overhead squat · Front').waitFor({ timeout: 15000 });
+  const clipKeys = Object.keys(mock.db.clientFiles);
+  ok(clipKeys.length === 1 && clipKeys[0].startsWith(ryanRow.id + '/'), 'assessment video stored in the client’s private folder (' + clipKeys.join(',') + ')');
+  await C.getByRole('button', { name: 'Complete Assessment' }).click();
+  await C.waitForTimeout(1500);
+  await R.getByRole('button', { name: /My Progress/ }).click();
+  await R.locator('section', { hasText: 'Before / after' }).waitFor({ timeout: 8000 }).catch(() => {});
+  ok(await R.locator('section', { hasText: 'Before / after' }).isVisible(), 'client sees their assessment video');
+  ok(mock.log.some((l) => l.startsWith('POST /storage/v1/object/sign/client-videos/' + ryanRow.id)), 'client got a signed link to their own video');
+  await R.getByRole('button', { name: /Today/ }).click();
+
   /* ---------------- client cannot write exercises / others' data ---------------- */
   const tokenR = mock.db.profiles.find((p) => p.role === 'client').id;
   const res = await R.evaluate(async (tok) => {

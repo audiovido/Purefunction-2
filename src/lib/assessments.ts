@@ -15,12 +15,19 @@ export function saveAssessment(
   const week = first
     ? Math.max(0, Math.round((parseISODate(date).getTime() - parseISODate(first.date).getTime()) / (7 * 86400000)))
     : 0;
+  const sameDay = (client.assessments ?? []).find((a) => a.date === date);
   const snapshot: AssessmentSnapshot = {
     id: `as-${date}`,
     date,
     week,
     ...JSON.parse(JSON.stringify(values))
   };
+  // re-saving the same day keeps that day's notes and adds to its videos
+  if (sameDay?.notes && !values.notes) snapshot.notes = sameDay.notes;
+  if (sameDay?.clips?.length) {
+    const ids = new Set((snapshot.clips ?? []).map((c) => c.id));
+    snapshot.clips = [...sameDay.clips.filter((c) => !ids.has(c.id)), ...(snapshot.clips ?? [])];
+  }
   return {
     ...client,
     assessments: [...list, snapshot].sort((a, b) => a.date.localeCompare(b.date))

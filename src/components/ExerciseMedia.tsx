@@ -20,7 +20,7 @@ function useVideoSrc(video?: ExerciseVideo): { src: string | null; missing: bool
     if (video.kind === 'storage') {
       let cancelled = false;
       setState({ src: null, missing: false });
-      videoUrl(video.src).then((url) => {
+      videoUrl(video.src, video.bucket ?? 'exercise-videos').then((url) => {
         if (!cancelled) setState({ src: url, missing: !url });
       });
       return () => {
@@ -82,7 +82,7 @@ export const ExerciseVideoPlayer: React.FC<{
     return (
       <video
         key={src}
-        src={src}
+        src={`${src}#t=0.1`}
         controls
         playsInline
         preload="metadata"

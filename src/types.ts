@@ -81,6 +81,8 @@ export interface VideoAssessmentItem {
  */
 export interface ExerciseVideo {
   kind: 'youtube' | 'vimeo' | 'drive' | 'url' | 'file' | 'storage';
+  /** cloud bucket for kind 'storage' (default: exercise-videos) */
+  bucket?: 'exercise-videos' | 'client-videos';
   src: string;
   fileName?: string;
   sizeBytes?: number;
@@ -295,6 +297,17 @@ export interface AssessmentSnapshot {
   videos: VideoAssessmentItem[];
   /** coach notes for this assessment, per measure key ("" = general note) */
   notes?: Record<string, string>;
+  /** assessment videos (before/after) */
+  clips?: AssessmentClip[];
+}
+
+/** A filmed movement in an assessment, e.g. overhead squat from the front. */
+export interface AssessmentClip {
+  id: string;
+  movement: string;
+  angle: 'Front' | 'Side' | 'Back';
+  video: ExerciseVideo;
+  note?: string;
 }
 
 /** A measurable target for one assessment measure (e.g. hip IR asymmetry under 10%). */
@@ -356,6 +369,8 @@ export interface ClientProfile {
   videos: VideoAssessmentItem[];
   /** Completed assessments, oldest first. */
   assessments?: AssessmentSnapshot[];
+  /** Videos recorded for the assessment in progress (moved into the record on Complete). */
+  clips?: AssessmentClip[];
   /** Goals set from assessment measures. */
   goals?: Goal[];
   /** All-time bests entered by hand (logged workouts add records automatically). */
