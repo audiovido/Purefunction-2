@@ -313,6 +313,20 @@ export interface Goal {
   createdAt: string;
 }
 
+/** A personal best entered by hand (e.g. from before joining). */
+export interface ManualRecord {
+  id: string;
+  /** library exercise when picked from the list */
+  exerciseId?: string;
+  name: string;
+  kg: number;
+  reps: number;
+  /** YYYY-MM-DD, optional */
+  date?: string;
+  note?: string;
+  addedBy: 'client' | 'coach';
+}
+
 export interface ClientProfile {
   id: string;
   name: string;
@@ -337,6 +351,8 @@ export interface ClientProfile {
   assessments?: AssessmentSnapshot[];
   /** Goals set from assessment measures. */
   goals?: Goal[];
+  /** All-time bests entered by hand (logged workouts add records automatically). */
+  manualRecords?: ManualRecord[];
   /** Workouts on real dates (sorted by date). */
   workouts?: Workout[];
   /** @deprecated old Mon–Sun template; converted into `workouts` on load. */

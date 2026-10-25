@@ -3,13 +3,16 @@ import { Check, ArrowRight } from 'lucide-react';
 import { ClientProfile, calculateAsymmetryPercent } from '../../types';
 import { EmptyProgress } from '../EmptyProgress';
 import { GoalsPanel } from '../coach/GoalsPanel';
+import { RecordsPanel } from '../RecordsPanel';
 
 interface ClientProgressViewProps {
   client: ClientProfile;
+  onUpdateClient?: (c: ClientProfile) => void;
 }
 
 export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
-  client
+  client,
+  onUpdateClient
 }) => {
   const history = client.progressHistory;
   if (history.length === 0) {
@@ -18,6 +21,7 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
         {(client.goals?.length ?? 0) > 0 && (
           <GoalsPanel goals={client.goals!} assessments={client.assessments ?? []} />
         )}
+        <RecordsPanel client={client} onUpdateClient={onUpdateClient} by="client" />
         <EmptyProgress
           title="Your progress starts here"
           text="After your first assessment and a few logged workouts, your strength, body composition and symmetry charts show up here."
@@ -50,9 +54,6 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
 
   return (
     <div className="max-w-lg mx-auto space-y-4 pb-8">
-      {(client.goals?.length ?? 0) > 0 && (
-        <GoalsPanel goals={client.goals!} assessments={client.assessments ?? []} />
-      )}
       {/* Page Title */}
       <div>
         <span className="text-xs font-semibold text-gray-500">
@@ -62,6 +63,10 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
           My Progress
         </h1>
       </div>
+      {(client.goals?.length ?? 0) > 0 && (
+        <GoalsPanel goals={client.goals!} assessments={client.assessments ?? []} />
+      )}
+      <RecordsPanel client={client} onUpdateClient={onUpdateClient} by="client" />
 
       {/* 1. Phase Progress Card */}
       <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_2px_14px_rgba(0,0,0,0.04)] border border-gray-100">

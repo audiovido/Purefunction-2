@@ -4,6 +4,7 @@ import { ClientProfile } from '../../types';
 import { EmptyProgress } from '../EmptyProgress';
 import { AssessmentHistory } from './AssessmentHistory';
 import { GoalsPanel } from './GoalsPanel';
+import { RecordsPanel } from '../RecordsPanel';
 
 interface ProgressViewProps {
   clients: ClientProfile[];
@@ -61,6 +62,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
             text="Complete an assessment (Assessment → Complete Assessment). Each one is saved with its date so you can compare them here."
           />
         )}
+        <RecordsPanel client={client} onUpdateClient={onUpdateClient} by="coach" />
       </div>
     );
   }
@@ -144,6 +146,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
             <AssessmentHistory key={client.id} assessments={client.assessments} client={client} onUpdateClient={onUpdateClient} />
           </>
       ) : null}
+      <RecordsPanel client={client} onUpdateClient={onUpdateClient} by="coach" />
 
       {/* Phase Timeline (Week 0 / 4 / 8 / 12) matching Mockup 5 */}
       <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-[0_2px_14px_rgba(0,0,0,0.04)] border border-gray-100 mb-6 overflow-x-auto">
