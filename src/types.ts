@@ -351,6 +351,8 @@ export interface ClientProfile {
   id: string;
   name: string;
   email: string;
+  /** Cloud: morning email on workout days (default on). */
+  emailReminders?: boolean;
   avatarId: string;
   /** Profile photo the client uploaded (small data URL). Initials are shown when empty. */
   photoUrl?: string;

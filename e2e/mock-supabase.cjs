@@ -7,7 +7,7 @@
 const crypto = require('crypto');
 
 module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) {
-  const db = { users: [], profiles: [], clients: [], workouts: [], exercises: [], files: {}, clientFiles: {} };
+  const db = { users: [], profiles: [], clients: [], workouts: [], exercises: [], files: {}, clientFiles: {}, emails: [], resetTokens: {} };
   const log = [];
   const realtimeLog = [];
   const cors = {
@@ -95,7 +95,43 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
       return json(route, 200, { ok: true });
     }
 
+    // ---------------- Edge Functions: email ----------------
+    if (path === '/functions/v1/send-invite') {
+      const prof = profileOf(uidFrom(req));
+      if (!prof || prof.role !== 'coach') return json(route, 403, { error: 'Only the coach can send invites.' });
+      const b = JSON.parse(req.postData() || '{}');
+      const c = db.clients.find((c) => c.id === b.clientId);
+      if (!c || !c.email) return json(route, 400, { error: 'This client has no email yet.' });
+      db.emails.push({ to: c.email, kind: 'invite' });
+      return json(route, 200, { ok: true });
+    }
+    if (path === '/functions/v1/reset-password') {
+      const b = JSON.parse(req.postData() || '{}');
+      const email = String(b.email || '').trim().toLowerCase();
+      const u = db.users.find((u) => u.email === email);
+      if (u) {
+        const token = 'rst-' + crypto.randomUUID();
+        db.resetTokens[token] = u.id;
+        db.emails.push({ to: email, kind: 'reset', token });
+      }
+      return json(route, 200, { ok: true });
+    }
+
     // ---------------- Auth ----------------
+    if (path === '/auth/v1/verify' && method === 'POST') {
+      const b = JSON.parse(req.postData() || '{}');
+      const id = db.resetTokens[b.token_hash];
+      delete db.resetTokens[b.token_hash];
+      const u = id && db.users.find((u) => u.id === id);
+      return u ? json(route, 200, sessionFor(u)) : json(route, 403, { code: 'otp_expired', msg: 'Email link is invalid or has expired' });
+    }
+    if (path === '/auth/v1/user' && method === 'PUT') {
+      const u = db.users.find((u) => u.id === uidFrom(req));
+      if (!u) return json(route, 401, {});
+      const b = JSON.parse(req.postData() || '{}');
+      if (b.password) u.password = b.password;
+      return json(route, 200, sessionFor(u).user);
+    }
     if (path === '/auth/v1/token') {
       const b = JSON.parse(req.postData() || '{}');
       if (url.searchParams.get('grant_type') === 'password') {

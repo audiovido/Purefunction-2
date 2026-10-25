@@ -89,6 +89,16 @@ const today = iso(new Date());
   ok(!!ryanRow, 'coach corrected the email; saved lower-cased');
   ok(ryanRow && ryanRow.data && ryanRow.data.inBody.weight === 0, 'new client has empty assessment data (no sample numbers)');
 
+  // email the invite + turn reminders off
+  await C.getByRole('button', { name: /Not joined · Invite/ }).click();
+  await C.getByRole('button', { name: 'Email the invite' }).click();
+  await C.getByText('Invite sent to ryan@example.com').waitFor({ timeout: 5000 }).catch(() => {});
+  ok(mock.db.emails.some((e) => e.kind === 'invite' && e.to === 'ryan@example.com'), 'coach emails the invite in one tap');
+  await C.getByLabel('Morning email on workout days').uncheck();
+  await C.getByRole('button', { name: 'Save', exact: true }).click();
+  await C.waitForTimeout(1200);
+  ok(mock.db.clients.find((c) => c.id === ryanRow.id).data.emailReminders === false, 'coach can turn off morning emails for a client');
+
   // build a workout for today
   await C.locator('main').getByText('Ryan Lee', { exact: true }).first().click();
   await C.getByRole('heading', { name: 'Workout Builder' }).waitFor({ timeout: 5000 }).catch(() => {});
@@ -226,11 +236,33 @@ const today = iso(new Date());
   await R.getByText('Workout completed').waitFor({ timeout: 10000 }).catch(() => {});
   ok(await R.getByText('Workout completed').isVisible(), 'client can sign back in');
 
+  // forgot password -> email link -> new password
+  const F = await open({ width: 390, height: 844 });
+  await F.getByRole('button', { name: 'Forgot password?' }).click();
+  await F.getByLabel('Email').fill('ryan@example.com');
+  await F.getByRole('button', { name: 'Send reset link' }).click();
+  await F.getByText('a reset link is on its way').waitFor({ timeout: 5000 }).catch(() => {});
+  ok(await F.getByText('a reset link is on its way').isVisible(), 'forgot password confirms the email');
+  const mail = mock.db.emails.find((e) => e.kind === 'reset' && e.to === 'ryan@example.com');
+  ok(!!mail, 'reset email sent');
+  await F.goto(`http://localhost:${PORT}/?reset=${mail.token}`);
+  await F.getByRole('heading', { name: 'Choose a new password' }).waitFor({ timeout: 8000 }).catch(() => {});
+  ok(await F.getByRole('heading', { name: 'Choose a new password' }).isVisible(), 'reset link opens the new password screen');
+  ok(!(await F.evaluate(() => location.search.includes('reset='))), 'reset token removed from the address bar');
+  await F.getByLabel('New password').fill('newpass99');
+  await F.getByRole('button', { name: 'Save password' }).click();
+  await F.getByText('Workout completed').waitFor({ timeout: 10000 }).catch(() => {});
+  ok(await F.getByText('Workout completed').isVisible(), 'after the new password the client lands in the app');
+  ok(mock.db.users.find((u) => u.email === 'ryan@example.com').password === 'newpass99', 'new password saved');
+  await F.goto(`http://localhost:${PORT}/?reset=${mail.token}`);
+  await F.getByText('reset link has expired').waitFor({ timeout: 8000 }).catch(() => {});
+  ok(await F.getByText('reset link has expired').isVisible() || (await F.getByText('Workout completed').isVisible()), 'used reset link is not accepted twice');
+
   // layout
-  for (const [n, p] of [['client', R], ['stranger', S]]) {
+  for (const [n, p] of [['client', R], ['stranger', S], ['reset', F]]) {
     ok((await p.evaluate(() => document.documentElement.scrollWidth - innerWidth)) === 0, `${n}: no horizontal overflow on phone`);
   }
-  const all = [...S.errors, ...C.errors, ...R.errors];
+  const all = [...S.errors, ...C.errors, ...R.errors, ...F.errors];
   ok(all.length === 0, 'no page errors ' + all.join(' | '));
   console.log(failures ? `\n${failures} FAILED` : '\nALL PASSED');
   await b.close();
