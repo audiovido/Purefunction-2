@@ -17,14 +17,44 @@ const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </div>
 );
 
+type Who = 'coach' | 'client';
+
+function initialWho(): { who: Who; joinEmail: string } {
+  try {
+    const q = new URLSearchParams(window.location.search);
+    const join = q.get('join');
+    if (join) return { who: 'client', joinEmail: join };
+    if (q.has('coach')) return { who: 'coach', joinEmail: '' };
+    const saved = localStorage.getItem('pf.signin.who');
+    if (saved === 'coach' || saved === 'client') return { who: saved, joinEmail: '' };
+  } catch {
+    /* ignore */
+  }
+  return { who: 'client', joinEmail: '' };
+}
+
+/** Separate coach and client sign-in, like TrueCoach. Invite links (?join=email) open client set-up. */
 export const AuthScreen: React.FC = () => {
   const { signIn, signUp } = useSession();
-  const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in');
+  const start = initialWho();
+  const [who, setWho] = useState<Who>(start.who);
+  const [mode, setMode] = useState<'sign-in' | 'sign-up'>(start.joinEmail ? 'sign-up' : 'sign-in');
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(start.joinEmail);
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const pick = (w: Who) => {
+    setWho(w);
+    setMode('sign-in');
+    setError(null);
+    try {
+      localStorage.setItem('pf.signin.who', w);
+    } catch {
+      /* ignore */
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,19 +66,55 @@ export const AuthScreen: React.FC = () => {
     setBusy(true);
     const err = mode === 'sign-in' ? await signIn(email, password) : await signUp(email, password, name);
     setBusy(false);
-    if (err) setError(err);
+    if (err) {
+      setError(
+        who === 'client' && /isn’t on the list/.test(err)
+          ? 'This email isn’t on your coach’s list. Use the exact email your coach invited (check the invite link), or ask them to correct it.'
+          : who === 'coach' && /isn’t on the list/.test(err)
+          ? 'This isn’t the coach email for this app. Clients: switch to “Client” above.'
+          : err
+      );
+    }
   };
+
+  const title =
+    who === 'coach'
+      ? mode === 'sign-in'
+        ? 'Coach sign in'
+        : 'Create coach account'
+      : mode === 'sign-in'
+      ? 'Client sign in'
+      : 'Set up your account';
+  const subtitle =
+    who === 'coach'
+      ? mode === 'sign-in'
+        ? 'Manage clients, assessments and programs.'
+        : 'Only the coach email for this app can create a coach account.'
+      : mode === 'sign-in'
+      ? 'See your workouts and log your training.'
+      : 'Use the email your coach invited. Choose a password (8+ characters).';
 
   return (
     <Shell>
-      <h1 className="text-2xl font-bold tracking-tight text-[#111827] mb-1">
-        {mode === 'sign-in' ? 'Welcome back' : 'Create your account'}
-      </h1>
-      <p className="text-sm text-gray-500 mb-6">
-        {mode === 'sign-in'
-          ? 'Sign in to see your training.'
-          : 'Use the email your coach added for you.'}
-      </p>
+      {/* Coach / Client switch */}
+      <div className="grid grid-cols-2 gap-1 bg-gray-100 p-1 rounded-xl mb-6" role="tablist" aria-label="Sign in as">
+        {(['client', 'coach'] as const).map((w) => (
+          <button
+            key={w}
+            role="tab"
+            aria-selected={who === w}
+            onClick={() => pick(w)}
+            className={`py-2.5 rounded-lg text-sm font-semibold cursor-pointer ${
+              who === w ? 'bg-[#111827] text-white shadow-sm' : 'text-gray-600'
+            }`}
+          >
+            {w === 'client' ? 'I’m a client' : 'I’m the coach'}
+          </button>
+        ))}
+      </div>
+
+      <h1 className="text-2xl font-bold tracking-tight text-[#111827] mb-1">{title}</h1>
+      <p className="text-sm text-gray-500 mb-6">{subtitle}</p>
 
       <form onSubmit={submit} className="space-y-3">
         {mode === 'sign-up' && (
@@ -95,12 +161,16 @@ export const AuthScreen: React.FC = () => {
           className="w-full inline-flex items-center justify-center gap-2 bg-[#111827] hover:bg-[#1F2937] disabled:opacity-60 text-white text-base font-semibold py-3.5 rounded-xl cursor-pointer"
         >
           {busy && <Loader2 className="w-4 h-4 animate-spin" />}
-          {mode === 'sign-in' ? 'Sign in' : 'Create account'}
+          {mode === 'sign-in' ? 'Sign in' : who === 'coach' ? 'Create coach account' : 'Create my account'}
         </button>
       </form>
 
       <div className="mt-5 text-center text-sm text-gray-500">
-        {mode === 'sign-in' ? 'New here? ' : 'Already have an account? '}
+        {mode === 'sign-in'
+          ? who === 'client'
+            ? 'First time here? '
+            : 'No coach account yet? '
+          : 'Already have an account? '}
         <button
           onClick={() => {
             setMode(mode === 'sign-in' ? 'sign-up' : 'sign-in');
@@ -108,7 +178,7 @@ export const AuthScreen: React.FC = () => {
           }}
           className="font-semibold text-[#111827] underline cursor-pointer"
         >
-          {mode === 'sign-in' ? 'Create an account' : 'Sign in'}
+          {mode === 'sign-in' ? (who === 'client' ? 'Set up your account' : 'Create coach account') : 'Sign in'}
         </button>
       </div>
     </Shell>

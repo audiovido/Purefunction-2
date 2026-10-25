@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Search, Plus, X, ArrowUpRight, ClipboardCheck, Dumbbell, LineChart, FileText } from 'lucide-react';
+import { Search, Plus, X, ArrowUpRight, ClipboardCheck, Dumbbell, LineChart, FileText, Send } from 'lucide-react';
+import { ClientInviteModal } from './ClientInviteModal';
 import { ClientProfile, CoachTab } from '../../types';
 import { ClientAvatar } from '../VisualAssets';
 
@@ -13,14 +14,21 @@ interface ClientsViewProps {
     phaseNumber: 1 | 2 | 3 | 4;
     phaseName: ClientProfile['phaseName'];
   }) => void;
+  onUpdateClient?: (updated: ClientProfile) => void;
+  /** client ids that have an account (cloud only; undefined in demo mode) */
+  joinedIds?: Set<string>;
 }
 
 export const ClientsView: React.FC<ClientsViewProps> = ({
   clients,
   selectedClientId,
   onSelectClient,
-  onAddClient
+  onAddClient,
+  onUpdateClient,
+  joinedIds
 }) => {
+  const [inviteFor, setInviteFor] = useState<string | null>(null);
+  const inviteClient = clients.find((c) => c.id === inviteFor);
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newName, setNewName] = useState('');
@@ -167,6 +175,17 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     <span className="inline-flex items-center bg-[#F3F4F6] text-[#374151] text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap">
                       Phase {client.phaseNumber} · {client.phaseName}
                     </span>
+                    {joinedIds && !joinedIds.has(client.id) && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setInviteFor(client.id);
+                        }}
+                        className="inline-flex items-center gap-1 bg-[#FEF3C7] text-[#92400E] text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap cursor-pointer"
+                      >
+                        <Send className="w-3 h-3" /> Not joined · Invite
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -212,6 +231,16 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                     onClick={(e) => e.stopPropagation()}
                   >
+                    {onUpdateClient && (
+                      <button
+                        onClick={() => setInviteFor(client.id)}
+                        title="Edit client & invite"
+                        aria-label={`Edit ${client.name} and invite`}
+                        className="p-1.5 rounded-lg text-gray-500 hover:text-[#111827] hover:bg-gray-100 transition-colors cursor-pointer"
+                      >
+                        <Send className="w-4 h-4" />
+                      </button>
+                    )}
                     <button
                       onClick={() => onSelectClient(client.id, 'assessment')}
                       title="New Assessment"
@@ -247,6 +276,16 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           })
         )}
       </div>
+
+      {inviteClient && onUpdateClient && (
+        <ClientInviteModal
+          client={inviteClient}
+          clients={clients}
+          joined={joinedIds ? joinedIds.has(inviteClient.id) : null}
+          onSave={onUpdateClient}
+          onClose={() => setInviteFor(null)}
+        />
+      )}
 
       {/* Add Client Modal */}
       {isAddModalOpen && (

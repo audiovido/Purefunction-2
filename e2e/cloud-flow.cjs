@@ -41,27 +41,30 @@ const today = iso(new Date());
     await p.goto(`http://localhost:${PORT}/`);
     return p;
   };
-  const signUp = async (p, name, email, pw) => {
-    await p.getByRole('button', { name: 'Create an account' }).click();
+  const signUp = async (p, name, email, pw, who = 'client') => {
+    await p.getByRole('tab', { name: who === 'coach' ? 'I’m the coach' : 'I’m a client' }).click();
+    await p.getByRole('button', { name: who === 'coach' ? 'Create coach account' : 'Set up your account' }).click();
     if (name) await p.getByLabel('Your name').fill(name);
     await p.getByLabel('Email').fill(email);
     await p.getByLabel('Password').fill(pw);
-    await p.getByRole('button', { name: 'Create account' }).click();
+    await p.locator('form button[type=submit]').click();
   };
   const shot = (p, n) => shots && p.screenshot({ path: `${shots}/${n}.png` });
 
   /* ---------------- stranger can't sign up ---------------- */
   const S = await open({ width: 390, height: 844 });
-  await S.getByRole('heading', { name: 'Welcome back' }).waitFor();
-  ok(true, 'signed-out visitor sees the sign-in screen');
+  await S.getByRole('heading', { name: 'Client sign in' }).waitFor();
+  ok(true, 'signed-out visitor sees client sign-in by default');
+  await S.getByRole('tab', { name: 'I’m the coach' }).click();
+  ok(await S.getByRole('heading', { name: 'Coach sign in' }).isVisible(), 'separate coach sign-in');
   await signUp(S, 'Eve', 'eve@example.com', 'password123');
-  await S.getByText(/isn’t on the list yet/).waitFor({ timeout: 8000 }).catch(() => {});
-  ok(await S.getByText(/isn’t on the list yet/).isVisible(), 'unknown email cannot create an account');
+  await S.getByText(/isn’t on your coach’s list/).waitFor({ timeout: 8000 }).catch(() => {});
+  ok(await S.getByText(/isn’t on your coach’s list/).isVisible(), 'unknown email cannot create an account');
   await shot(S, 'cloud-signup-blocked');
 
   /* ---------------- coach ---------------- */
   const C = await open({ width: 1440, height: 900 });
-  await signUp(C, 'Armin', 'Coach@Example.com', 'coachpass1');
+  await signUp(C, 'Armin', 'Coach@Example.com', 'coachpass1', 'coach');
   await C.getByRole('heading', { name: 'Clients' }).waitFor();
   ok(await C.getByText(/No clients yet/).isVisible(), 'new coach starts with an empty roster (no sample data)');
   ok(mock.db.profiles.some((p) => p.role === 'coach'), 'coach profile created for the coach email');
@@ -70,11 +73,18 @@ const today = iso(new Date());
   // add a client
   await C.getByRole('button', { name: 'Add client' }).click();
   await C.getByPlaceholder('e.g., Jordan Taylor').fill('Ryan Lee');
-  await C.getByPlaceholder('jordan.taylor@example.com').fill('Ryan@Example.com');
+  await C.getByPlaceholder('jordan.taylor@example.com').fill('ryan.typo@example.com');
   await C.getByRole('button', { name: 'Create & Start Assessment' }).click();
   await C.waitForTimeout(1500);
+  await C.getByRole('button', { name: 'Clients' }).first().click();
+  await C.getByRole('button', { name: /Not joined · Invite/ }).click();
+  ok(await C.getByText('Not joined yet — send them the invite below.').isVisible(), 'coach sees the client has not joined');
+  const emailBox = C.locator('input[type=email]');
+  await emailBox.fill('Ryan@Example.com');
+  await C.getByRole('button', { name: 'Save', exact: true }).click();
+  await C.waitForTimeout(1500);
   const ryanRow = mock.db.clients.find((c) => c.email === 'ryan@example.com');
-  ok(!!ryanRow, 'client saved to the cloud with lower-cased email');
+  ok(!!ryanRow, 'coach corrected the email; saved lower-cased');
   ok(ryanRow && ryanRow.data && ryanRow.data.inBody.weight === 0, 'new client has empty assessment data (no sample numbers)');
 
   // build a workout for today
@@ -94,13 +104,19 @@ const today = iso(new Date());
 
   /* ---------------- client ---------------- */
   const R = await open({ width: 390, height: 844 });
-  await signUp(R, 'Ryan', 'ryan@example.com', 'ryanpass1');
+  await R.goto(`http://localhost:${PORT}/?join=ryan%40example.com`);
+  await R.getByRole('heading', { name: 'Set up your account' }).waitFor();
+  ok((await R.getByLabel('Email').inputValue()) === 'ryan@example.com', 'invite link opens client set-up with the email filled in');
+  await R.getByLabel('Your name').fill('Ryan');
+  await R.getByLabel('Password').fill('ryanpass1');
+  await R.locator('form button[type=submit]').click();
   await R.getByRole('heading', { name: /Goblet Squat/ }).first().waitFor({ timeout: 10000 });
   ok(true, 'client signs up with the email the coach added and sees today’s workout');
   ok((await R.getByRole('button', { name: 'Coach' }).count()) === 0, 'client has no coach switch');
   ok((await R.getByText(/Workouts this week/).count()) === 0, 'client cannot see the coach screens');
   await shot(R, 'cloud-client-today');
 
+  ok(!(await R.evaluate(() => location.search.includes('join='))), 'invite parameter removed after sign-in');
   // live: coach adds an exercise -> appears on client without reload
   await C.getByPlaceholder('Search name, muscle, pattern…').fill('romanian deadlift');
   await C.waitForTimeout(300);
@@ -139,6 +155,7 @@ const today = iso(new Date());
   await C.getByRole('button', { name: 'Clients' }).first().click();
   await C.waitForTimeout(800);
   ok((await C.locator('main img').count()) >= 1, 'coach sees the client’s photo');
+  ok((await C.getByRole('button', { name: /Not joined · Invite/ }).count()) === 0, 'joined client no longer shows the invite badge');
 
   // reload: data comes back from the cloud, session kept
   await R.reload();
@@ -174,8 +191,8 @@ const today = iso(new Date());
 
   /* ---------------- sign out ---------------- */
   await R.getByRole('button', { name: 'Sign out' }).first().click();
-  await R.getByRole('heading', { name: 'Welcome back' }).waitFor({ timeout: 5000 }).catch(() => {});
-  ok(await R.getByRole('heading', { name: 'Welcome back' }).isVisible(), 'client can sign out');
+  await R.getByRole('heading', { name: 'Client sign in' }).waitFor({ timeout: 5000 }).catch(() => {});
+  ok(await R.getByRole('heading', { name: 'Client sign in' }).isVisible(), 'client can sign out (back to client sign-in)');
 
   // wrong password
   await R.getByLabel('Email').fill('ryan@example.com');
