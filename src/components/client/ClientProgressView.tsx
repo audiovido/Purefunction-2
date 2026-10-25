@@ -1,6 +1,7 @@
 import React from 'react';
 import { Check, ArrowRight } from 'lucide-react';
 import { ClientProfile, calculateAsymmetryPercent } from '../../types';
+import { EmptyProgress } from '../EmptyProgress';
 
 interface ClientProgressViewProps {
   client: ClientProfile;
@@ -10,6 +11,14 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
   client
 }) => {
   const history = client.progressHistory;
+  if (history.length === 0) {
+    return (
+      <EmptyProgress
+        title="Your progress starts here"
+        text="After your first assessment and a few logged workouts, your strength, body composition and symmetry charts show up here."
+      />
+    );
+  }
   const firstPt = history[0] || {
     week: 0,
     squat1RM: 80,

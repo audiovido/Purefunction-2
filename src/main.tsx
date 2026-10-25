@@ -1,10 +1,10 @@
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
-import { ExerciseLibraryProvider } from './state/ExerciseLibrary';
+import { SessionProvider } from './cloud/Session';
 
 createRoot(document.getElementById('root')!).render(
-  <ExerciseLibraryProvider>
+  <SessionProvider>
     <App />
-  </ExerciseLibraryProvider>
+  </SessionProvider>
 );

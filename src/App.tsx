@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
-import { usePersistentState } from './lib/storage';
 import { ProfilePhotoButton } from './components/client/ProfilePhotoButton';
+import { useSession, Profile } from './cloud/Session';
+import { AuthScreen, LoadingScreen, NoAccessScreen } from './cloud/AuthScreen';
+import { ClientsStore, SyncState, useCloudClientsStore, useLocalClientsStore } from './cloud/useClientsStore';
+import { ExerciseLibraryProvider } from './state/ExerciseLibrary';
+import { createClientProfile } from './lib/clients';
 import {
   Users,
   BookOpen,
@@ -11,7 +15,12 @@ import {
   CalendarCheck,
   TrendingUp,
   Smartphone,
-  Monitor
+  Monitor,
+  LogOut,
+  Cloud,
+  CloudOff,
+  Loader2,
+  UserPlus
 } from 'lucide-react';
 import {
   ClientProfile,
@@ -20,29 +29,16 @@ import {
   Exercise,
   Role
 } from './types';
-import { INITIAL_CLIENTS } from './data/mockData';
 import {
   addDays,
   adherence,
   blankWorkout,
   defaultBlockFor,
-  migrateClient,
   startOfWeek,
   todayISO,
   upsertWorkout,
   workoutOn
 } from './lib/workouts';
-
-/** Saved clients (older saves are upgraded), or the sample clients on first visit. */
-function loadInitialClients(): ClientProfile[] {
-  try {
-    const old = localStorage.getItem('pf.clients.v1');
-    if (old) return (JSON.parse(old) as ClientProfile[]).map((c) => migrateClient(c));
-  } catch {
-    /* ignore */
-  }
-  return INITIAL_CLIENTS.map((c) => migrateClient(c));
-}
 import { ClientAvatar, PureFunctionLogo } from './components/VisualAssets';
 import { ClientsView } from './components/coach/ClientsView';
 import { NewAssessmentView } from './components/coach/NewAssessmentView';
@@ -77,21 +73,84 @@ const COACH_NAV_ITEMS: {
   { id: 'reports', label: 'Reports', shortLabel: 'Reports', icon: FileText }
 ];
 
+/* ===========================================================================
+ * Entry: local demo (no cloud configured) or signed-in cloud workspace
+ * ======================================================================== */
+
 export default function App() {
-  const [role, setRole] = useState<Role>('coach');
+  const { status, profile } = useSession();
+  if (status === 'local') return <LocalApp />;
+  if (status === 'loading') return <LoadingScreen />;
+  if (status === 'signed-out') return <AuthScreen />;
+  if (status === 'no-access') return <NoAccessScreen />;
+  return <CloudApp profile={profile!} />;
+}
+
+function LocalApp() {
+  const store = useLocalClientsStore();
+  return (
+    <ExerciseLibraryProvider>
+      <Workspace store={store} profile={null} />
+    </ExerciseLibraryProvider>
+  );
+}
+
+function CloudApp({ profile }: { profile: Profile }) {
+  const store = useCloudClientsStore(profile);
+  if (!store.loaded) return <LoadingScreen label="Loading your data…" />;
+  if (store.loadError) return <LoadingScreen label={`Couldn’t load data: ${store.loadError}`} />;
+  return (
+    <ExerciseLibraryProvider>
+      <Workspace store={store} profile={profile} />
+    </ExerciseLibraryProvider>
+  );
+}
+
+const SyncBadge: React.FC<{ sync: SyncState }> = ({ sync }) => {
+  const map = {
+    saved: { icon: <Cloud className="w-3.5 h-3.5" />, text: 'Saved', cls: 'text-gray-400' },
+    saving: { icon: <Loader2 className="w-3.5 h-3.5 animate-spin" />, text: 'Saving…', cls: 'text-gray-500' },
+    error: { icon: <CloudOff className="w-3.5 h-3.5" />, text: 'Not saved — retrying', cls: 'text-red-600' },
+    offline: { icon: <CloudOff className="w-3.5 h-3.5" />, text: 'Offline — will save', cls: 'text-[#B45309]' }
+  }[sync];
+  return (
+    <span className={`inline-flex items-center gap-1 text-[11px] font-medium ${map.cls}`} role="status" aria-live="polite">
+      {map.icon}
+      {map.text}
+    </span>
+  );
+};
+
+const NoClientsYet: React.FC<{ onAdd: () => void }> = ({ onAdd }) => (
+  <div className="max-w-md mx-auto text-center py-20">
+    <div className="w-14 h-14 rounded-2xl bg-[#FEF3C7] flex items-center justify-center mx-auto mb-4">
+      <UserPlus className="w-6 h-6 text-[#B45309]" />
+    </div>
+    <h2 className="text-xl font-bold text-[#111827] mb-1">Add your first client</h2>
+    <p className="text-sm text-gray-500 mb-5">
+      Add a client with their email. When they create an account with that email, they see their own program.
+    </p>
+    <button onClick={onAdd} className="bg-[#111827] text-white text-sm font-semibold px-5 py-3 rounded-xl cursor-pointer">
+      Go to Clients
+    </button>
+  </div>
+);
+
+function Workspace({ store, profile }: { store: ClientsStore; profile: Profile | null }) {
+  const { signOut } = useSession();
+  const { clients, setClients, sync } = store;
+  const isClientUser = profile?.role === 'client';
+  const [roleState, setRole] = useState<Role>(isClientUser ? 'client' : 'coach');
+  const role: Role = isClientUser ? 'client' : roleState;
   const [coachTab, setCoachTab] = useState<CoachTab>('clients');
   const [clientTab, setClientTab] = useState<ClientTab>('today');
-  const [clients, setClients] = usePersistentState<ClientProfile[]>(
-    'pf.clients.v2',
-    loadInitialClients
-  );
-  const [selectedClientId, setSelectedClientId] = useState<string>(
-    () => clients[0]?.id ?? INITIAL_CLIENTS[0].id
-  );
+  const [selectedClientIdState, setSelectedClientId] = useState<string>(() => clients[0]?.id ?? '');
+  const selectedClientId = isClientUser ? profile!.clientId ?? '' : selectedClientIdState;
   const [clientPreviewFrame, setClientPreviewFrame] = useState<boolean>(false);
 
-  const selectedClient =
-    clients.find((c) => c.id === selectedClientId) || clients[0];
+  const selectedClient: ClientProfile | undefined =
+    clients.find((c) => c.id === selectedClientId) || (isClientUser ? undefined : clients[0]);
+  const canPreviewClient = !!selectedClient;
 
   const handleUpdateClient = (updated: ClientProfile) => {
     setClients((prev) =>
@@ -112,23 +171,7 @@ export default function App() {
     phaseNumber: 1 | 2 | 3 | 4;
     phaseName: ClientProfile['phaseName'];
   }) => {
-    const template = INITIAL_CLIENTS[0];
-    const created: ClientProfile = {
-      ...template,
-      id: `client-${Date.now()}`,
-      name: newClientData.name,
-      email: newClientData.email,
-      avatarId: '',
-      photoUrl: undefined,
-      phaseNumber: newClientData.phaseNumber,
-      phaseName: newClientData.phaseName,
-      currentWeek: 0,
-      adherenceCompleted: 0,
-      adherenceTotal: 0,
-      nextAssessmentDays: 0,
-      workouts: [],
-      weeklyWorkouts: undefined
-    };
+    const created = createClientProfile(newClientData);
     setClients((prev) => [created, ...prev]);
     setSelectedClientId(created.id);
     setCoachTab('assessment');
@@ -212,21 +255,23 @@ export default function App() {
 
           {/* Bottom Active Client Context + Role Switcher (Coach / Client) */}
           <div className="space-y-3 pt-4 border-t border-gray-200/80">
-            <div className="px-2 flex items-center gap-2.5">
-              <ClientAvatar
-                photoUrl={selectedClient.photoUrl}
-                name={selectedClient.name}
-                size="sm"
-              />
-              <div className="min-w-0">
-                <div className="text-[11px] text-gray-400">Active Client</div>
-                <div className="text-xs font-semibold text-[#111827] truncate">
-                  {selectedClient.name}
+            {selectedClient && (
+              <div className="px-2 flex items-center gap-2.5">
+                <ClientAvatar
+                  photoUrl={selectedClient.photoUrl}
+                  name={selectedClient.name}
+                  size="sm"
+                />
+                <div className="min-w-0">
+                  <div className="text-[11px] text-gray-400">Active Client</div>
+                  <div className="text-xs font-semibold text-[#111827] truncate">
+                    {selectedClient.name}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Role Toggle Pill */}
+            {/* Role Toggle Pill (coach can preview the client's view) */}
             <div className="bg-gray-200/80 p-1 rounded-xl grid grid-cols-2 gap-1">
               <button
                 onClick={() => setRole('coach')}
@@ -236,11 +281,32 @@ export default function App() {
               </button>
               <button
                 onClick={() => setRole('client')}
-                className="py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:text-[#111827] transition-colors cursor-pointer"
+                disabled={!canPreviewClient}
+                title={profile ? "Preview this client's app" : undefined}
+                className="py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:text-[#111827] disabled:opacity-40 transition-colors cursor-pointer"
               >
                 Client
               </button>
             </div>
+
+            {profile && (
+              <div className="px-2 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-[#111827] truncate" title={profile.email}>
+                    {profile.displayName || profile.email}
+                  </div>
+                  <SyncBadge sync={sync} />
+                </div>
+                <button
+                  onClick={() => void signOut()}
+                  aria-label="Sign out"
+                  title="Sign out"
+                  className="p-2 rounded-lg text-gray-400 hover:text-[#111827] hover:bg-gray-200/60 cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         </aside>
       )}
@@ -284,11 +350,27 @@ export default function App() {
             </button>
           )}
 
-          {role === 'client' && (
+          {profile && <SyncBadge sync={sync} />}
+
+          {role === 'client' && selectedClient && (
             <ProfilePhotoButton client={selectedClient} onUpdateClient={handleUpdateClient} />
           )}
 
+          {profile && (
+            <button
+              onClick={() => void signOut()}
+              aria-label="Sign out"
+              title="Sign out"
+              className={`p-2 rounded-lg text-gray-400 hover:text-[#111827] hover:bg-gray-100 cursor-pointer ${
+                isClientUser ? '' : 'md:hidden'
+              }`}
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          )}
+
           {/* Role Switcher in Header */}
+          {!isClientUser && (
           <div className="bg-gray-100 p-0.5 rounded-xl inline-flex items-center">
             <button
               onClick={() => setRole('coach')}
@@ -302,7 +384,8 @@ export default function App() {
             </button>
             <button
               onClick={() => setRole('client')}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+              disabled={!canPreviewClient}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer disabled:opacity-40 ${
                 role === 'client'
                   ? 'bg-[#111827] text-white'
                   : 'text-gray-600 hover:text-[#111827]'
@@ -311,6 +394,7 @@ export default function App() {
               Client
             </button>
           </div>
+          )}
         </div>
       </header>
 
@@ -329,7 +413,11 @@ export default function App() {
               />
             )}
 
-            {coachTab === 'assessment' && (
+            {coachTab !== 'clients' && coachTab !== 'library' && !selectedClient && (
+              <NoClientsYet onAdd={() => setCoachTab('clients')} />
+            )}
+
+            {selectedClient && coachTab === 'assessment' && (
               <NewAssessmentView
                 clients={clients}
                 client={selectedClient}
@@ -339,7 +427,7 @@ export default function App() {
               />
             )}
 
-            {coachTab === 'workout-builder' && (
+            {selectedClient && coachTab === 'workout-builder' && (
               <WorkoutBuilderView
                 clients={clients}
                 client={selectedClient}
@@ -356,7 +444,7 @@ export default function App() {
               />
             )}
 
-            {coachTab === 'progress' && (
+            {selectedClient && coachTab === 'progress' && (
               <ProgressView
                 clients={clients}
                 client={selectedClient}
@@ -364,7 +452,7 @@ export default function App() {
               />
             )}
 
-            {coachTab === 'reports' && (
+            {selectedClient && coachTab === 'reports' && (
               <MonthlyReportView
                 clients={clients}
                 client={selectedClient}
@@ -384,7 +472,11 @@ export default function App() {
                 : 'max-w-xl mx-auto'
             }
           >
-            {clientTab === 'today' ? (
+            {!selectedClient ? (
+              <div className="text-center text-sm text-gray-500 py-20">
+                Your coach is setting up your profile. Pull to refresh in a moment.
+              </div>
+            ) : clientTab === 'today' ? (
               <ClientTodayView
                 client={selectedClient}
                 onUpdateClient={handleUpdateClient}

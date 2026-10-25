@@ -3,6 +3,9 @@ import { Exercise } from '../types';
 import { EXERCISES_LIBRARY } from '../data/mockData';
 import { usePersistentState } from '../lib/storage';
 import { deleteVideoFile } from '../lib/videoStore';
+import { useSession } from '../cloud/Session';
+import { stableStringify, supabase } from '../cloud/supabase';
+import { deleteExerciseVideo } from '../cloud/videos';
 
 /**
  * Exercise library = Pure Function core set + the imported 1,200+ catalog
@@ -46,7 +49,52 @@ function migrateV1(): CoachEdits {
 const ExerciseLibraryContext = createContext<ExerciseLibraryValue | null>(null);
 
 export const ExerciseLibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [coach, setCoach] = usePersistentState<CoachEdits>('pf.exercises.v2', migrateV1);
+  const { status } = useSession();
+  const cloud = status !== 'local';
+  const [localEdits, setLocalEdits] = usePersistentState<CoachEdits>('pf.exercises.v2', migrateV1);
+  const [cloudEdits, setCloudEdits] = useState<CoachEdits>({ edits: {} });
+  const coach = cloud ? cloudEdits : localEdits;
+  const setCoach = cloud ? setCloudEdits : setLocalEdits;
+
+  // Cloud: the coach's exercises live in the database (everyone signed in can read them).
+  useEffect(() => {
+    if (!supabase || status !== 'ready') return;
+    let cancelled = false;
+    supabase
+      .from('exercises')
+      .select('id, data')
+      .then(({ data }) => {
+        if (cancelled || !data) return;
+        const edits: Record<string, Exercise> = {};
+        for (const r of data as { id: string; data: Exercise }[]) edits[r.id] = { ...r.data, id: r.id };
+        setCloudEdits({ edits });
+      });
+    const channel = supabase
+      .channel('pf-exercises')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'exercises' }, (payload) => {
+        if (payload.eventType === 'DELETE') {
+          const id = (payload.old as { id?: string }).id;
+          if (!id) return;
+          setCloudEdits((c) => {
+            const edits = { ...c.edits };
+            delete edits[id];
+            return { edits };
+          });
+          return;
+        }
+        const r = payload.new as { id: string; data: Exercise };
+        setCloudEdits((c) =>
+          stableStringify(c.edits[r.id]) === stableStringify({ ...r.data, id: r.id })
+            ? c
+            : { edits: { ...c.edits, [r.id]: { ...r.data, id: r.id } } }
+        );
+      })
+      .subscribe();
+    return () => {
+      cancelled = true;
+      void supabase?.removeChannel(channel);
+    };
+  }, [status]);
   const [catalog, setCatalog] = useState<Exercise[]>([]);
   const [catalogLoaded, setCatalogLoaded] = useState(false);
 
@@ -78,21 +126,30 @@ export const ExerciseLibraryProvider: React.FC<{ children: React.ReactNode }> = 
 
   const saveExercise = (exercise: Exercise) => {
     const previous = byId.get(exercise.id);
-    if (previous?.video?.kind === 'file' && previous.video.src !== exercise.video?.src) {
-      void deleteVideoFile(previous.video.src);
+    if (previous?.video && previous.video.src !== exercise.video?.src) {
+      if (previous.video.kind === 'file') void deleteVideoFile(previous.video.src);
+      if (previous.video.kind === 'storage') void deleteExerciseVideo(previous.video.src);
     }
     setCoach((c) => ({ edits: { ...c.edits, [exercise.id]: exercise } }));
+    if (cloud && supabase) {
+      void supabase
+        .from('exercises')
+        .upsert({ id: exercise.id, data: exercise }, { onConflict: 'id' })
+        .then(({ error }) => error && console.error('[exercises] save failed:', error.message));
+    }
   };
 
   const deleteExercise = (id: string) => {
     const ex = byId.get(id);
     if (!ex?.isCustom) return; // built-in exercises can't be deleted
     if (ex.video?.kind === 'file') void deleteVideoFile(ex.video.src);
+    if (ex.video?.kind === 'storage') void deleteExerciseVideo(ex.video.src);
     setCoach((c) => {
       const edits = { ...c.edits };
       delete edits[id];
       return { edits };
     });
+    if (cloud && supabase) void supabase.from('exercises').delete().eq('id', id);
   };
 
   return (

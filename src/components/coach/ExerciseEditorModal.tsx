@@ -11,6 +11,8 @@ import {
   parseVideoLink
 } from '../../lib/media';
 import { saveVideoFile } from '../../lib/videoStore';
+import { isCloud } from '../../cloud/supabase';
+import { CLOUD_VIDEO_MAX_BYTES, uploadExerciseVideo } from '../../cloud/videos';
 import { ExerciseVideoPlayer } from '../ExerciseMedia';
 
 interface Props {
@@ -41,7 +43,7 @@ export const ExerciseEditorModal: React.FC<Props> = ({ exercise, onSave, onDelet
 
   // Video
   const [video, setVideo] = useState<ExerciseVideo | undefined>(exercise?.video);
-  const [mode, setMode] = useState<'upload' | 'link'>(exercise?.video && exercise.video.kind !== 'file' ? 'link' : 'upload');
+  const [mode, setMode] = useState<'upload' | 'link'>(exercise?.video && exercise.video.kind !== 'file' && exercise.video.kind !== 'storage' ? 'link' : 'upload');
   const [linkText, setLinkText] = useState('');
   const [pendingFile, setPendingFile] = useState<PendingFile | null>(null);
   const [checking, setChecking] = useState(false);
@@ -61,7 +63,7 @@ export const ExerciseEditorModal: React.FC<Props> = ({ exercise, onSave, onDelet
     setVideoError(null);
     clearPending();
     setChecking(true);
-    const result = await checkVideoFile(file);
+    const result = await checkVideoFile(file, isCloud ? CLOUD_VIDEO_MAX_BYTES : VIDEO_MAX_BYTES);
     setChecking(false);
     if (!result.ok) {
       setVideoError(result.error);
@@ -93,17 +95,26 @@ export const ExerciseEditorModal: React.FC<Props> = ({ exercise, onSave, onDelet
 
     if (pendingFile) {
       setSaving(true);
-      const key = `video-${id}-${Date.now()}`;
+      let src: string;
       try {
-        await saveVideoFile(key, pendingFile.file);
+        if (isCloud) {
+          src = await uploadExerciseVideo(id, pendingFile.file);
+        } else {
+          src = `video-${id}-${Date.now()}`;
+          await saveVideoFile(src, pendingFile.file);
+        }
       } catch {
         setSaving(false);
-        setFormError('Not enough space on this device to save the video. Try a shorter or smaller file.');
+        setFormError(
+          isCloud
+            ? 'The video could not be uploaded. Check your connection and try again.'
+            : 'Not enough space on this device to save the video. Try a shorter or smaller file.'
+        );
         return;
       }
       finalVideo = {
-        kind: 'file',
-        src: key,
+        kind: isCloud ? 'storage' : 'file',
+        src,
         fileName: pendingFile.file.name,
         sizeBytes: pendingFile.file.size,
         durationSec: pendingFile.durationSec,
@@ -184,7 +195,7 @@ export const ExerciseEditorModal: React.FC<Props> = ({ exercise, onSave, onDelet
                     <span className="truncate">
                       {pendingFile
                         ? `${pendingFile.file.name} · ${formatBytes(pendingFile.file.size)} · ${formatDuration(pendingFile.durationSec)} — checked, plays fine`
-                        : shownVideo?.kind === 'file'
+                        : shownVideo?.kind === 'file' || shownVideo?.kind === 'storage'
                         ? `${shownVideo.fileName ?? 'Uploaded video'}${shownVideo.durationSec ? ` · ${formatDuration(shownVideo.durationSec)}` : ''}`
                         : `${shownVideo?.kind === 'youtube' ? 'YouTube' : shownVideo?.kind === 'vimeo' ? 'Vimeo' : shownVideo?.kind === 'drive' ? 'Google Drive' : 'Video link'} — link checked`}
                     </span>
@@ -233,7 +244,7 @@ export const ExerciseEditorModal: React.FC<Props> = ({ exercise, onSave, onDelet
                     {checking ? 'Checking video…' : shownVideo || pendingFile ? 'Choose a different video' : 'Choose a video or drop it here'}
                   </span>
                   <span className="text-xs text-gray-500">
-                    MP4, MOV or WebM · up to {formatBytes(VIDEO_MAX_BYTES)} · up to {formatDuration(VIDEO_MAX_SECONDS)}
+                    MP4, MOV or WebM · up to {formatBytes(isCloud ? CLOUD_VIDEO_MAX_BYTES : VIDEO_MAX_BYTES)} · up to {formatDuration(VIDEO_MAX_SECONDS)}
                   </span>
                 </button>
               </>
@@ -360,7 +371,7 @@ export const ExerciseEditorModal: React.FC<Props> = ({ exercise, onSave, onDelet
               className="inline-flex items-center gap-2 bg-[#111827] hover:bg-[#1F2937] disabled:opacity-60 text-white text-sm font-semibold px-5 py-2.5 rounded-xl cursor-pointer"
             >
               {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-              {saving ? 'Saving…' : 'Save'}
+              {saving ? (pendingFile && isCloud ? 'Uploading…' : 'Saving…') : 'Save'}
             </button>
           </div>
         </div>

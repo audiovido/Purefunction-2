@@ -125,14 +125,14 @@ export function thumbnailUrl(video?: ExerciseVideo): string | null {
 export type FileCheck = { ok: true; durationSec: number } | { ok: false; error: string };
 
 /** Loads the file into a hidden <video> to make sure this browser can actually play it. */
-export function checkVideoFile(file: File): Promise<FileCheck> {
+export function checkVideoFile(file: File, maxBytes: number = VIDEO_MAX_BYTES): Promise<FileCheck> {
   if (!VIDEO_TYPES.includes(file.type) && !VIDEO_EXT.test(file.name)) {
     return Promise.resolve({ ok: false, error: 'Please choose a video file (MP4, MOV or WebM).' });
   }
-  if (file.size > VIDEO_MAX_BYTES) {
+  if (file.size > maxBytes) {
     return Promise.resolve({
       ok: false,
-      error: `This video is ${formatBytes(file.size)}. The limit is ${formatBytes(VIDEO_MAX_BYTES)} — trim it or export at 1080p.`
+      error: `This video is ${formatBytes(file.size)}. The limit is ${formatBytes(maxBytes)} — trim it or export at 1080p.`
     });
   }
 

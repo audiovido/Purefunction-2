@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { ClientProfile } from '../../types';
+import { EmptyProgress } from '../EmptyProgress';
 
 interface ProgressViewProps {
   clients: ClientProfile[];
@@ -23,6 +24,30 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
   const [selectedLift, setSelectedLift] = useState<'squat' | 'rdl' | 'bench'>('squat');
 
   const history = client.progressHistory;
+  if (history.length === 0) {
+    return (
+      <div className="max-w-6xl mx-auto">
+        <div className="flex items-center gap-2 mb-2">
+          <select
+            value={client.id}
+            onChange={(e) => onSelectClientId(e.target.value)}
+            aria-label="Client"
+            className="text-base font-semibold text-[#111827] bg-transparent focus:outline-none cursor-pointer"
+          >
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <EmptyProgress
+          title={`No progress data for ${client.name} yet`}
+          text="Charts appear once the first assessment is saved and workouts are logged."
+        />
+      </div>
+    );
+  }
   const firstPoint = history[0] || {
     week: 0,
     squat1RM: 80,

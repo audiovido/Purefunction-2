@@ -24,7 +24,7 @@ import { ExerciseEditorModal } from './ExerciseEditorModal';
 
 interface ExerciseLibraryViewProps {
   clients: ClientProfile[];
-  selectedClient: ClientProfile;
+  selectedClient?: ClientProfile;
   onAddExerciseToClientWorkout: (
     clientId: string,
     date: string,
@@ -78,7 +78,7 @@ export const ExerciseLibraryView: React.FC<ExerciseLibraryViewProps> = ({
   const setActiveExercise = (ex: Exercise | null) => setActiveExerciseId(ex?.id ?? null);
   // undefined = closed, null = new exercise, Exercise = editing
   const [editing, setEditing] = useState<Exercise | null | undefined>(undefined);
-  const [targetClientId, setTargetClientId] = useState(selectedClient.id);
+  const [targetClientId, setTargetClientId] = useState(selectedClient?.id ?? clients[0]?.id ?? '');
   const [targetDate, setTargetDate] = useState(todayISO());
   const [addedFeedback, setAddedFeedback] = useState(false);
 
@@ -99,7 +99,7 @@ export const ExerciseLibraryView: React.FC<ExerciseLibraryViewProps> = ({
   };
 
   const handleAddToWorkout = () => {
-    if (!activeExercise) return;
+    if (!activeExercise || !targetClientId) return;
     onAddExerciseToClientWorkout(targetClientId, targetDate, activeExercise);
     setAddedFeedback(true);
     setTimeout(() => setAddedFeedback(false), 2000);
@@ -301,6 +301,7 @@ export const ExerciseLibraryView: React.FC<ExerciseLibraryViewProps> = ({
             )}
 
             {/* Add to Workout Controls */}
+            {clients.length > 0 && (
             <div className="pt-4 border-t border-gray-100 space-y-3">
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -349,6 +350,7 @@ export const ExerciseLibraryView: React.FC<ExerciseLibraryViewProps> = ({
                 )}
               </button>
             </div>
+            )}
           </div>
         )}
       </div>

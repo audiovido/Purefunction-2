@@ -76,10 +76,11 @@ export interface VideoAssessmentItem {
  * Where an exercise demo video lives.
  * - youtube / vimeo / drive: coach pastes a share link, we embed the player
  * - url: a direct https link to a video file (.mp4 / .webm / .mov)
- * - file: coach uploaded a file from their device; `src` is the storage key
+ * - file: uploaded in demo mode; `src` is the key in this browser's storage
+ * - storage: uploaded to the cloud; `src` is the path in the exercise-videos bucket
  */
 export interface ExerciseVideo {
-  kind: 'youtube' | 'vimeo' | 'drive' | 'url' | 'file';
+  kind: 'youtube' | 'vimeo' | 'drive' | 'url' | 'file' | 'storage';
   src: string;
   fileName?: string;
   sizeBytes?: number;

@@ -3,11 +3,12 @@ import { Play, VideoOff, Video } from 'lucide-react';
 import { Exercise, ExerciseVideo } from '../types';
 import { embedUrl, thumbnailUrl, formatDuration } from '../lib/media';
 import { loadVideoFile } from '../lib/videoStore';
+import { videoUrl } from '../cloud/videos';
 
 /** Resolves a playable src for a video (object URL for uploaded files). */
 function useVideoSrc(video?: ExerciseVideo): { src: string | null; missing: boolean } {
   const [state, setState] = useState<{ src: string | null; missing: boolean }>({
-    src: video && video.kind !== 'file' ? embedUrl(video) : null,
+    src: video && video.kind !== 'file' && video.kind !== 'storage' ? embedUrl(video) : null,
     missing: false
   });
 
@@ -15,6 +16,16 @@ function useVideoSrc(video?: ExerciseVideo): { src: string | null; missing: bool
     if (!video) {
       setState({ src: null, missing: false });
       return;
+    }
+    if (video.kind === 'storage') {
+      let cancelled = false;
+      setState({ src: null, missing: false });
+      videoUrl(video.src).then((url) => {
+        if (!cancelled) setState({ src: url, missing: !url });
+      });
+      return () => {
+        cancelled = true;
+      };
     }
     if (video.kind !== 'file') {
       setState({ src: embedUrl(video), missing: false });
@@ -64,10 +75,10 @@ export const ExerciseVideoPlayer: React.FC<{
 
   if (!video) return <Placeholder className={className} label="No video yet" />;
   if (missing)
-    return <Placeholder className={className} label="Video file not on this device" />;
+    return <Placeholder className={className} label={video.kind === 'storage' ? "Video couldn’t be loaded" : "Video file not on this device"} />;
   if (!src) return <div className={`${className} rounded-xl bg-gray-100 animate-pulse`} />;
 
-  if (video.kind === 'file' || video.kind === 'url') {
+  if (video.kind === 'file' || video.kind === 'url' || video.kind === 'storage') {
     return (
       <video
         key={src}
@@ -100,7 +111,7 @@ export const ExerciseThumb: React.FC<{
   compact?: boolean;
 }> = ({ exercise, className = 'w-full aspect-video', compact }) => {
   const video = exercise.video;
-  const { src, missing } = useVideoSrc(video?.kind === 'file' || video?.kind === 'url' ? video : undefined);
+  const { src, missing } = useVideoSrc(video?.kind === 'file' || video?.kind === 'url' || video?.kind === 'storage' ? video : undefined);
   const still = thumbnailUrl(video);
 
   if (!video || missing) return <Placeholder className={className} label="No video yet" compact={compact} />;
