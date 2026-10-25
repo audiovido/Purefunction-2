@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { supabase } from './cloud/supabase';
 import { ProfilePhotoButton } from './components/client/ProfilePhotoButton';
 import { useSession, Profile } from './cloud/Session';
 import { AuthScreen, LoadingScreen, NoAccessScreen } from './cloud/AuthScreen';
@@ -151,6 +152,30 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
   const selectedClient: ClientProfile | undefined =
     clients.find((c) => c.id === selectedClientId) || (isClientUser ? undefined : clients[0]);
   const canPreviewClient = !!selectedClient;
+
+  // Cloud: which clients have created their account (for "Not joined · Invite").
+  const [joinedIds, setJoinedIds] = useState<Set<string> | undefined>(undefined);
+  useEffect(() => {
+    if (!supabase || profile?.role !== 'coach' || coachTab !== 'clients') return;
+    let cancelled = false;
+    supabase
+      .from('profiles')
+      .select('client_id')
+      .eq('role', 'client')
+      .then(({ data }) => {
+        if (!cancelled && data) setJoinedIds(new Set(data.map((r: { client_id: string }) => r.client_id)));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [profile, coachTab, clients.length]);
+
+  // Signed in: drop the invite parameter from the address bar.
+  useEffect(() => {
+    if (profile && window.location.search.includes('join=')) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, [profile]);
 
   const handleUpdateClient = (updated: ClientProfile) => {
     setClients((prev) =>
@@ -410,6 +435,8 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
                 selectedClientId={selectedClientId}
                 onSelectClient={handleSelectClient}
                 onAddClient={handleAddClient}
+                onUpdateClient={handleUpdateClient}
+                joinedIds={joinedIds}
               />
             )}
 
