@@ -85,11 +85,12 @@ export function useCloudClientsStore(profile: Profile | null): ClientsStore {
   const isCoach = profile?.role === 'coach';
 
   /* ---------------- initial load ---------------- */
+  const loadedFor = useRef<string | null>(null);
   useEffect(() => {
     if (!supabase || !profile) return;
     let cancelled = false;
     (async () => {
-      setLoaded(false);
+      if (loadedFor.current !== profile.id) setLoaded(false); // first load only: later refreshes stay silent
       const [c, w] = await Promise.all([
         supabase.from('clients').select('id, email, data'),
         supabase.from('workouts').select('id, client_id, date, data')
@@ -118,6 +119,7 @@ export function useCloudClientsStore(profile: Profile | null): ClientsStore {
       current.current = list;
       setState(list);
       setLoadError(null);
+      loadedFor.current = profile.id;
       setLoaded(true);
     })();
     return () => {
