@@ -3,7 +3,7 @@
  * - Built files (hashed names never change): cache first.
  * - Anything on another origin (the database, video, fonts API) is never touched.
  * Bump VERSION to drop old caches. */
-const VERSION = 'pf-v1';
+const VERSION = 'pf-v2';
 const SHELL = VERSION + '-shell';
 const ASSETS = VERSION + '-assets';
 const ROOT = new URL('./', self.location).pathname;
