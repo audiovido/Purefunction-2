@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { EmptyProgress } from '../EmptyProgress';
+import { ProgressReport } from './ProgressReport';
 import {
   Printer,
   ChevronDown,
@@ -27,6 +28,18 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
   const [savedNotice, setSavedNotice] = useState(false);
 
   const report = client.monthlyReports[selectedMonth];
+  // Real report from saved assessments (all real clients); sample clients keep the demo report.
+  if ((client.assessments?.length ?? 0) > 0) {
+    return (
+      <ProgressReport
+        key={client.id}
+        clients={clients}
+        client={client}
+        onSelectClientId={onSelectClientId}
+        onUpdateClient={onUpdateClient}
+      />
+    );
+  }
   if (client.progressHistory.length === 0) {
     return (
       <div className="max-w-4xl mx-auto">
@@ -44,7 +57,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
         </select>
         <EmptyProgress
           title={`No report for ${client.name} yet`}
-          text="The first monthly report is built after the week 4 re-assessment, compared with week 0."
+          text="Complete an assessment first. The report compares any two assessments (week 0 → week 4, 8, 12) with goals, records, sessions and before/after videos."
         />
       </div>
     );
