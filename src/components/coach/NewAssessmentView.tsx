@@ -1,4 +1,5 @@
 import { saveAssessment } from '../../lib/assessments';
+import { AssessmentClips } from './AssessmentClips';
 import React, { useState } from 'react';
 import {
   Check,
@@ -183,17 +184,20 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
       showToast(`Saved ${STEPS[activeStep - 1].label}`);
       setActiveStep(activeStep + 1);
     } else {
-      onUpdateClient(
-        saveAssessment(client, {
+      onUpdateClient({
+        ...saveAssessment(client, {
           inBody: client.inBody,
           rom: client.rom,
           // only what the coach actually entered (not the form's example rows)
           priTests: client.priTests,
           gaitPosture: client.gaitPosture,
           strengthTests: client.strengthTests,
-          videos: client.videos
-        })
-      );
+          videos: client.videos,
+          clips: client.clips ?? []
+        }),
+        // the next assessment starts with no videos
+        clips: []
+      });
       showToast('Assessment saved — compare it on the Progress screen');
       onFinishAssessment();
     }
@@ -892,13 +896,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
           STEP 6: VIDEO CAPTURE & KINEMATIC TAGGING
          ===================================================================== */}
       {activeStep === 6 && client.videos.length === 0 && (
-        <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-8 text-center">
-          <p className="text-base font-semibold text-[#111827] mb-1">Before / after video</p>
-          <p className="text-sm text-gray-500 max-w-md mx-auto">
-            Recording and storing this client’s assessment videos (privately, only visible to you and them) comes in the
-            next update. For now, tap “Complete Assessment” to save the numbers above.
-          </p>
-        </div>
+        <AssessmentClips client={client} onUpdateClient={onUpdateClient} />
       )}
 
       {activeStep === 6 && client.videos.length > 0 && (

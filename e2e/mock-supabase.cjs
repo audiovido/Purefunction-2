@@ -7,7 +7,7 @@
 const crypto = require('crypto');
 
 module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) {
-  const db = { users: [], profiles: [], clients: [], workouts: [], exercises: [], files: {} };
+  const db = { users: [], profiles: [], clients: [], workouts: [], exercises: [], files: {}, clientFiles: {} };
   const log = [];
   const realtimeLog = [];
   const cors = {
@@ -117,6 +117,26 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
     }
 
     // ---------------- Storage ----------------
+    // private client videos: coach everything, a client only their own folder
+    let cm = path.match(/^\/storage\/v1\/object\/(sign\/)?client-videos\/(.+)$/);
+    if (cm) {
+      const key = decodeURIComponent(cm[2]);
+      const prof = profileOf(uidFrom(req));
+      const folderOk = prof && (prof.role === 'coach' || key.split('/')[0] === prof.client_id);
+      if (cm[1] && method === 'POST') {
+        if (!folderOk || !db.clientFiles[key]) return json(route, 400, { message: 'Object not found' });
+        return json(route, 200, { signedURL: `/object/sign/client-videos/${cm[2]}?token=t` });
+      }
+      if (cm[1] && method === 'GET') {
+        const f = db.clientFiles[key];
+        return f ? route.fulfill({ status: 200, headers: { ...cors, 'content-type': f.type }, body: f.body }) : route.fulfill({ status: 404, headers: cors, body: '' });
+      }
+      if (!cm[1] && method === 'POST') {
+        if (!prof || prof.role !== 'coach') return json(route, 403, { message: 'new row violates row-level security policy' });
+        db.clientFiles[key] = { type: 'video/webm', body: Buffer.alloc(0) };
+        return json(route, 200, { Key: 'client-videos/' + cm[2] });
+      }
+    }
     let m = path.match(/^\/storage\/v1\/object\/sign\/exercise-videos\/(.+)$/);
     if (m && method === 'POST') {
       const key = decodeURIComponent(m[1]);

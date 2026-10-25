@@ -5,6 +5,7 @@ import { EmptyProgress } from '../EmptyProgress';
 import { GoalsPanel } from '../coach/GoalsPanel';
 import { RecordsPanel } from '../RecordsPanel';
 import { ProgressCharts } from '../ProgressCharts';
+import { BeforeAfter } from '../BeforeAfter';
 
 interface ClientProgressViewProps {
   client: ClientProfile;
@@ -23,6 +24,7 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
           <GoalsPanel goals={client.goals!} assessments={client.assessments ?? []} />
         )}
         <ProgressCharts client={client} />
+      <BeforeAfter client={client} />
       <RecordsPanel client={client} onUpdateClient={onUpdateClient} by="client" />
         <EmptyProgress
           title="Your progress starts here"
@@ -69,6 +71,7 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
         <GoalsPanel goals={client.goals!} assessments={client.assessments ?? []} />
       )}
       <ProgressCharts client={client} />
+      <BeforeAfter client={client} />
       <RecordsPanel client={client} onUpdateClient={onUpdateClient} by="client" />
 
       {/* 1. Phase Progress Card */}

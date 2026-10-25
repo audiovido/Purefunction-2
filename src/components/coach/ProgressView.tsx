@@ -7,6 +7,7 @@ import { GoalsPanel } from './GoalsPanel';
 import { RecordsPanel } from '../RecordsPanel';
 import { ProgressCharts } from '../ProgressCharts';
 import { PatternSpectrum } from '../PatternSpectrum';
+import { BeforeAfter } from '../BeforeAfter';
 
 interface ProgressViewProps {
   clients: ClientProfile[];
@@ -65,6 +66,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
           />
         )}
         <ProgressCharts key={`charts-${client.id}`} client={client} onUpdateClient={onUpdateClient} />
+        <BeforeAfter key={`ba-${client.id}`} client={client} />
         <PatternSpectrum client={client} />
         <RecordsPanel client={client} onUpdateClient={onUpdateClient} by="coach" />
       </div>
@@ -151,6 +153,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
           </>
       ) : null}
       <ProgressCharts key={`charts-${client.id}`} client={client} onUpdateClient={onUpdateClient} />
+        <BeforeAfter key={`ba-${client.id}`} client={client} />
         <PatternSpectrum client={client} />
         <RecordsPanel client={client} onUpdateClient={onUpdateClient} by="coach" />
 
