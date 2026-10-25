@@ -45,6 +45,7 @@ import { ClientsView } from './components/coach/ClientsView';
 import { NewAssessmentView } from './components/coach/NewAssessmentView';
 import { WorkoutBuilderView } from './components/coach/WorkoutBuilderView';
 import { ExerciseLibraryView } from './components/coach/ExerciseLibraryView';
+import { InstallCard } from './components/client/InstallCard';
 import { ProgressView } from './components/coach/ProgressView';
 import { MonthlyReportView } from './components/coach/MonthlyReportView';
 import { ClientTodayView } from './components/client/ClientTodayView';
@@ -501,6 +502,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
                 : 'max-w-xl mx-auto'
             }
           >
+            {role === 'client' && !clientPreviewFrame && <InstallCard />}
             {!selectedClient ? (
               <div className="text-center text-sm text-gray-500 py-20">
                 Your coach is setting up your profile. Pull to refresh in a moment.
