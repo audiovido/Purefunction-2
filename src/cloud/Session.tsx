@@ -15,6 +15,7 @@ export type SessionStatus =
   | 'loading'
   | 'signed-out'
   | 'no-access' // signed in, but not the coach and not on a client list
+  | 'reset' // opened a password-reset link: choose a new password
   | 'ready';
 
 interface SessionValue {
@@ -24,6 +25,12 @@ interface SessionValue {
   signIn: (email: string, password: string) => Promise<string | null>;
   signUp: (email: string, password: string, name: string) => Promise<string | null>;
   signOut: () => Promise<void>;
+  /** One-time message for the sign-in screen (e.g. expired reset link). */
+  notice: string | null;
+  /** Emails a reset link. Returns an error message or null. */
+  forgotPassword: (email: string) => Promise<string | null>;
+  /** After opening a reset link: saves the new password and continues into the app. */
+  setNewPassword: (password: string) => Promise<string | null>;
   /** Re-checks access, e.g. after the coach adds this email. */
   refresh: () => Promise<void>;
 }
@@ -41,6 +48,9 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [status, setStatus] = useState<SessionStatus>(isCloud ? 'loading' : 'local');
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const resetPending = React.useRef(new URLSearchParams(window.location.search).has('reset'));
 
   const loadProfile = useCallback(async (s: Session | null) => {
     if (!supabase) return;
@@ -72,14 +82,31 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     if (!supabase) return;
     let active = true;
-    supabase.auth.getSession().then(({ data }) => {
+    const resetToken = new URLSearchParams(window.location.search).get('reset');
+    const start = async () => {
+      if (resetToken) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('reset');
+        window.history.replaceState(null, '', url.toString());
+        const { data, error } = await supabase!.auth.verifyOtp({ type: 'recovery', token_hash: resetToken });
+        if (!active) return;
+        if (!error && data.session) {
+          setSession(data.session);
+          setStatus('reset');
+          return;
+        }
+        resetPending.current = false;
+        setNotice('That reset link has expired or was already used. Send a new one below.');
+      }
+      const { data } = await supabase!.auth.getSession();
       if (!active) return;
       setSession(data.session);
       void loadProfile(data.session);
-    });
+    };
+    void start();
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
+      if (event === 'SIGNED_OUT' || ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && !resetPending.current)) {
         // defer: Supabase recommends not awaiting other calls inside this callback
         window.setTimeout(() => void loadProfile(s), 0);
       }
@@ -112,6 +139,33 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return signIn(email, password);
   };
 
+  const forgotPassword = async (email: string) => {
+    if (!supabase) return 'Cloud is not configured.';
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() })
+      });
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      return res.ok ? null : body.error ?? 'Could not send the email. Try again.';
+    } catch {
+      return 'No connection. Check your internet and try again.';
+    }
+  };
+
+  const setNewPassword = async (password: string) => {
+    if (!supabase) return 'Cloud is not configured.';
+    if (password.length < 8) return 'Password must be at least 8 characters.';
+    const { data, error } = await supabase.auth.updateUser({ password });
+    if (error) return friendlyAuthError(error.message);
+    resetPending.current = false;
+    const { data: s } = await supabase.auth.getSession();
+    void data;
+    await loadProfile(s.session);
+    return null;
+  };
+
   const signOut = async () => {
     if (!supabase) return;
     await supabase.auth.signOut();
@@ -128,6 +182,9 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         signIn,
         signUp,
         signOut,
+        notice,
+        forgotPassword,
+        setNewPassword,
         refresh: () => loadProfile(session)
       }}
     >

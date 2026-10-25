@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Check, Copy, X, AlertCircle } from 'lucide-react';
+import { Check, Copy, X, AlertCircle, Mail, Loader2 } from 'lucide-react';
 import { ClientProfile } from '../../types';
+import { isCloud } from '../../cloud/supabase';
+import { sendInviteEmail } from '../../cloud/email';
 
 export function inviteLink(email: string): string {
   const base = `${window.location.origin}${import.meta.env.BASE_URL || '/'}`;
@@ -19,6 +21,8 @@ export const ClientInviteModal: React.FC<{
   const [email, setEmail] = useState(client.email);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<'link' | 'message' | null>(null);
+  const [mailing, setMailing] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const [reminders, setReminders] = useState(client.emailReminders !== false);
 
   const cleanEmail = email.trim().toLowerCase();
   const link = inviteLink(cleanEmail);
@@ -30,8 +34,19 @@ export const ClientInviteModal: React.FC<{
     if (clients.some((c) => c.id !== client.id && (c.email ?? '').toLowerCase() === cleanEmail)) {
       return setError('Another client already uses this email.');
     }
-    onSave({ ...client, name: name.trim(), email: cleanEmail });
+    onSave({ ...client, name: name.trim(), email: cleanEmail, emailReminders: reminders });
     onClose();
+  };
+
+  const emailInvite = async () => {
+    if (cleanEmail !== client.email) return setError('Save the new email first, then send.');
+    setError(null);
+    setMailing('sending');
+    const err = await sendInviteEmail(client.id);
+    if (err) {
+      setMailing('idle');
+      setError(err);
+    } else setMailing('sent');
   };
 
   const copy = async (what: 'link' | 'message') => {
@@ -82,8 +97,34 @@ export const ClientInviteModal: React.FC<{
           </p>
         )}
 
+        {isCloud && (
+          <label className="mt-4 flex items-center justify-between gap-3 cursor-pointer">
+            <span className="text-sm text-[#111827]">
+              Morning email on workout days
+              <span className="block text-xs text-gray-500">A short reminder with today’s workout.</span>
+            </span>
+            <input
+              type="checkbox"
+              checked={reminders}
+              onChange={(e) => setReminders(e.target.checked)}
+              aria-label="Morning email on workout days"
+              className="w-5 h-5 accent-[#111827] shrink-0"
+            />
+          </label>
+        )}
+
         <div className="mt-5 p-3.5 rounded-xl bg-gray-50 border border-gray-100">
-          <div className="text-xs font-semibold text-[#111827] mb-1">Invite link</div>
+          {isCloud && !joined && (
+            <button
+              onClick={() => void emailInvite()}
+              disabled={mailing === 'sending'}
+              className="w-full mb-3 inline-flex items-center justify-center gap-2 bg-[#111827] text-white text-sm font-semibold py-3 rounded-xl cursor-pointer disabled:opacity-60"
+            >
+              {mailing === 'sending' ? <Loader2 className="w-4 h-4 animate-spin" /> : mailing === 'sent' ? <Check className="w-4 h-4 text-[#FFC809]" /> : <Mail className="w-4 h-4 text-[#FFC809]" />}
+              {mailing === 'sent' ? `Invite sent to ${client.email}` : 'Email the invite'}
+            </button>
+          )}
+          <div className="text-xs font-semibold text-[#111827] mb-1">{isCloud && !joined ? '…or share the link yourself' : 'Invite link'}</div>
           <div className="text-xs text-gray-600 break-all mb-3">{link}</div>
           <div className="grid grid-cols-2 gap-2">
             <button

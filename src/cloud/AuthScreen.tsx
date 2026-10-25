@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { PureFunctionLogo } from '../components/VisualAssets';
 import { useSession } from './Session';
 
@@ -35,15 +35,16 @@ function initialWho(): { who: Who; joinEmail: string } {
 
 /** Separate coach and client sign-in, like TrueCoach. Invite links (?join=email) open client set-up. */
 export const AuthScreen: React.FC = () => {
-  const { signIn, signUp } = useSession();
+  const { signIn, signUp, forgotPassword, notice } = useSession();
   const start = initialWho();
   const [who, setWho] = useState<Who>(start.who);
-  const [mode, setMode] = useState<'sign-in' | 'sign-up'>(start.joinEmail ? 'sign-up' : 'sign-in');
+  const [mode, setMode] = useState<'sign-in' | 'sign-up' | 'forgot'>(start.joinEmail ? 'sign-up' : 'sign-in');
   const [name, setName] = useState('');
   const [email, setEmail] = useState(start.joinEmail);
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(notice);
+  const [sent, setSent] = useState(false);
 
   const pick = (w: Who) => {
     setWho(w);
@@ -64,6 +65,13 @@ export const AuthScreen: React.FC = () => {
       return;
     }
     setBusy(true);
+    if (mode === 'forgot') {
+      const err = await forgotPassword(email);
+      setBusy(false);
+      if (err) setError(err);
+      else setSent(true);
+      return;
+    }
     const err = mode === 'sign-in' ? await signIn(email, password) : await signUp(email, password, name);
     setBusy(false);
     if (err) {
@@ -77,7 +85,7 @@ export const AuthScreen: React.FC = () => {
     }
   };
 
-  const title =
+  const title = mode === 'forgot' ? 'Reset your password' :
     who === 'coach'
       ? mode === 'sign-in'
         ? 'Coach sign in'
@@ -85,7 +93,7 @@ export const AuthScreen: React.FC = () => {
       : mode === 'sign-in'
       ? 'Client sign in'
       : 'Set up your account';
-  const subtitle =
+  const subtitle = mode === 'forgot' ? 'Enter your email and we’ll send you a link to choose a new password.' :
     who === 'coach'
       ? mode === 'sign-in'
         ? 'Manage clients, assessments and programs.'
@@ -137,6 +145,7 @@ export const AuthScreen: React.FC = () => {
           required
           className={input}
         />
+        {mode !== 'forgot' && (
         <input
           type="password"
           value={password}
@@ -147,6 +156,30 @@ export const AuthScreen: React.FC = () => {
           required
           className={input}
         />
+        )}
+
+        {mode === 'sign-in' && (
+          <div className="text-right -mt-1">
+            <button
+              type="button"
+              onClick={() => {
+                setMode('forgot');
+                setError(null);
+                setSent(false);
+              }}
+              className="text-sm font-medium text-gray-500 hover:text-[#111827] cursor-pointer"
+            >
+              Forgot password?
+            </button>
+          </div>
+        )}
+
+        {sent && mode === 'forgot' && (
+          <div className="flex items-start gap-2 text-sm text-[#166534] bg-green-50 border border-green-100 rounded-xl px-3 py-2.5" role="status">
+            <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>If this email has an account, a reset link is on its way. Check your inbox (and spam).</span>
+          </div>
+        )}
 
         {error && (
           <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5" role="alert">
@@ -161,12 +194,14 @@ export const AuthScreen: React.FC = () => {
           className="w-full inline-flex items-center justify-center gap-2 bg-[#111827] hover:bg-[#1F2937] disabled:opacity-60 text-white text-base font-semibold py-3.5 rounded-xl cursor-pointer"
         >
           {busy && <Loader2 className="w-4 h-4 animate-spin" />}
-          {mode === 'sign-in' ? 'Sign in' : who === 'coach' ? 'Create coach account' : 'Create my account'}
+          {mode === 'forgot' ? (sent ? 'Send again' : 'Send reset link') : mode === 'sign-in' ? 'Sign in' : who === 'coach' ? 'Create coach account' : 'Create my account'}
         </button>
       </form>
 
       <div className="mt-5 text-center text-sm text-gray-500">
-        {mode === 'sign-in'
+        {mode === 'forgot'
+          ? 'Remembered it? '
+          : mode === 'sign-in'
           ? who === 'client'
             ? 'First time here? '
             : 'No coach account yet? '
@@ -175,12 +210,66 @@ export const AuthScreen: React.FC = () => {
           onClick={() => {
             setMode(mode === 'sign-in' ? 'sign-up' : 'sign-in');
             setError(null);
+            setSent(false);
           }}
           className="font-semibold text-[#111827] underline cursor-pointer"
         >
           {mode === 'sign-in' ? (who === 'client' ? 'Set up your account' : 'Create coach account') : 'Sign in'}
         </button>
       </div>
+    </Shell>
+  );
+};
+
+/** Shown after opening the emailed reset link. */
+export const NewPasswordScreen: React.FC = () => {
+  const { setNewPassword, signOut } = useSession();
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <Shell>
+      <h1 className="text-2xl font-bold tracking-tight text-[#111827] mb-1">Choose a new password</h1>
+      <p className="text-sm text-gray-500 mb-6">At least 8 characters. You’ll stay signed in.</p>
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setError(null);
+          setBusy(true);
+          const err = await setNewPassword(password);
+          setBusy(false);
+          if (err) setError(err);
+        }}
+        className="space-y-3"
+      >
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="New password"
+          aria-label="New password"
+          autoComplete="new-password"
+          required
+          className={input}
+        />
+        {error && (
+          <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5" role="alert">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
+        <button
+          type="submit"
+          disabled={busy}
+          className="w-full inline-flex items-center justify-center gap-2 bg-[#111827] hover:bg-[#1F2937] disabled:opacity-60 text-white text-base font-semibold py-3.5 rounded-xl cursor-pointer"
+        >
+          {busy && <Loader2 className="w-4 h-4 animate-spin" />}
+          Save password
+        </button>
+      </form>
+      <button onClick={() => void signOut()} className="w-full text-sm font-medium text-gray-500 py-2 mt-2 cursor-pointer">
+        Cancel
+      </button>
     </Shell>
   );
 };

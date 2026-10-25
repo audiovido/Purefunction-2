@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from './cloud/supabase';
 import { ProfilePhotoButton } from './components/client/ProfilePhotoButton';
 import { useSession, Profile } from './cloud/Session';
-import { AuthScreen, LoadingScreen, NoAccessScreen } from './cloud/AuthScreen';
+import { AuthScreen, LoadingScreen, NewPasswordScreen, NoAccessScreen } from './cloud/AuthScreen';
 import { ClientsStore, SyncState, useCloudClientsStore, useLocalClientsStore } from './cloud/useClientsStore';
 import { ExerciseLibraryProvider } from './state/ExerciseLibrary';
 import { createClientProfile } from './lib/clients';
@@ -84,6 +84,7 @@ export default function App() {
   if (status === 'loading') return <LoadingScreen />;
   if (status === 'signed-out') return <AuthScreen />;
   if (status === 'no-access') return <NoAccessScreen />;
+  if (status === 'reset') return <NewPasswordScreen />;
   return <CloudApp profile={profile!} />;
 }
 
