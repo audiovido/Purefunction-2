@@ -139,7 +139,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       </div>
 
       {/* Client List Card matching Mockup 6 */}
-      <div className="bg-white rounded-2xl shadow-[0_2px_14px_rgba(0,0,0,0.04)] border border-gray-100 divide-y divide-gray-100 overflow-hidden">
+      <div className="@container bg-white rounded-2xl shadow-[0_2px_14px_rgba(0,0,0,0.04)] border border-gray-100 divide-y divide-gray-100 overflow-hidden">
         {filteredClients.length === 0 ? (
           <div className="py-12 px-6 text-center">
             <p className="text-sm text-gray-500 mb-3">
@@ -163,12 +163,12 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
               <div
                 key={client.id}
                 onClick={() => onSelectClient(client.id, 'workout-builder')}
-                className={`group px-4 sm:px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors cursor-pointer ${
+                className={`group px-4 sm:px-6 py-4 flex flex-col @2xl:flex-row @2xl:items-center justify-between gap-4 transition-colors cursor-pointer ${
                   isSelected ? 'bg-gray-50/70' : 'hover:bg-gray-50/60'
                 }`}
               >
                 {/* Left: Avatar + Name + Phase Tag */}
-                <div className="flex items-center gap-3.5 min-w-0 md:w-[38%]">
+                <div className="flex items-center gap-3.5 min-w-0 @2xl:w-[38%]">
                   <ClientAvatar name={client.name} photoUrl={client.photoUrl} />
                   <div className="flex flex-wrap items-center gap-2.5 min-w-0">
                     <span className="text-[16px] font-semibold text-[#111827] truncate">
@@ -192,12 +192,12 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                 </div>
 
                 {/* Middle: Weekly Adherence 6-segment bar */}
-                <div className="flex flex-col sm:flex-row sm:items-center md:flex-col md:items-start gap-1.5 md:w-[28%]">
+                <div className="flex flex-col gap-1.5 @2xl:w-[28%]">
                   <div className="flex items-center justify-between w-full max-w-[168px]">
                     <span className="text-xs font-medium text-gray-600">
                       Weekly Adherence
                     </span>
-                    <span className="text-[11px] text-gray-400 tabular-nums md:hidden">
+                    <span className="text-[11px] text-gray-400 tabular-nums @2xl:hidden">
                       {client.adherenceCompleted}/{client.adherenceTotal}
                     </span>
                   </div>
@@ -220,7 +220,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                 </div>
 
                 {/* Right: Next Assessment Date + Quick Actions */}
-                <div className="flex items-center justify-between md:justify-end gap-4 md:w-[34%]">
+                <div className="flex flex-wrap items-center justify-between @2xl:justify-end gap-x-4 gap-y-2 @2xl:w-[34%]">
                   <div className="text-xs sm:text-[13px] text-gray-500 whitespace-nowrap tabular-nums">
                     Next assessment in{' '}
                     <span className="font-semibold text-[#111827]">
@@ -230,7 +230,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
 
                   {/* Quick contextual shortcuts for Coach */}
                   <div
-                    className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                    className="flex items-center gap-1 opacity-100 [@media(hover:hover)]:@2xl:opacity-0 [@media(hover:hover)]:@2xl:group-hover:opacity-100 transition-opacity"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {onUpdateClient && (

@@ -348,7 +348,7 @@ export const ExerciseLibraryView: React.FC<ExerciseLibraryViewProps> = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* results */}
-        <div className={`${activeExercise ? 'lg:col-span-7 xl:col-span-8' : 'lg:col-span-12'} grid grid-cols-1 ${activeExercise ? '' : 'md:grid-cols-2'} gap-2.5`}>
+        <div className={`${activeExercise ? 'lg:col-span-7 xl:col-span-8' : 'lg:col-span-12'} grid grid-cols-1 ${activeExercise ? '' : 'lg:grid-cols-2'} gap-2.5`}>
           {visibleExercises.map((exercise) => {
             const isSelected = activeExercise?.id === exercise.id;
             const fav = favorites.has(exercise.id);

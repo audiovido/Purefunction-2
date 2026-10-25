@@ -109,7 +109,7 @@ function CloudApp({ profile }: { profile: Profile }) {
   );
 }
 
-const SyncBadge: React.FC<{ sync: SyncState }> = ({ sync }) => {
+const SyncBadge: React.FC<{ sync: SyncState; railOnTablet?: boolean }> = ({ sync, railOnTablet = false }) => {
   const map = {
     saved: { icon: <Cloud className="w-3.5 h-3.5" />, text: 'Saved', cls: 'text-gray-400' },
     saving: { icon: <Loader2 className="w-3.5 h-3.5 animate-spin" />, text: 'Saving…', cls: 'text-gray-500' },
@@ -117,9 +117,14 @@ const SyncBadge: React.FC<{ sync: SyncState }> = ({ sync }) => {
     offline: { icon: <CloudOff className="w-3.5 h-3.5" />, text: 'Offline — will save', cls: 'text-[#B45309]' }
   }[sync];
   return (
-    <span className={`inline-flex items-center gap-1 text-[11px] font-medium ${map.cls}`} role="status" aria-live="polite">
+    <span
+      className={`inline-flex items-center gap-1 text-[11px] font-medium ${map.cls}`}
+      role="status"
+      aria-live="polite"
+      title={map.text}
+    >
       {map.icon}
-      {map.text}
+      <span className={railOnTablet ? 'hidden lg:inline' : ''}>{map.text}</span>
     </span>
   );
 };
@@ -262,14 +267,15 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
           COACH DESKTOP SIDEBAR (Matches Mockups 1–9)
          ===================================================================== */}
       {role === 'coach' && (
-        <aside className="no-print hidden md:flex md:w-60 md:flex-col md:fixed md:inset-y-0 bg-[#EAECEF] border-r border-gray-300/80 px-4 py-6 justify-between select-none z-30">
+        <aside className="no-print hidden md:flex md:w-[84px] lg:w-60 md:flex-col md:fixed md:inset-y-0 bg-[#EAECEF] border-r border-gray-300/80 px-2 lg:px-4 py-6 justify-between select-none z-30">
           <div>
             {/* Brand Logo placed directly above Clients */}
             <div
               onClick={() => setCoachTab('clients')}
-              className="px-3 pt-1 pb-7 cursor-pointer"
+              className="px-1 lg:px-3 pt-1 pb-7 cursor-pointer flex justify-center lg:block"
             >
-              <PureFunctionLogo />
+              <span className="lg:hidden"><PureFunctionLogo compact /></span>
+              <span className="hidden lg:block"><PureFunctionLogo /></span>
             </div>
 
             {/* Primary Navigation Links */}
@@ -281,22 +287,26 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
                   <button
                     key={item.id}
                     onClick={() => setCoachTab(item.id)}
-                    className={`w-full flex items-center justify-between px-4 py-2.5 rounded-full text-sm transition-all cursor-pointer ${
+                    title={item.label}
+                    className={`w-full flex items-center justify-center lg:justify-between px-1 lg:px-4 py-2 lg:py-2.5 rounded-2xl lg:rounded-full text-[10px] lg:text-sm transition-all cursor-pointer ${
                       isActive
                         ? 'bg-[#111827] text-white font-semibold shadow-xs'
                         : 'text-[#1F2937] hover:text-[#111827] hover:bg-gray-300/60 font-medium'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col lg:flex-row items-center gap-1 lg:gap-3">
                       <Icon
-                        className={`w-4 h-4 ${
+                        className={`w-5 h-5 lg:w-4 lg:h-4 ${
                           isActive ? 'text-white' : 'text-[#374151]'
                         }`}
                       />
-                      <span className="whitespace-nowrap">{item.label}</span>
+                      <span className="whitespace-nowrap">
+                        <span className="lg:hidden">{item.shortLabel}</span>
+                        <span className="hidden lg:inline">{item.label}</span>
+                      </span>
                     </div>
                     {isActive && (
-                      <span className="w-2 h-2 rounded-full bg-[#FFC809] shrink-0" />
+                      <span className="hidden lg:block w-2 h-2 rounded-full bg-[#FFC809] shrink-0" />
                     )}
                   </button>
                 );
@@ -307,13 +317,13 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
           {/* Bottom Active Client Context + Role Switcher (Coach / Client) */}
           <div className="space-y-3 pt-4 border-t border-gray-300/80">
             {selectedClient && (
-              <div className="px-2 flex items-center gap-2.5">
+              <div className="px-0 lg:px-2 flex items-center justify-center lg:justify-start gap-2.5" title={`Active client: ${selectedClient.name}`}>
                 <ClientAvatar
                   photoUrl={selectedClient.photoUrl}
                   name={selectedClient.name}
                   size="sm"
                 />
-                <div className="min-w-0">
+                <div className="min-w-0 hidden lg:block">
                   <div className="text-[11px] font-medium text-gray-600">Active Client</div>
                   <div className="text-xs font-semibold text-[#111827] truncate">
                     {selectedClient.name}
@@ -323,10 +333,10 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
             )}
 
             {/* Role Toggle Pill (coach can preview the client's view) */}
-            <div className="bg-gray-300/75 p-1 rounded-xl grid grid-cols-2 gap-1">
+            <div className="bg-gray-300/75 p-1 rounded-xl grid grid-cols-1 lg:grid-cols-2 gap-1">
               <button
                 onClick={() => setRole('coach')}
-                className="py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer bg-white text-[#111827] shadow-2xs"
+                className="py-1.5 rounded-lg text-[10px] lg:text-xs font-semibold transition-colors cursor-pointer bg-white text-[#111827] shadow-2xs"
               >
                 Coach
               </button>
@@ -334,19 +344,19 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
                 onClick={() => setRole('client')}
                 disabled={!canPreviewClient}
                 title={profile ? "Preview this client's app" : undefined}
-                className="py-1.5 rounded-lg text-xs font-medium text-[#1F2937] hover:text-[#111827] disabled:opacity-40 transition-colors cursor-pointer"
+                className="py-1.5 rounded-lg text-[10px] lg:text-xs font-medium text-[#1F2937] hover:text-[#111827] disabled:opacity-40 transition-colors cursor-pointer"
               >
                 Client
               </button>
             </div>
 
             {profile && (
-              <div className="px-2 flex items-center justify-between gap-2">
+              <div className="px-0 lg:px-2 flex flex-col lg:flex-row items-center lg:justify-between gap-1 lg:gap-2">
                 <div className="min-w-0">
-                  <div className="text-xs font-semibold text-[#111827] truncate" title={profile.email}>
+                  <div className="hidden lg:block text-xs font-semibold text-[#111827] truncate" title={profile.email}>
                     {profile.displayName || profile.email}
                   </div>
-                  <SyncBadge sync={sync} />
+                  <SyncBadge sync={sync} railOnTablet />
                 </div>
                 <button
                   onClick={() => void signOut()}
@@ -453,7 +463,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
           MAIN VIEWPORT CANVAS
          ===================================================================== */}
       {role === 'coach' ? (
-        <main className="flex-1 min-w-0 md:pl-60 pb-24 md:pb-12">
+        <main className="flex-1 min-w-0 md:pl-[84px] lg:pl-60 pb-24 md:pb-12">
           <div className="px-4 sm:px-8 lg:px-12 py-6 sm:py-10">
             {coachTab === 'clients' && (
               <ClientsView
