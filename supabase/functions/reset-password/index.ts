@@ -17,9 +17,11 @@ Deno.serve(async (req) => {
   const { data, error } = await admin.auth.admin.generateLink({ type: 'recovery', email: addr });
   if (!error && data?.properties?.hashed_token) {
     const link = `${APP_URL}?reset=${encodeURIComponent(data.properties.hashed_token)}`;
+    // a different subject each time, so Gmail doesn't fold repeat emails into one hidden thread
+    const ref = Math.random().toString(36).slice(2, 6).toUpperCase();
     const r = await sendEmail(
       addr,
-      'Reset your Pure Function password',
+      `Reset your Pure Function password (${ref})`,
       layout('Reset your password', ['Tap the button to choose a new password. The link works once and expires in 1 hour.', 'If you didn’t ask for this, ignore this email.'], {
         text: 'Choose a new password',
         url: link
