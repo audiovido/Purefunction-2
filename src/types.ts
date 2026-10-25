@@ -327,6 +327,13 @@ export interface ManualRecord {
   addedBy: 'client' | 'coach';
 }
 
+export interface ClientEvent {
+  id: string;
+  /** YYYY-MM-DD */
+  date: string;
+  text: string;
+}
+
 export interface ClientProfile {
   id: string;
   name: string;
@@ -353,6 +360,8 @@ export interface ClientProfile {
   goals?: Goal[];
   /** All-time bests entered by hand (logged workouts add records automatically). */
   manualRecords?: ManualRecord[];
+  /** Life events shown on progress charts (injury, travel, illness…). */
+  events?: ClientEvent[];
   /** Workouts on real dates (sorted by date). */
   workouts?: Workout[];
   /** @deprecated old Mon–Sun template; converted into `workouts` on load. */

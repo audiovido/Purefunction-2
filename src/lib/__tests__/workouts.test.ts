@@ -294,3 +294,33 @@ describe('personal records', () => {
     expect(isNewRecord(c, 'ex-squat', 'Squat', '2026-10-12', 100, 5)).toBe(false); // first time
   });
 });
+
+import { linearTrend, measureSeries, strengthSeries } from '../trends';
+
+describe('trends', () => {
+  it('fits a weekly rate through the points', () => {
+    const t = linearTrend([
+      { date: '2026-10-01', value: 82 },
+      { date: '2026-10-15', value: 81 },
+      { date: '2026-10-29', value: 80 }
+    ])!;
+    expect(t.perWeek).toBeCloseTo(-0.5, 5);
+    expect(t.total).toBe(-2);
+    expect(linearTrend([{ date: '2026-10-01', value: 1 }])).toBeNull();
+  });
+  it('builds series from assessments and logged workouts', () => {
+    const base = createClientProfile({ name: 'T', email: 't@x.com', phaseNumber: 1, phaseName: 'Reposition' });
+    let c = saveAssessment(base, { inBody: { ...base.inBody, weight: 82 }, rom: [], priTests: [], gaitPosture: [], strengthTests: [], videos: [] }, '2026-10-01');
+    c = saveAssessment(c, { inBody: { ...base.inBody, weight: 80 }, rom: [], priTests: [], gaitPosture: [], strengthTests: [], videos: [] }, '2026-10-29');
+    expect(measureSeries(c, 'body:weight')).toEqual([
+      { date: '2026-10-01', value: 82 },
+      { date: '2026-10-29', value: 80 }
+    ]);
+    c = { ...c, workouts: [
+      { id: 'a', date: '2026-10-05', title: '', focus: '', status: 'completed', blocks: [{ id: 'b', exerciseId: 'sq', name: 'Squat', sets: 2, reps: '5', loadKg: 0, restSec: 0, notes: '', loggedSets: [{ setNumber: 1, kg: 100, reps: 5, completed: true }, { setNumber: 2, kg: 105, reps: 3, completed: true }] }] }
+    ] };
+    const s = strengthSeries(c, 'sq');
+    expect(s.topKg).toEqual([{ date: '2026-10-05', value: 105 }]);
+    expect(s.e1rm[0].value).toBeCloseTo(116.7, 1);
+  });
+});
