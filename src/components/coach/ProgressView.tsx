@@ -6,6 +6,7 @@ import { AssessmentHistory } from './AssessmentHistory';
 import { GoalsPanel } from './GoalsPanel';
 import { RecordsPanel } from '../RecordsPanel';
 import { ProgressCharts } from '../ProgressCharts';
+import { PatternSpectrum } from '../PatternSpectrum';
 
 interface ProgressViewProps {
   clients: ClientProfile[];
@@ -64,6 +65,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
           />
         )}
         <ProgressCharts key={`charts-${client.id}`} client={client} onUpdateClient={onUpdateClient} />
+        <PatternSpectrum client={client} />
         <RecordsPanel client={client} onUpdateClient={onUpdateClient} by="coach" />
       </div>
     );
@@ -149,6 +151,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
           </>
       ) : null}
       <ProgressCharts key={`charts-${client.id}`} client={client} onUpdateClient={onUpdateClient} />
+        <PatternSpectrum client={client} />
         <RecordsPanel client={client} onUpdateClient={onUpdateClient} by="coach" />
 
       {/* Phase Timeline (Week 0 / 4 / 8 / 12) matching Mockup 5 */}
