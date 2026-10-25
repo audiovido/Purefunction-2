@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+@layer base {
+  html, body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #F7F8FA;
+    color: #111827;
+    -webkit-text-size-adjust: 100%;
+    overflow-x: hidden;
+  }
+
+  /* Prevent iOS mobile auto-zoom on input focus */
+  @media screen and (max-width: 768px) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+@media print {
+  body {
+    background-color: #FFFFFF !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .print-card {
+    box-shadow: none !important;
+    border: 1px solid #E5E7EB !important;
+    break-inside: avoid;
+  }
+}
