@@ -1,23 +1,170 @@
 import React from 'react';
 import { Exercise } from '../types';
 
-export const PureFunctionLogo: React.FC<{ compact?: boolean }> = ({ compact = false }) => (
-  <div className="flex items-center gap-3 select-none">
-    <div className="relative w-7 h-7 rounded-full bg-[#FEF6D8] flex items-center justify-center overflow-hidden shrink-0">
-      {/* Bottom-left yellow quadrant/wedge matching the mockup logo */}
-      <svg viewBox="0 0 28 28" className="w-7 h-7">
-        <circle cx="14" cy="14" r="14" fill="#FDF3C7" />
-        <path d="M 14 14 L 14 28 A 14 14 0 0 1 0 14 Z" fill="#FFC809" />
-        <path d="M 14 14 L 2 20 A 14 14 0 0 1 0 14 Z" fill="#F5B800" />
+export const PureFunctionLogo: React.FC<{
+  compact?: boolean;
+  darkBg?: boolean;
+  className?: string;
+}> = ({ compact = false, darkBg = false, className = '' }) => {
+  const primaryColor = darkBg ? '#FFFFFF' : '#111827';
+  const accentColor = '#F5B800'; // Vibrant logo yellow matching #FFC809 / uploaded logo
+
+  return (
+    <div
+      className={`inline-flex items-center select-none ${className}`}
+      aria-label="Pure Function Fitness Center"
+    >
+      <svg
+        viewBox="0 0 1274 380"
+        className={compact ? 'h-8 w-auto' : 'w-full max-w-[196px] h-auto'}
+        role="img"
+        aria-label="Pure Function Fitness Center"
+      >
+        {/* ==================== TOP LEFT: P ==================== */}
+        <path
+          d="M 8 144 L 8 7.5 L 66 7.5 C 91 7.5, 106 21.5, 106 42 C 106 62.5, 91 76.5, 66 76.5 L 8 76.5"
+          fill="none"
+          stroke={primaryColor}
+          strokeWidth="15"
+          strokeLinecap="butt"
+          strokeLinejoin="miter"
+        />
+
+        {/* ==================== LEFT YELLOW BAR ==================== */}
+        <rect x="0" y="168" width="112" height="26" fill={accentColor} />
+
+        {/* ==================== BOTTOM LEFT: F ==================== */}
+        <path
+          d="M 8 366 L 8 229.5 L 108 229.5 M 8 293 L 98 293"
+          fill="none"
+          stroke={primaryColor}
+          strokeWidth="15"
+          strokeLinecap="butt"
+          strokeLinejoin="miter"
+        />
+
+        {/* ==================== GIANT SHARED YELLOW U ==================== */}
+        <path
+          d="M 161 0 L 161 302 A 58 58 0 0 0 277 302 L 277 0"
+          fill="none"
+          stroke={accentColor}
+          strokeWidth="23"
+          strokeLinecap="butt"
+        />
+
+        {/* ==================== TOP MIDDLE: R ==================== */}
+        <path
+          d="M 345 144 L 345 7.5 L 408 7.5 C 433 7.5, 448 21.5, 448 42 C 448 62.5, 433 76.5, 408 76.5 L 345 76.5 M 404 76.5 C 434 76.5, 443 96, 446 144"
+          fill="none"
+          stroke={primaryColor}
+          strokeWidth="15"
+          strokeLinecap="butt"
+          strokeLinejoin="miter"
+        />
+
+        {/* ==================== TOP MIDDLE: E ==================== */}
+        <path
+          d="M 626 7.5 L 524 7.5 L 524 136.5 L 628 136.5 M 524 72 L 616 72"
+          fill="none"
+          stroke={primaryColor}
+          strokeWidth="15"
+          strokeLinecap="butt"
+          strokeLinejoin="miter"
+        />
+
+        {/* ==================== TOP RIGHT: FITNESS / CENTER ==================== */}
+        <g
+          fill={accentColor}
+          fontFamily="Inter, -apple-system, BlinkMacSystemFont, sans-serif"
+          fontWeight="700"
+          fontSize="46"
+          textAnchor="middle"
+        >
+          {/* F I T N E S S */}
+          <text x="688" y="38">F</text>
+          <text x="782" y="38">I</text>
+          <text x="878" y="38">T</text>
+          <text x="976" y="38">N</text>
+          <text x="1074" y="38">E</text>
+          <text x="1168" y="38">S</text>
+          <text x="1256" y="38">S</text>
+
+          {/* C E N T E R */}
+          <text x="690" y="142">C</text>
+          <text x="803" y="142">E</text>
+          <text x="916" y="142">N</text>
+          <text x="1030" y="142">T</text>
+          <text x="1143" y="142">E</text>
+          <text x="1256" y="142">R</text>
+        </g>
+
+        {/* ==================== LONG RIGHT YELLOW BAR ==================== */}
+        <rect x="337" y="168" width="937" height="26" fill={accentColor} />
+
+        {/* ==================== BOTTOM ROW: N C T I O N ==================== */}
+        {/* N */}
+        <path
+          d="M 345 366 L 345 225 L 455 363 L 455 222"
+          fill="none"
+          stroke={primaryColor}
+          strokeWidth="15"
+          strokeLinecap="butt"
+          strokeLinejoin="miter"
+        />
+
+        {/* C */}
+        <path
+          d="M 644 266 C 635 238, 613 222, 584 222 C 544 222, 518 252, 518 294 C 518 336, 544 366, 584 366 C 614 366, 636 349, 645 320"
+          fill="none"
+          stroke={primaryColor}
+          strokeWidth="15"
+          strokeLinecap="butt"
+        />
+
+        {/* T */}
+        <path
+          d="M 702 229.5 L 826 229.5 M 764 229.5 L 764 366"
+          fill="none"
+          stroke={primaryColor}
+          strokeWidth="15"
+          strokeLinecap="butt"
+        />
+
+        {/* I */}
+        <line
+          x1="882"
+          y1="222"
+          x2="882"
+          y2="366"
+          stroke={primaryColor}
+          strokeWidth="15"
+          strokeLinecap="butt"
+        />
+
+        {/* O */}
+        <ellipse
+          cx="1019"
+          cy="294"
+          rx="64"
+          ry="66"
+          fill="none"
+          stroke={primaryColor}
+          strokeWidth="15"
+        />
+
+        {/* N */}
+        <path
+          d="M 1150 366 L 1150 225 L 1260 363 L 1260 222"
+          fill="none"
+          stroke={primaryColor}
+          strokeWidth="15"
+          strokeLinecap="butt"
+          strokeLinejoin="miter"
+        />
       </svg>
     </div>
-    {!compact && (
-      <span className="text-[17px] font-semibold tracking-tight text-[#111827] whitespace-nowrap">
-        Pure Function
-      </span>
-    )}
-  </div>
-);
+  );
+};
 
 /**
  * Client photo, or their initials when no photo has been added yet.

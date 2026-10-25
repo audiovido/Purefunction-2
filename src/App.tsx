@@ -239,10 +239,10 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
       {role === 'coach' && (
         <aside className="no-print hidden md:flex md:w-60 md:flex-col md:fixed md:inset-y-0 bg-[#F4F5F7] border-r border-gray-200/80 px-4 py-6 justify-between select-none z-30">
           <div>
-            {/* Brand Logo */}
+            {/* Brand Logo placed directly above Clients */}
             <div
               onClick={() => setCoachTab('clients')}
-              className="px-2 mb-8 cursor-pointer"
+              className="px-3 pt-1 pb-7 cursor-pointer"
             >
               <PureFunctionLogo />
             </div>
@@ -352,7 +352,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
           }}
           className="cursor-pointer"
         >
-          <PureFunctionLogo />
+          <PureFunctionLogo compact />
         </div>
 
         <div className="flex items-center gap-2">
