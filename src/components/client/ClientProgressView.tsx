@@ -4,6 +4,7 @@ import { ClientProfile, calculateAsymmetryPercent } from '../../types';
 import { EmptyProgress } from '../EmptyProgress';
 import { GoalsPanel } from '../coach/GoalsPanel';
 import { RecordsPanel } from '../RecordsPanel';
+import { ProgressCharts } from '../ProgressCharts';
 
 interface ClientProgressViewProps {
   client: ClientProfile;
@@ -21,7 +22,8 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
         {(client.goals?.length ?? 0) > 0 && (
           <GoalsPanel goals={client.goals!} assessments={client.assessments ?? []} />
         )}
-        <RecordsPanel client={client} onUpdateClient={onUpdateClient} by="client" />
+        <ProgressCharts client={client} />
+      <RecordsPanel client={client} onUpdateClient={onUpdateClient} by="client" />
         <EmptyProgress
           title="Your progress starts here"
           text="After your first assessment and a few logged workouts, your strength, body composition and symmetry charts show up here."
@@ -66,6 +68,7 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
       {(client.goals?.length ?? 0) > 0 && (
         <GoalsPanel goals={client.goals!} assessments={client.assessments ?? []} />
       )}
+      <ProgressCharts client={client} />
       <RecordsPanel client={client} onUpdateClient={onUpdateClient} by="client" />
 
       {/* 1. Phase Progress Card */}
