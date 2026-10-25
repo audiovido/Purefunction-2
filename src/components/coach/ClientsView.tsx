@@ -142,7 +142,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
               >
                 {/* Left: Avatar + Name + Phase Tag */}
                 <div className="flex items-center gap-3.5 min-w-0 md:w-[38%]">
-                  <ClientAvatar avatarId={client.avatarId} name={client.name} />
+                  <ClientAvatar name={client.name} photoUrl={client.photoUrl} />
                   <div className="flex flex-wrap items-center gap-2.5 min-w-0">
                     <span className="text-[16px] font-semibold text-[#111827] truncate">
                       {client.name}

@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import {
   Search,
   X,
-  Play,
-  Pause,
   Plus,
   Check,
   Wind,
-  Target
+  Target,
+  Pencil,
+  Video
 } from 'lucide-react';
 import {
   ClientProfile,
@@ -15,8 +15,9 @@ import {
   Exercise,
   WorkoutExerciseBlock
 } from '../../types';
-import { EXERCISES_LIBRARY } from '../../data/mockData';
-import { ExerciseIllustration } from '../VisualAssets';
+import { useExerciseLibrary } from '../../state/ExerciseLibrary';
+import { ExerciseThumb, ExerciseVideoPlayer } from '../ExerciseMedia';
+import { ExerciseEditorModal } from './ExerciseEditorModal';
 
 interface ExerciseLibraryViewProps {
   clients: ClientProfile[];
@@ -37,15 +38,19 @@ export const ExerciseLibraryView: React.FC<ExerciseLibraryViewProps> = ({
   const [selectedBodyPart, setSelectedBodyPart] = useState<string>('All');
   const [selectedEquipment, setSelectedEquipment] = useState<string>('All');
   const [selectedPlane, setSelectedPlane] = useState<string>('All');
-  const [activeExercise, setActiveExercise] = useState<Exercise | null>(
-    EXERCISES_LIBRARY[0]
+  const { exercises, getExercise, saveExercise, deleteExercise } = useExerciseLibrary();
+  const [activeExerciseId, setActiveExerciseId] = useState<string | null>(
+    exercises[0]?.id ?? null
   );
-  const [isPlayingDemo, setIsPlayingDemo] = useState(true);
+  const activeExercise = activeExerciseId ? getExercise(activeExerciseId) ?? null : null;
+  const setActiveExercise = (ex: Exercise | null) => setActiveExerciseId(ex?.id ?? null);
+  // undefined = closed, null = new exercise, Exercise = editing
+  const [editing, setEditing] = useState<Exercise | null | undefined>(undefined);
   const [targetClientId, setTargetClientId] = useState(selectedClient.id);
   const [targetDayKey, setTargetDayKey] = useState<DayWorkout['dayKey']>('Mon');
   const [addedFeedback, setAddedFeedback] = useState(false);
 
-  const filteredExercises = EXERCISES_LIBRARY.filter((ex) => {
+  const filteredExercises = exercises.filter((ex) => {
     const matchesSearch =
       ex.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       ex.bodyPart.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -68,9 +73,18 @@ export const ExerciseLibraryView: React.FC<ExerciseLibraryViewProps> = ({
   return (
     <div className="max-w-6xl mx-auto relative">
       {/* Page Title matching Mockup 9 */}
-      <h1 className="text-3xl sm:text-[34px] font-bold tracking-tight text-[#111827] mb-6">
-        Exercise Library
-      </h1>
+      <div className="flex items-center justify-between gap-3 mb-6">
+        <h1 className="text-3xl sm:text-[34px] font-bold tracking-tight text-[#111827]">
+          Exercise Library
+        </h1>
+        <button
+          onClick={() => setEditing(null)}
+          className="inline-flex items-center gap-2 bg-[#111827] hover:bg-[#1F2937] text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors cursor-pointer whitespace-nowrap shrink-0"
+        >
+          <Plus className="w-4 h-4" />
+          <span>New exercise</span>
+        </button>
+      </div>
 
       {/* Search Bar & Filter Chips matching Mockup 9 */}
       <div className="flex flex-wrap items-center gap-3 mb-7">
@@ -176,10 +190,7 @@ export const ExerciseLibraryView: React.FC<ExerciseLibraryViewProps> = ({
                     : 'border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:border-gray-300'
                 }`}
               >
-                <ExerciseIllustration
-                  type={exercise.illustrationType}
-                  className="w-full h-36 sm:h-40 mb-3.5"
-                />
+                <ExerciseThumb exercise={exercise} className="w-full aspect-video mb-3.5" />
 
                 <h3 className="text-[17px] font-semibold text-[#111827] mb-2 truncate">
                   {exercise.name}
@@ -223,36 +234,27 @@ export const ExerciseLibraryView: React.FC<ExerciseLibraryViewProps> = ({
               </button>
             </div>
 
-            {/* Video Player Box */}
-            <div className="relative rounded-xl overflow-hidden mb-4 border border-gray-200/80">
-              <ExerciseIllustration
-                type={activeExercise.illustrationType}
-                className="w-full h-44"
-              />
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 flex items-center justify-between text-white">
-                <button
-                  onClick={() => setIsPlayingDemo(!isPlayingDemo)}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium bg-black/50 hover:bg-black/70 px-2.5 py-1 rounded-lg cursor-pointer"
-                >
-                  {isPlayingDemo ? (
-                    <>
-                      <Pause className="w-3.5 h-3.5 text-[#FFC809]" />
-                      <span>Coaching Loop</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-3.5 h-3.5 text-[#FFC809]" />
-                      <span>Play Demo</span>
-                    </>
-                  )}
-                </button>
-                <span className="text-[11px] font-mono text-gray-200">
-                  0:{activeExercise.durationSec}s · 60fps
-                </span>
-              </div>
+            {/* Coach's own demo video */}
+            <div className="mb-3">
+              <ExerciseVideoPlayer video={activeExercise.video} title={activeExercise.name} />
             </div>
+            <button
+              onClick={() => setEditing(activeExercise)}
+              className="w-full inline-flex items-center justify-center gap-2 mb-4 border border-gray-200 hover:border-[#111827] text-[#111827] text-xs font-semibold py-2.5 rounded-xl cursor-pointer"
+            >
+              {activeExercise.video ? (
+                <>
+                  <Pencil className="w-3.5 h-3.5" /> Edit exercise / replace video
+                </>
+              ) : (
+                <>
+                  <Video className="w-3.5 h-3.5" /> Add your video
+                </>
+              )}
+            </button>
 
             {/* Breathing Pattern */}
+            {activeExercise.breathingPattern && (
             <div className="p-3 rounded-xl bg-gray-50 border border-gray-100 mb-4">
               <div className="flex items-center gap-1.5 text-xs font-semibold text-[#111827] mb-1">
                 <Wind className="w-3.5 h-3.5 text-[#F5B800]" />
@@ -260,6 +262,7 @@ export const ExerciseLibraryView: React.FC<ExerciseLibraryViewProps> = ({
               </div>
               <p className="text-xs text-gray-600">{activeExercise.breathingPattern}</p>
             </div>
+            )}
 
             {/* Coaching Cues */}
             <div className="mb-4">
@@ -279,6 +282,7 @@ export const ExerciseLibraryView: React.FC<ExerciseLibraryViewProps> = ({
             </div>
 
             {/* Biomechanical Rationale */}
+            {activeExercise.whyItMatters && (
             <div className="mb-5 p-3 rounded-xl bg-[#FFFDF5] border border-[#FEF3C7]">
               <div className="flex items-center gap-1.5 text-xs font-semibold text-[#111827] mb-1">
                 <Target className="w-3.5 h-3.5 text-[#F5B800]" />
@@ -288,6 +292,7 @@ export const ExerciseLibraryView: React.FC<ExerciseLibraryViewProps> = ({
                 {activeExercise.whyItMatters}
               </p>
             </div>
+            )}
 
             {/* Add to Workout Controls */}
             <div className="pt-4 border-t border-gray-100 space-y-3">
@@ -349,6 +354,25 @@ export const ExerciseLibraryView: React.FC<ExerciseLibraryViewProps> = ({
           </div>
         )}
       </div>
+
+      {filteredExercises.length === 0 && (
+        <p className="text-sm text-gray-500 py-10 text-center">No exercises match these filters.</p>
+      )}
+
+      {editing !== undefined && (
+        <ExerciseEditorModal
+          exercise={editing}
+          onSave={(ex) => {
+            saveExercise(ex);
+            setActiveExerciseId(ex.id);
+          }}
+          onDelete={(id) => {
+            deleteExercise(id);
+            setActiveExerciseId(null);
+          }}
+          onClose={() => setEditing(undefined)}
+        />
+      )}
     </div>
   );
 };

@@ -14,8 +14,8 @@ import {
   WorkoutExerciseBlock,
   getSuggestedLoad
 } from '../../types';
-import { EXERCISES_LIBRARY } from '../../data/mockData';
-import { ExerciseIllustration } from '../VisualAssets';
+import { useExerciseLibrary } from '../../state/ExerciseLibrary';
+import { ExerciseVideoPlayer } from '../ExerciseMedia';
 
 interface ClientTodayViewProps {
   client: ClientProfile;
@@ -30,6 +30,7 @@ export const ClientTodayView: React.FC<ClientTodayViewProps> = ({
   const [restTimerSec, setRestTimerSec] = useState<number | null>(null);
   const [previewExerciseId, setPreviewExerciseId] = useState<string | null>(null);
   const [workoutCompletedBanner, setWorkoutCompletedBanner] = useState(false);
+  const { getExercise } = useExerciseLibrary();
 
   const currentWorkout =
     client.weeklyWorkouts.find((d) => d.dayKey === selectedDayKey) ||
@@ -121,7 +122,7 @@ export const ClientTodayView: React.FC<ClientTodayViewProps> = ({
   };
 
   const previewExercise = previewExerciseId
-    ? EXERCISES_LIBRARY.find((ex) => ex.id === previewExerciseId) || null
+    ? getExercise(previewExerciseId) || null
     : null;
 
   return (
@@ -447,9 +448,10 @@ export const ClientTodayView: React.FC<ClientTodayViewProps> = ({
               </button>
             </div>
 
-            <ExerciseIllustration
-              type={previewExercise.illustrationType}
-              className="w-full h-44 mb-4"
+            <ExerciseVideoPlayer
+              video={previewExercise.video}
+              title={previewExercise.name}
+              className="w-full aspect-video mb-4"
             />
 
             <div className="space-y-2 mb-4">

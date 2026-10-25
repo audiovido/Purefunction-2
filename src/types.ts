@@ -72,6 +72,21 @@ export interface VideoAssessmentItem {
   currentScore: number;
 }
 
+/**
+ * Where an exercise demo video lives.
+ * - youtube / vimeo / drive: coach pastes a share link, we embed the player
+ * - url: a direct https link to a video file (.mp4 / .webm / .mov)
+ * - file: coach uploaded a file from their device; `src` is the storage key
+ */
+export interface ExerciseVideo {
+  kind: 'youtube' | 'vimeo' | 'drive' | 'url' | 'file';
+  src: string;
+  fileName?: string;
+  sizeBytes?: number;
+  durationSec?: number;
+  addedAt: string;
+}
+
 export interface Exercise {
   id: string;
   name: string;
@@ -79,7 +94,11 @@ export interface Exercise {
   plane: 'Sagittal' | 'Frontal' | 'Transverse';
   equipment: 'Bodyweight' | 'Dumbbell' | 'Barbell' | 'Cable / Band' | 'Foam Roller';
   phase: 'Reposition' | 'Integrate' | 'Strength' | 'Performance';
-  illustrationType:
+  /** Coach's own demo video (none until the coach adds one). */
+  video?: ExerciseVideo;
+  /** true for exercises the coach created (can be deleted). */
+  isCustom?: boolean;
+  illustrationType?:
     | 'hip-lift'
     | 'goblet-squat'
     | 'clam'
@@ -164,6 +183,8 @@ export interface ClientProfile {
   name: string;
   email: string;
   avatarId: string;
+  /** Profile photo the client uploaded (small data URL). Initials are shown when empty. */
+  photoUrl?: string;
   phaseNumber: 1 | 2 | 3 | 4;
   phaseName: 'Reposition' | 'Foundations' | 'Integrate' | 'Strength' | 'Performance';
   currentWeek: number;

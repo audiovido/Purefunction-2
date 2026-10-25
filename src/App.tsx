@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { usePersistentState } from './lib/storage';
+import { ProfilePhotoButton } from './components/client/ProfilePhotoButton';
 import {
   Users,
   BookOpen,
@@ -59,9 +61,12 @@ export default function App() {
   const [role, setRole] = useState<Role>('coach');
   const [coachTab, setCoachTab] = useState<CoachTab>('clients');
   const [clientTab, setClientTab] = useState<ClientTab>('today');
-  const [clients, setClients] = useState<ClientProfile[]>(INITIAL_CLIENTS);
+  const [clients, setClients] = usePersistentState<ClientProfile[]>(
+    'pf.clients.v1',
+    () => INITIAL_CLIENTS
+  );
   const [selectedClientId, setSelectedClientId] = useState<string>(
-    INITIAL_CLIENTS[0].id
+    () => clients[0]?.id ?? INITIAL_CLIENTS[0].id
   );
   const [clientPreviewFrame, setClientPreviewFrame] = useState<boolean>(false);
 
@@ -93,7 +98,8 @@ export default function App() {
       id: `client-${Date.now()}`,
       name: newClientData.name,
       email: newClientData.email,
-      avatarId: 'alex',
+      avatarId: '',
+      photoUrl: undefined,
       phaseNumber: newClientData.phaseNumber,
       phaseName: newClientData.phaseName,
       currentWeek: 0,
@@ -205,7 +211,7 @@ export default function App() {
           <div className="space-y-3 pt-4 border-t border-gray-200/80">
             <div className="px-2 flex items-center gap-2.5">
               <ClientAvatar
-                avatarId={selectedClient.avatarId}
+                photoUrl={selectedClient.photoUrl}
                 name={selectedClient.name}
                 size="sm"
               />
@@ -273,6 +279,10 @@ export default function App() {
                 </>
               )}
             </button>
+          )}
+
+          {role === 'client' && (
+            <ProfilePhotoButton client={selectedClient} onUpdateClient={handleUpdateClient} />
           )}
 
           {/* Role Switcher in Header */}
