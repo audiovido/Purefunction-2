@@ -1,3 +1,4 @@
+import { saveAssessment } from '../../lib/assessments';
 import React, { useState } from 'react';
 import {
   Check,
@@ -182,7 +183,18 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
       showToast(`Saved ${STEPS[activeStep - 1].label}`);
       setActiveStep(activeStep + 1);
     } else {
-      showToast('Assessment completed and saved to client profile');
+      onUpdateClient(
+        saveAssessment(client, {
+          inBody: client.inBody,
+          rom: client.rom,
+          // only what the coach actually entered (not the form's example rows)
+          priTests: client.priTests,
+          gaitPosture: client.gaitPosture,
+          strengthTests: client.strengthTests,
+          videos: client.videos
+        })
+      );
+      showToast('Assessment saved — compare it on the Progress screen');
       onFinishAssessment();
     }
   };

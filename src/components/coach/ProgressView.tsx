@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { ClientProfile } from '../../types';
 import { EmptyProgress } from '../EmptyProgress';
+import { AssessmentHistory } from './AssessmentHistory';
 
 interface ProgressViewProps {
   clients: ClientProfile[];
@@ -41,10 +42,14 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
             ))}
           </select>
         </div>
-        <EmptyProgress
-          title={`No progress data for ${client.name} yet`}
-          text="Charts appear once the first assessment is saved and workouts are logged."
-        />
+        {client.assessments?.length ? (
+          <AssessmentHistory key={client.id} assessments={client.assessments} />
+        ) : (
+          <EmptyProgress
+            title={`No assessments for ${client.name} yet`}
+            text="Complete an assessment (Assessment → Complete Assessment). Each one is saved with its date so you can compare them here."
+          />
+        )}
       </div>
     );
   }
@@ -116,6 +121,10 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
           · Progress
         </span>
       </div>
+
+      {client.assessments?.length ? (
+        <AssessmentHistory key={client.id} assessments={client.assessments} />
+      ) : null}
 
       {/* Phase Timeline (Week 0 / 4 / 8 / 12) matching Mockup 5 */}
       <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-[0_2px_14px_rgba(0,0,0,0.04)] border border-gray-100 mb-6 overflow-x-auto">

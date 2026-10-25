@@ -206,3 +206,42 @@ describe('video links', () => {
     expect(parseVideoLink('http://cdn.example.com/a.mp4').ok).toBe(false);
   });
 });
+
+import { compareAssessments, saveAssessment, verdict } from '../assessments';
+import { createClientProfile } from '../clients';
+
+describe('assessments', () => {
+  const base = createClientProfile({ name: 'Ryan', email: 'r@x.com', phaseNumber: 1, phaseName: 'Reposition' });
+  const vals = (weight: number, hipL: number, hipR: number, squatKg: number) => ({
+    inBody: { ...base.inBody, weight, bodyFatPercent: 20 },
+    rom: [{ id: 'r1', name: 'Hip IR', left: hipL, right: hipR }],
+    priTests: [],
+    gaitPosture: [],
+    strengthTests: [{ id: 's1', exercise: 'Squat', loadKg: squatKg, reps: 5 }],
+    videos: []
+  });
+
+  it('saves dated records with week numbers; same day replaces', () => {
+    let c = saveAssessment(base, vals(80, 30, 40, 60), '2026-10-01');
+    c = saveAssessment(c, vals(79, 36, 40, 65), '2026-10-29');
+    c = saveAssessment(c, vals(78.5, 37, 40, 65), '2026-10-29');
+    expect(c.assessments!.map((a) => [a.date, a.week])).toEqual([
+      ['2026-10-01', 0],
+      ['2026-10-29', 4]
+    ]);
+    expect(c.assessments![1].inBody.weight).toBe(78.5);
+  });
+
+  it('compares two assessments with direction-aware verdicts', () => {
+    let c = saveAssessment(base, vals(80, 30, 40, 60), '2026-10-01');
+    c = saveAssessment(c, vals(79, 36, 40, 65), '2026-10-29');
+    const rows = compareAssessments(c.assessments![0], c.assessments![1]);
+    const get = (l: string) => rows.find((r) => r.label === l)!;
+    expect(verdict(get('Weight'))).toBe('better');
+    expect(get('Hip IR — asymmetry')).toMatchObject({ before: 25, after: 10 });
+    expect(verdict(get('Hip IR — asymmetry'))).toBe('better');
+    expect(verdict(get('Squat (est. 1RM)'))).toBe('better');
+    expect(verdict(get('Body fat'))).toBe('same');
+    expect(verdict(get('InBody score'))).toBeNull(); // not measured
+  });
+});
