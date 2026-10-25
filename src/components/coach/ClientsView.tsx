@@ -63,7 +63,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       {/* Top 3 Summary KPI Cards matching Mockup 6 */}
       <div className="grid grid-cols-3 gap-3 sm:gap-5 max-w-2xl mb-7">
         <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-gray-100">
-          <div className="text-xs sm:text-[13px] font-medium text-gray-500 mb-1.5 whitespace-nowrap truncate">
+          <div className="text-xs sm:text-[13px] font-medium text-gray-500 mb-1.5 leading-snug min-h-[2lh] sm:min-h-0 sm:whitespace-nowrap">
             Active clients
           </div>
           <div className="text-2xl sm:text-[32px] font-bold text-[#F5B800] leading-none tabular-nums">
@@ -72,7 +72,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         </div>
 
         <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-gray-100">
-          <div className="text-xs sm:text-[13px] font-medium text-gray-500 mb-1.5 whitespace-nowrap truncate">
+          <div className="text-xs sm:text-[13px] font-medium text-gray-500 mb-1.5 leading-snug min-h-[2lh] sm:min-h-0 sm:whitespace-nowrap">
             Assessments due
           </div>
           <div className="text-2xl sm:text-[32px] font-bold text-[#111827] leading-none tabular-nums">
@@ -81,7 +81,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         </div>
 
         <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-gray-100">
-          <div className="text-xs sm:text-[13px] font-medium text-gray-500 mb-1.5 whitespace-nowrap truncate">
+          <div className="text-xs sm:text-[13px] font-medium text-gray-500 mb-1.5 leading-snug min-h-[2lh] sm:min-h-0 sm:whitespace-nowrap">
             Unread messages
           </div>
           <div className="text-2xl sm:text-[32px] font-bold text-[#111827] leading-none tabular-nums">
