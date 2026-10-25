@@ -368,7 +368,7 @@ export default function App() {
             className={
               clientPreviewFrame
                 ? 'md:max-w-[430px] md:mx-auto md:bg-[#F7F8FA] md:rounded-[32px] md:border-[6px] md:border-[#111827] md:shadow-xl md:p-5 md:my-2'
-                : 'max-w-xl mx-auto md:pt-4'
+                : 'max-w-xl mx-auto'
             }
           >
             {clientTab === 'today' ? (
