@@ -104,7 +104,7 @@ const today = iso(new Date());
   await C.getByRole('heading', { name: 'Workout Builder' }).waitFor({ timeout: 5000 }).catch(() => {});
   ok(await C.getByRole('heading', { name: 'Workout Builder' }).isVisible(), 'clicking a client opens their workouts');
   await C.getByRole('button', { name: 'Create workout' }).click();
-  await C.getByPlaceholder('Search name, muscle, pattern…').fill('goblet squat');
+  await C.getByPlaceholder(/Search name or muscle/).fill('goblet squat');
   await C.waitForTimeout(300);
   await C.getByRole('button', { name: 'Add Goblet Squat' }).first().click();
   const kg = C.locator('input[type=number]').nth(2); // Sets, Reps(text), kg
@@ -132,7 +132,7 @@ const today = iso(new Date());
 
   ok(!(await R.evaluate(() => location.search.includes('join='))), 'invite parameter removed after sign-in');
   // live: coach adds an exercise -> appears on client without reload
-  await C.getByPlaceholder('Search name, muscle, pattern…').fill('romanian deadlift');
+  await C.getByPlaceholder(/Search name or muscle/).fill('romanian deadlift');
   await C.waitForTimeout(300);
   await C.getByRole('button', { name: /^Add Romanian Deadlift$/ }).first().click();
   await R.getByRole('heading', { name: 'Romanian Deadlift' }).waitFor({ timeout: 8000 }).catch(() => {});
