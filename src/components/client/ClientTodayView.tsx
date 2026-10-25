@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { ClientProfile, SetLog, Workout, WorkoutBlock } from '../../types';
 import { useExerciseLibrary } from '../../state/ExerciseLibrary';
+import { isNewRecord } from '../../lib/records';
 import { ExerciseVideoPlayer } from '../ExerciseMedia';
 import {
   addDays,
@@ -391,6 +392,11 @@ export const ClientTodayView: React.FC<ClientTodayViewProps> = ({ client, onUpda
                         >
                           <Check className="w-5 h-5" />
                         </button>
+                        {s.completed && isNewRecord(client, block.exerciseId, block.name, date, s.kg, s.reps) && (
+                          <span className="col-span-4 -mt-1 justify-self-end inline-flex items-center gap-1 text-[11px] font-bold text-[#92400E] bg-[#FEF3C7] px-2 py-0.5 rounded-full" role="status">
+                            🏆 New PR — set {s.setNumber}
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>

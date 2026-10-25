@@ -267,3 +267,30 @@ describe('goals', () => {
     expect(goalStatus(w, c.assessments!).percent).toBe(50);
   });
 });
+
+import { isNewRecord, personalRecords } from '../records';
+
+describe('personal records', () => {
+  const base = createClientProfile({ name: 'P', email: 'p@x.com', phaseNumber: 1, phaseName: 'Reposition' });
+  const done = (date: string, sets: [number, number][]): Workout => ({
+    id: 'w' + date, date, title: '', focus: '', status: 'completed',
+    blocks: [{ id: 'b' + date, exerciseId: 'ex-curl', name: 'Biceps Curl', sets: sets.length, reps: '8', loadKg: 0, restSec: 60, notes: '',
+      loggedSets: sets.map(([kg, reps], i) => ({ setNumber: i + 1, kg, reps, completed: true })) }]
+  });
+  it('takes the best estimated 1RM from logs and hand-entered records', () => {
+    let c: ClientProfile = { ...base, workouts: [done('2026-10-05', [[12, 10], [14, 6]]), done('2026-10-12', [[15, 5]])] };
+    let r = personalRecords(c);
+    expect(r).toHaveLength(1);
+    // est. 1RM: 12×10 = 16, 14×6 = 16.8, 15×5 = 17.5 → 15 kg × 5 is the best
+    expect(r[0]).toMatchObject({ kg: 15, reps: 5, date: '2026-10-12', heaviestKg: 15, source: 'logged', best1RM: 17.5 });
+    c = { ...c, manualRecords: [{ id: 'm1', exerciseId: 'ex-curl', name: 'Biceps Curl', kg: 20, reps: 3, addedBy: 'client' }] };
+    r = personalRecords(c);
+    expect(r[0]).toMatchObject({ kg: 20, reps: 3, source: 'manual', heaviestKg: 20 });
+  });
+  it('flags a new record only when it beats the earlier best', () => {
+    const c: ClientProfile = { ...base, workouts: [done('2026-10-05', [[12, 10]])] };
+    expect(isNewRecord(c, 'ex-curl', 'Biceps Curl', '2026-10-12', 14, 10)).toBe(true);
+    expect(isNewRecord(c, 'ex-curl', 'Biceps Curl', '2026-10-12', 12, 9)).toBe(false);
+    expect(isNewRecord(c, 'ex-squat', 'Squat', '2026-10-12', 100, 5)).toBe(false); // first time
+  });
+});

@@ -510,7 +510,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
                 onUpdateClient={handleUpdateClient}
               />
             ) : (
-              <ClientProgressView client={selectedClient} />
+              <ClientProgressView client={selectedClient} onUpdateClient={handleUpdateClient} />
             )}
           </div>
         </main>
