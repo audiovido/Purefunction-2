@@ -69,13 +69,25 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setStatus('no-access');
       return;
     }
-    setProfile({
+    const next: Profile = {
       id: data.id,
       role: data.role,
       displayName: data.display_name,
       clientId: data.client_id,
       email: s.user.email ?? ''
-    });
+    };
+    // Supabase announces SIGNED_IN again every time the tab/app comes back into view. Keep the
+    // same object when nothing changed, so the app does not reload all its data and reset the page.
+    setProfile((prev) =>
+      prev &&
+      prev.id === next.id &&
+      prev.role === next.role &&
+      prev.displayName === next.displayName &&
+      prev.clientId === next.clientId &&
+      prev.email === next.email
+        ? prev
+        : next
+    );
     setStatus('ready');
   }, []);
 
