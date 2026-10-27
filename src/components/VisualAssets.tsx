@@ -1,6 +1,7 @@
 import React from 'react';
 import { Exercise } from '../types';
-import { WEIGHT_UNIT } from '../lib/units';
+import { WEIGHT_UNIT, formatWeight } from '../lib/units';
+import { WeightInput } from './WeightInput';
 
 export const PureFunctionLogo: React.FC<{
   compact?: boolean;
@@ -365,19 +366,18 @@ export const InBodySegmentSilhouette: React.FC<{
         <div className="absolute left-0 top-[102px] text-right">
           {onChangeSegment ? (
             <label className="inline-flex items-center gap-0.5 text-[13px] font-medium text-[#111827] tabular-nums bg-white/90 px-1.5 py-0.5 rounded border border-transparent hover:border-gray-300 focus-within:border-[#111827]">
-              <input
-                type="number"
+              <WeightInput
                 step="0.1"
-                value={segments.leftArm}
-                onChange={(e) => onChangeSegment('leftArm', parseFloat(e.target.value) || 0)}
-                className="w-9 text-right bg-transparent focus:outline-none tabular-nums"
+                kg={segments.leftArm}
+                onChangeKg={(kg) => onChangeSegment('leftArm', kg ?? 0)}
+                className="w-10 text-right bg-transparent focus:outline-none tabular-nums"
                 aria-label={`Left Arm Lean Mass ${WEIGHT_UNIT}`}
               />
               <span>{WEIGHT_UNIT}</span>
             </label>
           ) : (
             <span className="text-[13px] font-medium text-[#111827] tabular-nums">
-              {segments.leftArm} {WEIGHT_UNIT}
+              {formatWeight(segments.leftArm)}
             </span>
           )}
         </div>
@@ -386,19 +386,18 @@ export const InBodySegmentSilhouette: React.FC<{
         <div className="absolute right-0 top-[102px] text-left">
           {onChangeSegment ? (
             <label className="inline-flex items-center gap-0.5 text-[13px] font-medium text-[#111827] tabular-nums bg-white/90 px-1.5 py-0.5 rounded border border-transparent hover:border-gray-300 focus-within:border-[#111827]">
-              <input
-                type="number"
+              <WeightInput
                 step="0.1"
-                value={segments.rightArm}
-                onChange={(e) => onChangeSegment('rightArm', parseFloat(e.target.value) || 0)}
-                className="w-9 text-right bg-transparent focus:outline-none tabular-nums"
+                kg={segments.rightArm}
+                onChangeKg={(kg) => onChangeSegment('rightArm', kg ?? 0)}
+                className="w-10 text-right bg-transparent focus:outline-none tabular-nums"
                 aria-label={`Right Arm Lean Mass ${WEIGHT_UNIT}`}
               />
               <span>{WEIGHT_UNIT}</span>
             </label>
           ) : (
             <span className="text-[13px] font-medium text-[#111827] tabular-nums">
-              {segments.rightArm} {WEIGHT_UNIT}
+              {formatWeight(segments.rightArm)}
             </span>
           )}
         </div>
@@ -407,19 +406,18 @@ export const InBodySegmentSilhouette: React.FC<{
         <div className="absolute top-[118px] left-1/2 -translate-x-1/2 text-center">
           {onChangeSegment ? (
             <label className="inline-flex items-center gap-0.5 text-[12.5px] font-semibold text-[#111827] tabular-nums bg-white/80 px-1 rounded border border-transparent hover:border-gray-300 focus-within:border-[#111827]">
-              <input
-                type="number"
+              <WeightInput
                 step="0.1"
-                value={segments.trunk}
-                onChange={(e) => onChangeSegment('trunk', parseFloat(e.target.value) || 0)}
-                className="w-10 text-center bg-transparent focus:outline-none tabular-nums"
+                kg={segments.trunk}
+                onChangeKg={(kg) => onChangeSegment('trunk', kg ?? 0)}
+                className="w-11 text-center bg-transparent focus:outline-none tabular-nums"
                 aria-label={`Trunk Lean Mass ${WEIGHT_UNIT}`}
               />
               <span>{WEIGHT_UNIT}</span>
             </label>
           ) : (
             <span className="text-[13px] font-medium text-[#111827] tabular-nums">
-              {segments.trunk} {WEIGHT_UNIT}
+              {formatWeight(segments.trunk)}
             </span>
           )}
         </div>
@@ -428,19 +426,18 @@ export const InBodySegmentSilhouette: React.FC<{
         <div className="absolute left-2 bottom-[66px] text-right">
           {onChangeSegment ? (
             <label className="inline-flex items-center gap-0.5 text-[13px] font-medium text-[#111827] tabular-nums bg-white/90 px-1.5 py-0.5 rounded border border-transparent hover:border-gray-300 focus-within:border-[#111827]">
-              <input
-                type="number"
+              <WeightInput
                 step="0.1"
-                value={segments.leftLeg}
-                onChange={(e) => onChangeSegment('leftLeg', parseFloat(e.target.value) || 0)}
-                className="w-9 text-right bg-transparent focus:outline-none tabular-nums"
+                kg={segments.leftLeg}
+                onChangeKg={(kg) => onChangeSegment('leftLeg', kg ?? 0)}
+                className="w-10 text-right bg-transparent focus:outline-none tabular-nums"
                 aria-label={`Left Leg Lean Mass ${WEIGHT_UNIT}`}
               />
               <span>{WEIGHT_UNIT}</span>
             </label>
           ) : (
             <span className="text-[13px] font-medium text-[#111827] tabular-nums">
-              {segments.leftLeg} {WEIGHT_UNIT}
+              {formatWeight(segments.leftLeg)}
             </span>
           )}
         </div>
@@ -449,19 +446,18 @@ export const InBodySegmentSilhouette: React.FC<{
         <div className="absolute right-2 bottom-[66px] text-left">
           {onChangeSegment ? (
             <label className="inline-flex items-center gap-0.5 text-[13px] font-medium text-[#111827] tabular-nums bg-white/90 px-1.5 py-0.5 rounded border border-transparent hover:border-gray-300 focus-within:border-[#111827]">
-              <input
-                type="number"
+              <WeightInput
                 step="0.1"
-                value={segments.rightLeg}
-                onChange={(e) => onChangeSegment('rightLeg', parseFloat(e.target.value) || 0)}
-                className="w-9 text-right bg-transparent focus:outline-none tabular-nums"
+                kg={segments.rightLeg}
+                onChangeKg={(kg) => onChangeSegment('rightLeg', kg ?? 0)}
+                className="w-10 text-right bg-transparent focus:outline-none tabular-nums"
                 aria-label={`Right Leg Lean Mass ${WEIGHT_UNIT}`}
               />
               <span>{WEIGHT_UNIT}</span>
             </label>
           ) : (
             <span className="text-[13px] font-medium text-[#111827] tabular-nums">
-              {segments.rightLeg} {WEIGHT_UNIT}
+              {formatWeight(segments.rightLeg)}
             </span>
           )}
         </div>

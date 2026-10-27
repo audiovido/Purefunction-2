@@ -22,8 +22,9 @@ import {
   calculateAsymmetryPercent,
   calculateEstimated1RM
 } from '../../types';
-import { WEIGHT_UNIT } from '../../lib/units';
+import { WEIGHT_UNIT, formatWeight } from '../../lib/units';
 import { InBodyPrintoutThumbnail, InBodySegmentSilhouette } from '../VisualAssets';
+import { WeightInput } from '../WeightInput';
 import { isCloud } from '../../cloud/supabase';
 import { deletePrintout, printoutUrl, uploadPrintout } from '../../cloud/printouts';
 import { PRINTOUT_ACCEPT, blobToDataUrl, preparePrintout } from '../../lib/media';
@@ -472,13 +473,10 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                     Weight
                   </label>
                   <div className="relative">
-                    <input
-                      type="number"
+                    <WeightInput
                       step="0.1"
-                      value={client.inBody.weight}
-                      onChange={(e) =>
-                        updateInBodyField('weight', parseFloat(e.target.value) || 0)
-                      }
+                      kg={client.inBody.weight}
+                      onChangeKg={(kg) => updateInBodyField('weight', kg ?? 0)}
                       className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 pr-10 text-[15px] font-medium text-[#111827] tabular-nums focus:outline-none focus:border-[#111827]"
                     />
                     <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">
@@ -493,16 +491,10 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                     Skeletal Muscle Mass
                   </label>
                   <div className="relative">
-                    <input
-                      type="number"
+                    <WeightInput
                       step="0.1"
-                      value={client.inBody.skeletalMuscleMass}
-                      onChange={(e) =>
-                        updateInBodyField(
-                          'skeletalMuscleMass',
-                          parseFloat(e.target.value) || 0
-                        )
-                      }
+                      kg={client.inBody.skeletalMuscleMass}
+                      onChangeKg={(kg) => updateInBodyField('skeletalMuscleMass', kg ?? 0)}
                       className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 pr-10 text-[15px] font-medium text-[#111827] tabular-nums focus:outline-none focus:border-[#111827]"
                     />
                     <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">
@@ -517,13 +509,10 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                     Body Fat Mass
                   </label>
                   <div className="relative">
-                    <input
-                      type="number"
+                    <WeightInput
                       step="0.1"
-                      value={client.inBody.bodyFatMass}
-                      onChange={(e) =>
-                        updateInBodyField('bodyFatMass', parseFloat(e.target.value) || 0)
-                      }
+                      kg={client.inBody.bodyFatMass}
+                      onChangeKg={(kg) => updateInBodyField('bodyFatMass', kg ?? 0)}
                       className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 pr-10 text-[15px] font-medium text-[#111827] tabular-nums focus:outline-none focus:border-[#111827]"
                     />
                     <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">
@@ -629,19 +618,14 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                     Total Body Water <span className="text-gray-400 font-normal">(optional)</span>
                   </label>
                   <div className="relative">
-                    <input
-                      type="number"
+                    <WeightInput
                       step="0.1"
                       placeholder="—"
-                      value={client.inBody.totalBodyWater ?? ''}
-                      onChange={(e) => {
-                        const raw = e.target.value.trim();
-                        const parsed = parseFloat(raw);
-                        updateInBodyField(
-                          'totalBodyWater',
-                          raw === '' || !Number.isFinite(parsed) ? undefined : parsed
-                        );
-                      }}
+                      allowEmpty
+                      kg={client.inBody.totalBodyWater}
+                      onChangeKg={(kg) =>
+                        updateInBodyField('totalBodyWater', kg == null ? undefined : kg)
+                      }
                       className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 pr-10 text-[15px] font-medium text-[#111827] tabular-nums focus:outline-none focus:border-[#111827]"
                     />
                     <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">
@@ -958,17 +942,10 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                         {row.exercise}
                       </td>
                       <td className="py-4 px-4">
-                        <input
-                          type="number"
+                        <WeightInput
                           step="2.5"
-                          value={row.loadKg}
-                          onChange={(e) =>
-                            updateStrengthItem(
-                              row.id,
-                              'loadKg',
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
+                          kg={row.loadKg}
+                          onChangeKg={(kg) => updateStrengthItem(row.id, 'loadKg', kg ?? 0)}
                           className="w-24 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-medium text-[#111827] tabular-nums focus:outline-none focus:border-[#111827]"
                         />
                       </td>
@@ -989,7 +966,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                       </td>
                       <td className="py-4 pl-4 pr-6 text-right">
                         <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#FEF3C7] text-[#111827] font-bold text-sm tabular-nums">
-                          {est1Rm > 0 ? `${est1Rm} ${WEIGHT_UNIT}` : '—'}
+                          {est1Rm > 0 ? formatWeight(est1Rm) : '—'}
                         </span>
                       </td>
                     </tr>

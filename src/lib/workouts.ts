@@ -7,7 +7,7 @@ import {
   WorkoutBlock,
   WorkoutExerciseBlock
 } from '../types';
-import { WEIGHT_UNIT } from './units';
+import { WEIGHT_UNIT, formatWeight, kgToLb, lbToKg, roundLb } from './units';
 
 /* ===========================================================================
  * Dates (local calendar days as YYYY-MM-DD, weeks start on Monday)
@@ -297,9 +297,9 @@ export function formatPerformance(p: Performance): string {
   const sameKg = p.sets.every((s) => s.kg === p.sets[0].kg);
   if (sameKg) {
     const kg = p.sets[0].kg;
-    return `${kg > 0 ? `${kg} ${WEIGHT_UNIT}` : 'Bodyweight'} × ${p.sets.map((s) => s.reps).join(', ')}`;
+    return `${kg > 0 ? formatWeight(kg) : 'Bodyweight'} × ${p.sets.map((s) => s.reps).join(', ')}`;
   }
-  return p.sets.map((s) => `${s.kg > 0 ? s.kg : 'BW'}×${s.reps}`).join(', ');
+  return p.sets.map((s) => `${s.kg > 0 ? roundLb(s.kg) : 'BW'}×${s.reps}`).join(', ');
 }
 
 export interface LoadSuggestion {
@@ -314,13 +314,13 @@ function roundTo(value: number, step: number): number {
 }
 
 /**
- * Double progression (see the assessment-app logic doc):
+ * Double progression (computed in lb, saved in kg):
  * - every planned set done at the TOP of the rep range, effort RPE ≤ 8, no pain
- *   → add load: ~5% for lower body, ~2.5% for upper body
- *   (at least 2.5 kg, or 1.25 kg for loads under 20 kg)
+ *   → add load in lb: ~5% for lower body (min 5 lb), ~2.5% for upper body / small loads (min 2.5 lb),
+ *   round suggested load to nearest 2.5 lb, then save as kg.
  * - pain last time → hold the load and tell the coach
  * - 2+ sets below the BOTTOM of the range → hold; if that happened at RPE ≥ 9.5,
- *   drop ~5%
+ *   drop ~5% (rounded to nearest 2.5 lb, saved as kg)
  * - otherwise → same load, add reps first
  * Returns null when there is nothing to suggest (bodyweight, time or no history).
  */
@@ -335,8 +335,6 @@ export function suggestLoad(
   const top = Math.max(...last.sets.map((s) => s.kg));
   if (!(top > 0)) return null;
 
-  const fmt = (n: number) => `${Number(n.toFixed(2))} ${WEIGHT_UNIT}`;
-
   if (last.pain) {
     return { action: 'hold', kg: top, reason: 'Pain reported last time — same load, tell your coach how it feels.' };
   }
@@ -346,26 +344,29 @@ export function suggestLoad(
   const allAtTopOfRange = atTop.every((s) => s.reps >= target.max);
   const effortOk = last.rpe == null || last.rpe <= 8;
 
+  const topLb = kgToLb(top);
+  const lower = bodyPart === 'Lower' || bodyPart === 'Hips' || bodyPart === 'Full Body';
+  const stepLb = topLb < 45 || !lower ? 2.5 : 5;
+
   if (allSetsDone && allAtTopOfRange && effortOk) {
-    const lower = bodyPart === 'Lower' || bodyPart === 'Hips' || bodyPart === 'Full Body';
-    const step = top < 20 ? 1.25 : 2.5;
-    const inc = Math.max(step, roundTo(top * (lower ? 0.05 : 0.025), step));
-    const kg = Number((top + inc).toFixed(2));
+    const incLb = Math.max(stepLb, roundTo(topLb * (lower ? 0.05 : 0.025), stepLb));
+    const nextLb = roundTo(topLb + incLb, 2.5);
+    const kg = lbToKg(nextLb);
     return {
       action: 'increase',
       kg,
-      reason: `Hit ${target.max} reps on every set${last.rpe ? ` at RPE ${last.rpe}` : ''} → +${fmt(inc)}`
+      reason: `Hit ${target.max} reps on every set${last.rpe ? ` at RPE ${last.rpe}` : ''} → +${incLb} ${WEIGHT_UNIT}`
     };
   }
 
   const missed = last.sets.filter((s) => s.reps < target.min).length;
   if (missed >= 2 && (last.rpe ?? 0) >= 9.5) {
-    const step = top < 20 ? 1.25 : 2.5;
-    const kg = Math.max(step, roundTo(top * 0.95, step));
-    return { action: 'reduce', kg, reason: `Missed reps at max effort last time → ${fmt(kg)} to rebuild quality reps` };
+    const nextLb = Math.max(2.5, roundTo(topLb * 0.95, 2.5));
+    const kg = lbToKg(nextLb);
+    return { action: 'reduce', kg, reason: `Missed reps at max effort last time → ${formatWeight(kg)} to rebuild quality reps` };
   }
   if (missed >= 2) {
-    return { action: 'hold', kg: top, reason: `Missed reps last time — stay at ${fmt(top)} and own the range.` };
+    return { action: 'hold', kg: top, reason: `Missed reps last time — stay at ${formatWeight(top)} and own the range.` };
   }
   if (allSetsDone && allAtTopOfRange && !effortOk) {
     return { action: 'hold', kg: top, reason: `Reps were there but effort was high (RPE ${last.rpe}) — same load.` };

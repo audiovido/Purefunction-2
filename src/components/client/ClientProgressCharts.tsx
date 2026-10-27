@@ -3,7 +3,7 @@ import { TrendingDown, TrendingUp, Minus, Trophy } from 'lucide-react';
 import { ClientProfile } from '../../types';
 import { measuresOf } from '../../lib/assessments';
 import { Point, loggedExercises, measureSeries } from '../../lib/trends';
-import { WEIGHT_UNIT } from '../../lib/units';
+import { WEIGHT_UNIT, roundLb } from '../../lib/units';
 import { estimated1RM, formatDate, parseISODate } from '../../lib/workouts';
 
 type MeasureCategory = 'Range of Motion' | 'Symmetry' | 'Body measurements';
@@ -96,7 +96,11 @@ function getClientMeasures(client: ClientProfile): ClientMeasureOption[] {
 
   const options: ClientMeasureOption[] = [];
   for (const meta of seen.values()) {
-    const points = measureSeries(client, meta.key);
+    const rawPoints = measureSeries(client, meta.key);
+    const points =
+      meta.unit === WEIGHT_UNIT
+        ? rawPoints.map((p) => ({ ...p, value: roundLb(p.value) }))
+        : rawPoints;
     if (points.length > 0) {
       options.push({ ...meta, points });
     }
@@ -124,9 +128,10 @@ function getExerciseSessions(
       for (const s of b.loggedSets) {
         if (!s.completed || !s.kg || !s.reps || s.kg <= 0 || s.reps <= 0) continue;
         if (repFilter !== 'all' && s.reps !== repFilter) continue;
-        const e1rm = Math.round(estimated1RM(s.kg, s.reps) * 10) / 10;
+        const weight = roundLb(s.kg);
+        const e1rm = roundLb(estimated1RM(s.kg, s.reps));
         const list = byDate.get(w.date) ?? [];
-        list.push({ weight: s.kg, reps: s.reps, e1rm });
+        list.push({ weight, reps: s.reps, e1rm });
         byDate.set(w.date, list);
       }
     }
@@ -479,9 +484,11 @@ export const ClientProgressCharts: React.FC<{
     measure && romPoints.length >= 2 && Math.abs(romDelta) > 1e-6
       ? (romDelta > 0) === (measure.better === 'up')
       : null;
-  const romGoal = measure
+  const rawRomGoal = measure
     ? client.goals?.find((g) => g.metricKey === measure.key)?.target
     : undefined;
+  const romGoal =
+    rawRomGoal != null && measure?.unit === WEIGHT_UNIT ? roundLb(rawRomGoal) : rawRomGoal;
 
   const firstSession = filteredSessions[0];
   const latestSession = filteredSessions[filteredSessions.length - 1];

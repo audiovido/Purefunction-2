@@ -3,9 +3,13 @@ import { Target, Trophy, Trash2 } from 'lucide-react';
 import { AssessmentSnapshot, Goal } from '../../types';
 import { goalStatus } from '../../lib/assessments';
 import { formatDate } from '../../lib/workouts';
+import { WEIGHT_UNIT, formatWeight } from '../../lib/units';
 
-const fmt = (v: number | null, unit: string) =>
-  v == null ? '—' : `${Number(v.toFixed(1))}${unit === '%' || unit === '°' ? unit : unit ? ` ${unit}` : ''}`;
+const fmt = (v: number | null, unit: string) => {
+  if (v == null) return '—';
+  if (unit === WEIGHT_UNIT || unit === 'kg') return formatWeight(v);
+  return `${Number(v.toFixed(1))}${unit === '%' || unit === '°' ? unit : unit ? ` ${unit}` : ''}`;
+};
 
 /** Goals with live progress from the latest assessment. Read-only when onDelete is not given. */
 export const GoalsPanel: React.FC<{

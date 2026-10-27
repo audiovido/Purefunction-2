@@ -3,17 +3,17 @@ import { createClientProfile } from '../clients';
 import { evaluateMuscleMassAlert, getClientBodyCompAlert } from '../bodyCompAlerts';
 
 describe('evaluateMuscleMassAlert', () => {
-  it('returns an alert on a steady decline across 3+ readings with >= 1% total drop and rounds muscle mass to 1 decimal', () => {
+  it('returns an alert on a steady decline across 3+ readings with >= 1% total drop and converts muscle mass from kg to lb rounded to 1 decimal', () => {
     const alert = evaluateMuscleMassAlert([
-      { date: '2026-08-01', skeletalMuscleMass: 80.04 },
-      { date: '2026-09-01', skeletalMuscleMass: 79.2 },
-      { date: '2026-10-01', skeletalMuscleMass: 78.36 }
+      { date: '2026-08-01', skeletalMuscleMass: 38.0 },
+      { date: '2026-09-01', skeletalMuscleMass: 37.6 },
+      { date: '2026-10-01', skeletalMuscleMass: 37.2 }
     ]);
 
     expect(alert).not.toBeNull();
     expect(alert?.readingsCount).toBe(3);
-    expect(alert?.startMuscleMass).toBe(80.0);
-    expect(alert?.latestMuscleMass).toBe(78.4);
+    expect(alert?.startMuscleMass).toBe(83.8);
+    expect(alert?.latestMuscleMass).toBe(82.0);
     expect(alert?.dropPercent).toBe(2.1);
     expect(alert?.message).toMatch(/protein intake, hydration, and training consistency/i);
   });

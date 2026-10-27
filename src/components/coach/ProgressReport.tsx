@@ -4,12 +4,17 @@ import { AssessmentSnapshot, ClientProfile } from '../../types';
 import { buildReport } from '../../lib/report';
 import { verdict } from '../../lib/assessments';
 import { formatDate } from '../../lib/workouts';
-import { WEIGHT_UNIT } from '../../lib/units';
+import { WEIGHT_UNIT, formatWeight, roundLb } from '../../lib/units';
 import { ClientAvatar, PureFunctionLogo } from '../VisualAssets';
 import { ExerciseVideoPlayer } from '../ExerciseMedia';
 
-const fmt = (v: number | null, unit: string) =>
-  v == null ? '—' : `${Number(v.toFixed(1))}${unit === '%' || unit === '°' ? unit : unit ? ` ${unit}` : ''}`;
+const isWeightUnit = (unit: string) => unit === WEIGHT_UNIT || unit === 'kg';
+
+const fmt = (v: number | null, unit: string) => {
+  if (v == null) return '—';
+  if (isWeightUnit(unit)) return formatWeight(v);
+  return `${Number(v.toFixed(1))}${unit === '%' || unit === '°' ? unit : unit ? ` ${unit}` : ''}`;
+};
 
 /**
  * Progress report between two real assessments (default: first → latest):
@@ -155,8 +160,8 @@ export const ProgressReport: React.FC<{
                   <li key={record.key} className="flex items-center gap-1.5 text-sm text-gray-700">
                     <Trophy className="w-3.5 h-3.5 text-[#B45309] shrink-0" />
                     <span>
-                      {record.name}: <b className="text-[#111827]">{record.kg} {WEIGHT_UNIT} × {record.reps}</b>
-                      {previous ? ` (was ${previous.kg} ${WEIGHT_UNIT} × ${previous.reps})` : ' (first record)'}
+                      {record.name}: <b className="text-[#111827]">{formatWeight(record.kg)} × {record.reps}</b>
+                      {previous ? ` (was ${formatWeight(previous.kg)} × ${previous.reps})` : ' (first record)'}
                     </span>
                   </li>
                 ))}
@@ -192,7 +197,8 @@ export const ProgressReport: React.FC<{
                       .filter((r) => r.group === g)
                       .map((r) => {
                         const v = verdict(r);
-                        const d = r.before != null && r.after != null ? r.after - r.before : null;
+                        const rawD = r.before != null && r.after != null ? r.after - r.before : null;
+                        const d = rawD != null && isWeightUnit(r.unit) ? roundLb(rawD) : rawD;
                         return (
                           <tr key={r.key} className="border-t border-gray-100">
                             <td className="py-1.5 px-4 sm:px-0 text-gray-700">{r.label}</td>

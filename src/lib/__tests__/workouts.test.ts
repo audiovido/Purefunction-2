@@ -14,6 +14,7 @@ import {
   weekDates
 } from '../workouts';
 import { parseVideoLink } from '../media';
+import { KG_TO_LB, formatWeight, kgToLb, lbToKg, roundLb } from '../units';
 import { INITIAL_CLIENTS } from '../../data/mockData';
 
 const baseClient = { ...INITIAL_CLIENTS[0], workouts: [] } as ClientProfile;
@@ -72,6 +73,25 @@ describe('prescriptions', () => {
   });
 });
 
+describe('weight unit conversions (kg <-> lb)', () => {
+  it('converts kg to lb and lb to kg using 1 kg = 2.20462 lb', () => {
+    expect(KG_TO_LB).toBe(2.20462);
+    expect(kgToLb(100)).toBeCloseTo(220.462, 3);
+    expect(lbToKg(220.462)).toBe(100);
+    expect(lbToKg(kgToLb(60))).toBe(60);
+    expect(roundLb(80)).toBe(176.4);
+    expect(formatWeight(80)).toBe('176.4 lb');
+  });
+
+  it('preserves 100, 102.5, and 135 at 1 decimal when converting lbToKg then kgToLb', () => {
+    for (const lb of [100, 102.5, 135]) {
+      const kg = lbToKg(lb);
+      expect(Number(kgToLb(kg).toFixed(1))).toBe(lb);
+      expect(roundLb(kg)).toBe(lb);
+    }
+  });
+});
+
 describe('load suggestions (double progression)', () => {
   const block = { reps: '8-10', sets: 3 };
   const perf = (reps: number[], extra = {}) => ({
@@ -82,16 +102,23 @@ describe('load suggestions (double progression)', () => {
     ...extra
   });
 
-  it('adds ~5% for lower body when every set hit the top of the range at RPE ≤ 8', () => {
+  it('adds 5 lb step (rounded to nearest 2.5 lb, saved as kg) for lower body when every set hit top of range at RPE ≤ 8', () => {
     const s = suggestLoad(block, perf([10, 10, 10], { rpe: 8 }), 'Lower');
-    expect(s).toMatchObject({ action: 'increase', kg: 62.5 });
+    // 60 kg = 132.28 lb + 5 lb -> rounded to nearest 2.5 lb = 137.5 lb -> saved as lbToKg(137.5)
+    expect(s).toMatchObject({ action: 'increase', kg: lbToKg(137.5) });
+    expect(s?.reason).toContain('+5 lb');
   });
-  it('adds ~2.5% (min 2.5 kg) for upper body', () => {
-    expect(suggestLoad(block, perf([10, 10, 10]), 'Upper')).toMatchObject({ action: 'increase', kg: 62.5 });
+  it('adds 2.5 lb step (rounded to nearest 2.5 lb, saved as kg) for upper body', () => {
+    // 60 kg = 132.28 lb + 2.5 lb -> rounded to nearest 2.5 lb = 135 lb -> saved as lbToKg(135)
+    expect(suggestLoad(block, perf([10, 10, 10]), 'Upper')).toMatchObject({
+      action: 'increase',
+      kg: lbToKg(135)
+    });
   });
-  it('uses 1.25 kg steps for light loads', () => {
+  it('uses 2.5 lb steps for small loads (< 45 lb) even on lower body', () => {
+    // 10 kg = 22.05 lb + 2.5 lb -> rounded to nearest 2.5 lb = 25 lb -> saved as lbToKg(25)
     const light = { ...perf([10, 10, 10]), sets: [10, 10, 10].map((r) => ({ kg: 10, reps: r })) };
-    expect(suggestLoad(block, light, 'Upper')).toMatchObject({ kg: 11.25 });
+    expect(suggestLoad(block, light, 'Lower')).toMatchObject({ kg: lbToKg(25) });
   });
   it('holds when effort was too high', () => {
     expect(suggestLoad(block, perf([10, 10, 10], { rpe: 9.5 }), 'Lower')?.action).toBe('hold');
@@ -104,8 +131,12 @@ describe('load suggestions (double progression)', () => {
   it('holds inside the range (add reps first)', () => {
     expect(suggestLoad(block, perf([10, 9, 8]), 'Lower')).toMatchObject({ action: 'hold', kg: 60 });
   });
-  it('reduces after missed reps at max effort', () => {
-    expect(suggestLoad(block, perf([7, 6, 6], { rpe: 10 }), 'Lower')).toMatchObject({ action: 'reduce', kg: 57.5 });
+  it('reduces after missed reps at max effort (rounded to nearest 2.5 lb, saved as kg)', () => {
+    // 60 kg = 132.28 lb * 0.95 = 125.66 lb -> nearest 2.5 lb = 125 lb -> saved as lbToKg(125)
+    expect(suggestLoad(block, perf([7, 6, 6], { rpe: 10 }), 'Lower')).toMatchObject({
+      action: 'reduce',
+      kg: lbToKg(125)
+    });
   });
   it('needs all planned sets before increasing', () => {
     expect(suggestLoad(block, perf([10, 10]), 'Lower')?.action).toBe('hold');

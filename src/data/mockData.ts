@@ -702,15 +702,15 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
           'Alex completed Phase 1 (Reposition) with 92% session adherence. By prioritizing 90/90 Hip Lifts and Left AIC frontal plane control prior to loading, his Hip Internal Rotation asymmetry dropped from 17% to exactly the 10% clinical threshold, allowing pain-free squat depth progression.',
         nextPhaseFocus: [
           'Transition from supine PRI resets to standing split-stance & unilateral loading (Left AIC Split Squat).',
-          'Progress Goblet and Back Squat load by +2.5 kg weekly when all target reps are achieved.',
+          'Progress Goblet and Back Squat load by +5 lb weekly when all target reps are achieved.',
           'Reduce Shoulder Internal Rotation asymmetry below 10% via Single-Arm Landmine Presses.'
         ],
         metrics: {
-          weightKg: { week0: 82.4, current: 81.9, unit: 'kg' },
-          muscleMassKg: { week0: 38.1, current: 39.2, unit: 'kg' },
+          weightKg: { week0: 82.4, current: 81.9, unit: 'lb' },
+          muscleMassKg: { week0: 38.1, current: 39.2, unit: 'lb' },
           bodyFatPct: { week0: 17.7, current: 15.8, unit: '%' },
           hipIrAsymmetryPct: { week0: 17, current: 10, unit: '%' },
-          squat1RmKg: { week0: 80, current: 92, unit: 'kg' },
+          squat1RmKg: { week0: 80, current: 92, unit: 'lb' },
           adherencePct: { week0: 83, current: 92, unit: '%' }
         }
       },
@@ -720,18 +720,18 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
         phaseCompleted: 'Phase 2 · Integrate',
         nextPhase: 'Phase 3 · Strength',
         coachSummary:
-          'During Month 2 (Integrate), Alex consolidated his pelvic neutrality under progressive bilateral and unilateral loads. Estimated Squat 1RM climbed +22% from Week 0 (80 kg → 102 kg), while Hip IR asymmetry reached 8% (well below our 10% target line) and Skeletal Muscle Mass increased by +2.3 kg.',
+          'During Month 2 (Integrate), Alex consolidated his pelvic neutrality under progressive bilateral and unilateral loads. Estimated Squat 1RM climbed +22% from Week 0 (176.4 lb → 224.9 lb), while Hip IR asymmetry reached 8% (well below our 10% target line) and Skeletal Muscle Mass increased by +5.1 lb.',
         nextPhaseFocus: [
           'Introduce Phase 3 axial barbell loading (Barbell Back Squat & Trap Bar Deadlift at RPE 7.5–8).',
           'Integrate transverse-plane anti-rotation work (Cable Pallof Press & Rotational Med Ball Throws).',
           'Maintain 2-set 90/90 Hip Lift & All-Fours Belly Lift pre-session primer (4 minutes total).'
         ],
         metrics: {
-          weightKg: { week0: 82.4, current: 81.6, unit: 'kg' },
-          muscleMassKg: { week0: 38.1, current: 40.4, unit: 'kg' },
+          weightKg: { week0: 82.4, current: 81.6, unit: 'lb' },
+          muscleMassKg: { week0: 38.1, current: 40.4, unit: 'lb' },
           bodyFatPct: { week0: 17.7, current: 14.0, unit: '%' },
           hipIrAsymmetryPct: { week0: 17, current: 8, unit: '%' },
-          squat1RmKg: { week0: 80, current: 102, unit: 'kg' },
+          squat1RmKg: { week0: 80, current: 102, unit: 'lb' },
           adherencePct: { week0: 83, current: 94, unit: '%' }
         }
       },
@@ -741,18 +741,18 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
         phaseCompleted: 'Phase 3 · Strength & Performance',
         nextPhase: 'Phase 4 · Performance Maintenance',
         coachSummary:
-          'Full 12-week transformation achieved. All five ROM joint asymmetries now sit under 6% (down from 14–17% at baseline), InBody Score improved from 81 to 88, and Squat 1RM reached 112 kg (+40% over baseline) with zero lower-back tightness.',
+          'Full 12-week transformation achieved. All five ROM joint asymmetries now sit under 6% (down from 14–17% at baseline), InBody Score improved from 81 to 88, and Squat 1RM reached 246.9 lb (+40% over baseline) with zero lower-back tightness.',
         nextPhaseFocus: [
           'Shift into high-velocity power & reactive agility blocks while retaining 4x/week strength structure.',
           'Quarterly InBody 270 & ROM re-screen scheduled every 6 weeks.',
-          'Continue auto-regulated +2.5 kg progression on primary compound lifts.'
+          'Continue auto-regulated +5 lb progression on primary compound lifts.'
         ],
         metrics: {
-          weightKg: { week0: 82.4, current: 81.8, unit: 'kg' },
-          muscleMassKg: { week0: 38.1, current: 41.2, unit: 'kg' },
+          weightKg: { week0: 82.4, current: 81.8, unit: 'lb' },
+          muscleMassKg: { week0: 38.1, current: 41.2, unit: 'lb' },
           bodyFatPct: { week0: 17.7, current: 12.9, unit: '%' },
           hipIrAsymmetryPct: { week0: 17, current: 5, unit: '%' },
-          squat1RmKg: { week0: 80, current: 112, unit: 'kg' },
+          squat1RmKg: { week0: 80, current: 112, unit: 'lb' },
           adherencePct: { week0: 83, current: 96, unit: '%' }
         }
       }
@@ -898,11 +898,11 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
           'Increase weekly adherence from 4/6 to 5/6 sessions.'
         ],
         metrics: {
-          weightKg: { week0: 63.8, current: 63.4, unit: 'kg' },
-          muscleMassKg: { week0: 26.4, current: 27.3, unit: 'kg' },
+          weightKg: { week0: 63.8, current: 63.4, unit: 'lb' },
+          muscleMassKg: { week0: 26.4, current: 27.3, unit: 'lb' },
           bodyFatPct: { week0: 22.3, current: 20.4, unit: '%' },
           hipIrAsymmetryPct: { week0: 16, current: 8, unit: '%' },
-          squat1RmKg: { week0: 45, current: 54, unit: 'kg' },
+          squat1RmKg: { week0: 45, current: 54, unit: 'lb' },
           adherencePct: { week0: 67, current: 83, unit: '%' }
         }
       },
@@ -914,11 +914,11 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
         coachSummary: 'Strong progression across all unilateral lower body patterns.',
         nextPhaseFocus: ['Begin barbell hinge progression.'],
         metrics: {
-          weightKg: { week0: 63.8, current: 63.1, unit: 'kg' },
-          muscleMassKg: { week0: 26.4, current: 28.0, unit: 'kg' },
+          weightKg: { week0: 63.8, current: 63.1, unit: 'lb' },
+          muscleMassKg: { week0: 26.4, current: 28.0, unit: 'lb' },
           bodyFatPct: { week0: 22.3, current: 19.1, unit: '%' },
           hipIrAsymmetryPct: { week0: 16, current: 6, unit: '%' },
-          squat1RmKg: { week0: 45, current: 60, unit: 'kg' },
+          squat1RmKg: { week0: 45, current: 60, unit: 'lb' },
           adherencePct: { week0: 67, current: 90, unit: '%' }
         }
       },
@@ -930,11 +930,11 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
         coachSummary: 'Outstanding 12-week structural balance and lean mass accrual.',
         nextPhaseFocus: ['Transition to athletic power phase.'],
         metrics: {
-          weightKg: { week0: 63.8, current: 63.0, unit: 'kg' },
-          muscleMassKg: { week0: 26.4, current: 28.6, unit: 'kg' },
+          weightKg: { week0: 63.8, current: 63.0, unit: 'lb' },
+          muscleMassKg: { week0: 26.4, current: 28.6, unit: 'lb' },
           bodyFatPct: { week0: 22.3, current: 18.2, unit: '%' },
           hipIrAsymmetryPct: { week0: 16, current: 5, unit: '%' },
-          squat1RmKg: { week0: 45, current: 66, unit: 'kg' },
+          squat1RmKg: { week0: 45, current: 66, unit: 'lb' },
           adherencePct: { week0: 67, current: 94, unit: '%' }
         }
       }
@@ -1038,11 +1038,11 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
         coachSummary: 'Resolved right hip impingement and restored symmetrical squat tracking.',
         nextPhaseFocus: ['Heavy unilateral split squats & hinge work.'],
         metrics: {
-          weightKg: { week0: 89.5, current: 89.3, unit: 'kg' },
-          muscleMassKg: { week0: 41.8, current: 42.7, unit: 'kg' },
+          weightKg: { week0: 89.5, current: 89.3, unit: 'lb' },
+          muscleMassKg: { week0: 41.8, current: 42.7, unit: 'lb' },
           bodyFatPct: { week0: 15.8, current: 14.4, unit: '%' },
           hipIrAsymmetryPct: { week0: 15, current: 8, unit: '%' },
-          squat1RmKg: { week0: 115, current: 128, unit: 'kg' },
+          squat1RmKg: { week0: 115, current: 128, unit: 'lb' },
           adherencePct: { week0: 83, current: 95, unit: '%' }
         }
       },
@@ -1051,14 +1051,14 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
         weeksLabel: 'Month 2 · Weeks 4–8',
         phaseCompleted: 'Phase 2 · Integrate',
         nextPhase: 'Phase 3 · Performance',
-        coachSummary: 'All asymmetries under 6%, Squat 1RM reached 142 kg.',
+        coachSummary: 'All asymmetries under 6%, Squat 1RM reached 313.1 lb.',
         nextPhaseFocus: ['Contrast training and rotational power.'],
         metrics: {
-          weightKg: { week0: 89.5, current: 89.2, unit: 'kg' },
-          muscleMassKg: { week0: 41.8, current: 43.5, unit: 'kg' },
+          weightKg: { week0: 89.5, current: 89.2, unit: 'lb' },
+          muscleMassKg: { week0: 41.8, current: 43.5, unit: 'lb' },
           bodyFatPct: { week0: 15.8, current: 13.2, unit: '%' },
           hipIrAsymmetryPct: { week0: 15, current: 5, unit: '%' },
-          squat1RmKg: { week0: 115, current: 142, unit: 'kg' },
+          squat1RmKg: { week0: 115, current: 142, unit: 'lb' },
           adherencePct: { week0: 83, current: 96, unit: '%' }
         }
       },
@@ -1070,11 +1070,11 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
         coachSummary: 'Peak athletic output achieved across all tests.',
         nextPhaseFocus: ['In-season maintenance block.'],
         metrics: {
-          weightKg: { week0: 89.5, current: 89.0, unit: 'kg' },
-          muscleMassKg: { week0: 41.8, current: 44.1, unit: 'kg' },
+          weightKg: { week0: 89.5, current: 89.0, unit: 'lb' },
+          muscleMassKg: { week0: 41.8, current: 44.1, unit: 'lb' },
           bodyFatPct: { week0: 15.8, current: 12.4, unit: '%' },
           hipIrAsymmetryPct: { week0: 15, current: 4, unit: '%' },
-          squat1RmKg: { week0: 115, current: 150, unit: 'kg' },
+          squat1RmKg: { week0: 115, current: 150, unit: 'lb' },
           adherencePct: { week0: 83, current: 97, unit: '%' }
         }
       }
@@ -1161,11 +1161,11 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
         coachSummary: 'Excellent pelvic stability and 15% gain in Squat 1RM.',
         nextPhaseFocus: ['Continue progressive overload on RDL and Split Squat.'],
         metrics: {
-          weightKg: { week0: 59.8, current: 59.4, unit: 'kg' },
-          muscleMassKg: { week0: 24.9, current: 25.8, unit: 'kg' },
+          weightKg: { week0: 59.8, current: 59.4, unit: 'lb' },
+          muscleMassKg: { week0: 24.9, current: 25.8, unit: 'lb' },
           bodyFatPct: { week0: 20.8, current: 18.9, unit: '%' },
           hipIrAsymmetryPct: { week0: 15, current: 9, unit: '%' },
-          squat1RmKg: { week0: 52, current: 60, unit: 'kg' },
+          squat1RmKg: { week0: 52, current: 60, unit: 'lb' },
           adherencePct: { week0: 83, current: 92, unit: '%' }
         }
       },
@@ -1177,11 +1177,11 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
         coachSummary: 'Consistent strength and lean mass improvements.',
         nextPhaseFocus: ['Axial loading progression.'],
         metrics: {
-          weightKg: { week0: 59.8, current: 59.2, unit: 'kg' },
-          muscleMassKg: { week0: 24.9, current: 26.4, unit: 'kg' },
+          weightKg: { week0: 59.8, current: 59.2, unit: 'lb' },
+          muscleMassKg: { week0: 24.9, current: 26.4, unit: 'lb' },
           bodyFatPct: { week0: 20.8, current: 17.8, unit: '%' },
           hipIrAsymmetryPct: { week0: 15, current: 6, unit: '%' },
-          squat1RmKg: { week0: 52, current: 66, unit: 'kg' },
+          squat1RmKg: { week0: 52, current: 66, unit: 'lb' },
           adherencePct: { week0: 83, current: 94, unit: '%' }
         }
       },
@@ -1193,11 +1193,11 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
         coachSummary: 'Full symmetry restoration and +35% lower-body strength increase.',
         nextPhaseFocus: ['Performance maintenance.'],
         metrics: {
-          weightKg: { week0: 59.8, current: 59.1, unit: 'kg' },
-          muscleMassKg: { week0: 24.9, current: 27.0, unit: 'kg' },
+          weightKg: { week0: 59.8, current: 59.1, unit: 'lb' },
+          muscleMassKg: { week0: 24.9, current: 27.0, unit: 'lb' },
           bodyFatPct: { week0: 20.8, current: 16.9, unit: '%' },
           hipIrAsymmetryPct: { week0: 15, current: 4, unit: '%' },
-          squat1RmKg: { week0: 52, current: 70, unit: 'kg' },
+          squat1RmKg: { week0: 52, current: 70, unit: 'lb' },
           adherencePct: { week0: 83, current: 96, unit: '%' }
         }
       }
@@ -1298,11 +1298,11 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
         coachSummary: 'Strong improvement in thoracic rotation and overhead pressing mechanics.',
         nextPhaseFocus: ['Maintain 5/6 weekly adherence.'],
         metrics: {
-          weightKg: { week0: 76.8, current: 76.6, unit: 'kg' },
-          muscleMassKg: { week0: 35.2, current: 36.1, unit: 'kg' },
+          weightKg: { week0: 76.8, current: 76.6, unit: 'lb' },
+          muscleMassKg: { week0: 35.2, current: 36.1, unit: 'lb' },
           bodyFatPct: { week0: 16.5, current: 15.1, unit: '%' },
           hipIrAsymmetryPct: { week0: 14, current: 9, unit: '%' },
-          squat1RmKg: { week0: 95, current: 105, unit: 'kg' },
+          squat1RmKg: { week0: 95, current: 105, unit: 'lb' },
           adherencePct: { week0: 75, current: 86, unit: '%' }
         }
       },
@@ -1311,14 +1311,14 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
         weeksLabel: 'Month 2 · Weeks 4–8',
         phaseCompleted: 'Phase 2 · Integrate',
         nextPhase: 'Phase 3 · Performance',
-        coachSummary: 'Reached 114 kg Squat 1RM with symmetrical hip loading.',
+        coachSummary: 'Reached 251.3 lb Squat 1RM with symmetrical hip loading.',
         nextPhaseFocus: ['Rotational power and single-leg plyometrics.'],
         metrics: {
-          weightKg: { week0: 76.8, current: 76.5, unit: 'kg' },
-          muscleMassKg: { week0: 35.2, current: 36.8, unit: 'kg' },
+          weightKg: { week0: 76.8, current: 76.5, unit: 'lb' },
+          muscleMassKg: { week0: 35.2, current: 36.8, unit: 'lb' },
           bodyFatPct: { week0: 16.5, current: 14.0, unit: '%' },
           hipIrAsymmetryPct: { week0: 14, current: 7, unit: '%' },
-          squat1RmKg: { week0: 95, current: 114, unit: 'kg' },
+          squat1RmKg: { week0: 95, current: 114, unit: 'lb' },
           adherencePct: { week0: 75, current: 88, unit: '%' }
         }
       },
@@ -1330,11 +1330,11 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
         coachSummary: 'Peak body composition and strength benchmarks hit.',
         nextPhaseFocus: ['Continue progressive strength block.'],
         metrics: {
-          weightKg: { week0: 76.8, current: 76.4, unit: 'kg' },
-          muscleMassKg: { week0: 35.2, current: 37.4, unit: 'kg' },
+          weightKg: { week0: 76.8, current: 76.4, unit: 'lb' },
+          muscleMassKg: { week0: 35.2, current: 37.4, unit: 'lb' },
           bodyFatPct: { week0: 16.5, current: 13.2, unit: '%' },
           hipIrAsymmetryPct: { week0: 14, current: 5, unit: '%' },
-          squat1RmKg: { week0: 95, current: 120, unit: 'kg' },
+          squat1RmKg: { week0: 95, current: 120, unit: 'lb' },
           adherencePct: { week0: 75, current: 92, unit: '%' }
         }
       }
@@ -1435,11 +1435,11 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
         coachSummary: 'Rapid restoration of hip internal rotation and pelvic control.',
         nextPhaseFocus: ['Single-leg RDL and split squat loading.'],
         metrics: {
-          weightKg: { week0: 61.6, current: 61.4, unit: 'kg' },
-          muscleMassKg: { week0: 26.2, current: 27.1, unit: 'kg' },
+          weightKg: { week0: 61.6, current: 61.4, unit: 'lb' },
+          muscleMassKg: { week0: 26.2, current: 27.1, unit: 'lb' },
           bodyFatPct: { week0: 19.8, current: 18.4, unit: '%' },
           hipIrAsymmetryPct: { week0: 14, current: 8, unit: '%' },
-          squat1RmKg: { week0: 60, current: 68, unit: 'kg' },
+          squat1RmKg: { week0: 60, current: 68, unit: 'lb' },
           adherencePct: { week0: 83, current: 95, unit: '%' }
         }
       },
@@ -1451,11 +1451,11 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
         coachSummary: 'All asymmetries under 5%, +27% Squat 1RM improvement.',
         nextPhaseFocus: ['Performance strength & tempo work.'],
         metrics: {
-          weightKg: { week0: 61.6, current: 61.2, unit: 'kg' },
-          muscleMassKg: { week0: 26.2, current: 27.9, unit: 'kg' },
+          weightKg: { week0: 61.6, current: 61.2, unit: 'lb' },
+          muscleMassKg: { week0: 26.2, current: 27.9, unit: 'lb' },
           bodyFatPct: { week0: 19.8, current: 17.0, unit: '%' },
           hipIrAsymmetryPct: { week0: 14, current: 5, unit: '%' },
-          squat1RmKg: { week0: 60, current: 76, unit: 'kg' },
+          squat1RmKg: { week0: 60, current: 76, unit: 'lb' },
           adherencePct: { week0: 83, current: 96, unit: '%' }
         }
       },
@@ -1467,11 +1467,11 @@ export const INITIAL_CLIENTS: ClientProfile[] = [
         coachSummary: 'Completed 12-week cycle with 88 InBody Score.',
         nextPhaseFocus: ['Long-term athletic development block.'],
         metrics: {
-          weightKg: { week0: 61.6, current: 61.0, unit: 'kg' },
-          muscleMassKg: { week0: 26.2, current: 28.4, unit: 'kg' },
+          weightKg: { week0: 61.6, current: 61.0, unit: 'lb' },
+          muscleMassKg: { week0: 26.2, current: 28.4, unit: 'lb' },
           bodyFatPct: { week0: 19.8, current: 16.2, unit: '%' },
           hipIrAsymmetryPct: { week0: 14, current: 4, unit: '%' },
-          squat1RmKg: { week0: 60, current: 82, unit: 'kg' },
+          squat1RmKg: { week0: 60, current: 82, unit: 'lb' },
           adherencePct: { week0: 83, current: 97, unit: '%' }
         }
       }

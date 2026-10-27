@@ -16,7 +16,8 @@ import {
 import { ClientProfile, SetLog, Workout, WorkoutBlock } from '../../types';
 import { useExerciseLibrary } from '../../state/ExerciseLibrary';
 import { isNewRecord } from '../../lib/records';
-import { WEIGHT_UNIT } from '../../lib/units';
+import { WEIGHT_UNIT, formatWeight, roundLb } from '../../lib/units';
+import { WeightInput } from '../WeightInput';
 import { ExerciseVideoPlayer } from '../ExerciseMedia';
 import {
   addDays,
@@ -292,7 +293,7 @@ export const ClientTodayView: React.FC<ClientTodayViewProps> = ({ client, onUpda
                         <h2 className="text-base font-bold text-[#111827] leading-snug">{block.name}</h2>
                         <p className="text-xs text-gray-500 mt-0.5">
                           {block.sets} × {block.reps || '–'}
-                          {block.loadKg > 0 ? ` @ ${block.loadKg} ${WEIGHT_UNIT}` : ''}
+                          {block.loadKg > 0 ? ` @ ${formatWeight(block.loadKg)}` : ''}
                           {block.restSec ? ` · ${block.restSec}s rest` : ''}
                           {paired ? ' · superset' : ''}
                         </p>
@@ -338,7 +339,7 @@ export const ClientTodayView: React.FC<ClientTodayViewProps> = ({ client, onUpda
                           ) : (
                             <Minus className="w-3.5 h-3.5" />
                           )}
-                          Use {suggestion.kg} {WEIGHT_UNIT}
+                          Use {formatWeight(suggestion.kg)}
                         </button>
                       )}
                       {suggestion && !allDone && <p className="basis-full text-[11px] text-gray-500">{suggestion.reason}</p>}
@@ -356,16 +357,13 @@ export const ClientTodayView: React.FC<ClientTodayViewProps> = ({ client, onUpda
                     {block.loggedSets.map((s) => (
                       <div key={s.setNumber} className="grid grid-cols-[2rem_1fr_1fr_2.75rem] gap-2 items-center">
                         <span className="text-sm font-semibold text-gray-500 tabular-nums text-center">{s.setNumber}</span>
-                        <input
-                          type="number"
-                          inputMode="decimal"
+                        <WeightInput
                           min={0}
                           step={0.5}
-                          value={s.kg ?? ''}
-                          placeholder={block.loadKg ? String(block.loadKg) : 'BW'}
-                          onChange={(e) =>
-                            patchSet(block, s.setNumber, { kg: e.target.value === '' ? null : Math.max(0, Number(e.target.value)) })
-                          }
+                          allowEmpty
+                          kg={s.kg}
+                          placeholder={block.loadKg ? String(roundLb(block.loadKg)) : 'BW'}
+                          onChangeKg={(kg) => patchSet(block, s.setNumber, { kg })}
                           aria-label={`Set ${s.setNumber} weight`}
                           className={cellInput}
                         />

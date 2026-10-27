@@ -6,7 +6,7 @@ import { GoalsPanel } from '../coach/GoalsPanel';
 import { RecordsPanel } from '../RecordsPanel';
 import { ClientProgressCharts } from './ClientProgressCharts';
 import { BeforeAfter } from '../BeforeAfter';
-import { WEIGHT_UNIT } from '../../lib/units';
+import { WEIGHT_UNIT, formatWeight, roundLb } from '../../lib/units';
 import { getClientBodyCompAlert } from '../../lib/bodyCompAlerts';
 
 interface ClientProgressViewProps {
@@ -144,7 +144,7 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
             <p className="text-xs text-gray-400"> Squat +22% since Week 0</p>
           </div>
           <span className="text-xl font-bold text-[#111827] tabular-nums">
-            {latestPt.squat1RM} {WEIGHT_UNIT}
+            {formatWeight(latestPt.squat1RM)}
           </span>
         </div>
 
@@ -162,10 +162,10 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
             <circle cx="24" cy="78" r="4" fill="#FFC809" />
             <circle cx="320" cy="18" r="4.5" fill="#111827" stroke="#FFC809" strokeWidth="2" />
             <text x="24" y="96" className="text-[10px] fill-gray-400">
-              Wk 0 ({firstPt.squat1RM}{WEIGHT_UNIT})
+              Wk 0 ({roundLb(firstPt.squat1RM)}{WEIGHT_UNIT})
             </text>
             <text x="320" y="96" textAnchor="end" className="text-[10px] fill-[#111827] font-semibold">
-              Current ({latestPt.squat1RM}{WEIGHT_UNIT})
+              Current ({roundLb(latestPt.squat1RM)}{WEIGHT_UNIT})
             </text>
           </svg>
         </div>
@@ -174,19 +174,19 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
           <div className="p-2 rounded-xl bg-gray-50">
             <div className="text-[11px] text-gray-500">Squat</div>
             <div className="text-sm font-bold text-[#111827]">
-              {latestPt.squat1RM} {WEIGHT_UNIT}
+              {formatWeight(latestPt.squat1RM)}
             </div>
           </div>
           <div className="p-2 rounded-xl bg-gray-50">
             <div className="text-[11px] text-gray-500">RDL</div>
             <div className="text-sm font-bold text-[#111827]">
-              {latestPt.rdl1RM} {WEIGHT_UNIT}
+              {formatWeight(latestPt.rdl1RM)}
             </div>
           </div>
           <div className="p-2 rounded-xl bg-gray-50">
             <div className="text-[11px] text-gray-500">Bench</div>
             <div className="text-sm font-bold text-[#111827]">
-              {latestPt.bench1RM} {WEIGHT_UNIT}
+              {formatWeight(latestPt.bench1RM)}
             </div>
           </div>
         </div>
@@ -207,16 +207,16 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
           <div className="p-3 rounded-xl border border-gray-100">
             <div className="text-[11px] text-gray-500">Weight</div>
             <div className="text-base font-bold text-[#111827] mt-0.5">
-              {client.inBody.weight} {WEIGHT_UNIT}
+              {formatWeight(client.inBody.weight)}
             </div>
           </div>
           <div className="p-3 rounded-xl border border-gray-100">
             <div className="text-[11px] text-gray-500">Muscle Mass</div>
             <div className="text-base font-bold text-[#111827] mt-0.5">
-              {latestPt.muscleMass} {WEIGHT_UNIT}
+              {formatWeight(latestPt.muscleMass)}
             </div>
             <div className="text-[10px] font-semibold text-emerald-700">
-              +{(latestPt.muscleMass - firstPt.muscleMass).toFixed(1)} {WEIGHT_UNIT}
+              +{roundLb(latestPt.muscleMass - firstPt.muscleMass).toFixed(1)} {WEIGHT_UNIT}
             </div>
           </div>
           <div className="p-3 rounded-xl border border-gray-100">

@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Trophy, Plus, Trash2, X } from 'lucide-react';
 import { ClientProfile, ManualRecord } from '../types';
 import { personalRecords } from '../lib/records';
-import { WEIGHT_UNIT } from '../lib/units';
+import { WEIGHT_UNIT, formatWeight, lbToKg } from '../lib/units';
 import { formatDate } from '../lib/workouts';
 import { useExerciseLibrary } from '../state/ExerciseLibrary';
 
@@ -22,17 +22,17 @@ export const RecordsPanel: React.FC<{
   const [error, setError] = useState<string | null>(null);
 
   const save = () => {
-    const k = Number(kg);
+    const lbVal = Number(kg);
     const r = Math.round(Number(reps));
     if (!name.trim()) return setError('Which exercise?');
-    if (!(k > 0) || k > 1000) return setError(`Enter the weight in ${WEIGHT_UNIT}.`);
+    if (!(lbVal > 0) || lbVal > 2200) return setError(`Enter the weight in ${WEIGHT_UNIT}.`);
     if (!(r >= 1) || r > 100) return setError('Enter the reps (1 for a one-rep max).');
     const match = exercises.find((e) => e.name.toLowerCase() === name.trim().toLowerCase());
     const rec: ManualRecord = {
       id: `pr-${Date.now().toString(36)}`,
       exerciseId: match?.id,
       name: match?.name ?? name.trim(),
-      kg: k,
+      kg: lbToKg(lbVal),
       reps: r,
       date: date || undefined,
       addedBy: by
@@ -115,15 +115,15 @@ export const RecordsPanel: React.FC<{
                 <div className="text-xs text-gray-500">
                   {r.date ? formatDate(r.date) : 'Date not set'} ·{' '}
                   {r.source === 'manual' ? 'added by hand' : 'logged'}
-                  {r.heaviestKg > r.kg ? ` · heaviest ${r.heaviestKg} ${WEIGHT_UNIT}` : ''}
+                  {r.heaviestKg > r.kg ? ` · heaviest ${formatWeight(r.heaviestKg)}` : ''}
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <div className="text-right">
                   <div className="text-sm font-bold text-[#111827] tabular-nums">
-                    {r.kg} {WEIGHT_UNIT} × {r.reps}
+                    {formatWeight(r.kg)} × {r.reps}
                   </div>
-                  <div className="text-[11px] text-gray-500 tabular-nums">est. 1RM {Math.round(r.best1RM)} {WEIGHT_UNIT}</div>
+                  <div className="text-[11px] text-gray-500 tabular-nums">est. 1RM {formatWeight(r.best1RM)}</div>
                 </div>
                 {onUpdateClient && r.manualId && (
                   <button onClick={() => remove(r.manualId!)} aria-label={`Remove record ${r.name}`} className="p-1.5 text-gray-300 hover:text-red-600 cursor-pointer">

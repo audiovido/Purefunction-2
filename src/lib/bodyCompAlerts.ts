@@ -1,4 +1,5 @@
 import { ClientProfile } from '../types';
+import { roundLb } from './units';
 
 export interface BodyCompReading {
   /** YYYY-MM-DD */
@@ -74,8 +75,8 @@ export function evaluateMuscleMassAlert(readings: BodyCompReading[]): BodyCompAl
     readingsCount: run.length,
     startDate: first.date,
     endDate: latest.date,
-    startMuscleMass: Math.round(first.skeletalMuscleMass * 10) / 10,
-    latestMuscleMass: Math.round(latest.skeletalMuscleMass * 10) / 10,
+    startMuscleMass: roundLb(first.skeletalMuscleMass),
+    latestMuscleMass: roundLb(latest.skeletalMuscleMass),
     dropPercent: Math.round(dropPercent * 10) / 10,
     title: 'Muscle mass check-in',
     message:

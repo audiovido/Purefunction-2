@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { AssessmentSnapshot, ClientProfile, Goal } from '../../types';
 import { ComparisonRow } from '../../lib/assessments';
 import { addDays, formatDate, todayISO } from '../../lib/workouts';
+import { WEIGHT_UNIT, lbToKg, roundLb } from '../../lib/units';
 
 /**
  * One measure from an assessment: write the coach's note for that assessment,
@@ -17,18 +18,26 @@ export const MeasureSheet: React.FC<{
 }> = ({ row, assessment, client, onSave, onClose }) => {
   const existing = client.goals?.find((g) => g.metricKey === row.key);
   const current = row.after;
+  const isWeight = row.unit === WEIGHT_UNIT || row.unit === 'kg';
+  const displayCurrent = current != null ? (isWeight ? roundLb(current) : Number(current.toFixed(1))) : null;
   const [note, setNote] = useState(assessment.notes?.[row.key] ?? '');
-  const [target, setTarget] = useState(existing ? String(existing.target) : '');
+  const [target, setTarget] = useState(
+    existing ? String(isWeight ? roundLb(existing.target) : existing.target) : ''
+  );
   const [due, setDue] = useState(existing?.dueDate ?? addDays(todayISO(), 28));
   const [goalNote, setGoalNote] = useState(existing?.note ?? '');
   const [error, setError] = useState<string | null>(null);
 
-  const unit = row.unit === '%' || row.unit === '°' ? row.unit : row.unit ? ` ${row.unit}` : '';
+  const displayUnit = isWeight ? WEIGHT_UNIT : row.unit;
+  const unit = displayUnit === '%' || displayUnit === '°' ? displayUnit : displayUnit ? ` ${displayUnit}` : '';
 
   const save = () => {
-    const t = target.trim() === '' ? null : Number(target);
-    if (t != null && !isFinite(t)) return setError('Target must be a number.');
-    if (t != null && current != null && t === current) return setError('Pick a target different from the current value.');
+    const tInput = target.trim() === '' ? null : Number(target);
+    if (tInput != null && !isFinite(tInput)) return setError('Target must be a number.');
+    if (tInput != null && displayCurrent != null && tInput === displayCurrent) {
+      return setError('Pick a target different from the current value.');
+    }
+    const t = tInput == null ? null : isWeight ? lbToKg(tInput) : tInput;
 
     const notes = { ...(assessment.notes ?? {}) };
     if (note.trim()) notes[row.key] = note.trim();
@@ -42,7 +51,7 @@ export const MeasureSheet: React.FC<{
         id: existing?.id ?? `goal-${Date.now().toString(36)}`,
         metricKey: row.key,
         label: row.label.replace(' (est. 1RM)', ' 1RM'),
-        unit: row.unit,
+        unit: displayUnit,
         // the target decides the direction (e.g. asymmetry down, muscle up)
         direction: t >= start ? 'up' : 'down',
         start,
@@ -72,7 +81,7 @@ export const MeasureSheet: React.FC<{
           <div>
             <h2 className="text-lg font-bold text-[#111827]">{row.label}</h2>
             <p className="text-sm text-gray-500">
-              {current != null ? `${Number(current.toFixed(1))}${unit}` : 'Not measured'} on {formatDate(assessment.date)} (week{' '}
+              {displayCurrent != null ? `${displayCurrent}${unit}` : 'Not measured'} on {formatDate(assessment.date)} (week{' '}
               {assessment.week})
             </p>
           </div>
@@ -94,7 +103,7 @@ export const MeasureSheet: React.FC<{
           <div className="text-sm font-semibold text-[#111827] mb-2">Goal</div>
           <div className="grid grid-cols-2 gap-2 mb-2">
             <label className="block">
-              <span className="block text-xs text-gray-600 mb-1">Target ({row.unit || 'value'})</span>
+              <span className="block text-xs text-gray-600 mb-1">Target ({displayUnit || 'value'})</span>
               <input
                 type="number"
                 inputMode="decimal"

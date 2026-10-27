@@ -8,7 +8,7 @@ import { RecordsPanel } from '../RecordsPanel';
 import { ProgressCharts } from '../ProgressCharts';
 import { PatternSpectrum } from '../PatternSpectrum';
 import { BeforeAfter } from '../BeforeAfter';
-import { WEIGHT_UNIT } from '../../lib/units';
+import { WEIGHT_UNIT, roundLb } from '../../lib/units';
 
 interface ProgressViewProps {
   clients: ClientProfile[];
@@ -101,12 +101,14 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
       ? pt.rdl1RM
       : pt.bench1RM
   );
-  const start1RM = liftValues[0] || 80;
-  const current1RM = liftValues[liftValues.length - 1] || 102;
+  const start1RmKg = liftValues[0] || 80;
+  const current1RmKg = liftValues[liftValues.length - 1] || 102;
+  const start1RM = roundLb(start1RmKg);
+  const current1RM = roundLb(current1RmKg);
   const liftPctGain =
     selectedLift === 'squat' && client.id === 'client-alex-carter'
       ? 22 // Matches Mockup 5 "+22% / 102 kg"
-      : Math.round(((current1RM - start1RM) / Math.max(1, start1RM)) * 100);
+      : Math.round(((current1RmKg - start1RmKg) / Math.max(1, start1RmKg)) * 100);
 
   // Hip IR Asymmetry delta
   const startAsym = firstPoint.hipIrAsymmetry;
@@ -115,8 +117,8 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
   const asymDelta = currentAsym - startAsym; // -9% for Alex Carter (17% -> 8%)
 
   // Muscle vs Fat delta
-  const muscleDelta = (latestPoint.muscleMass - firstPoint.muscleMass).toFixed(1);
-  const fatDelta = (latestPoint.fatMass - firstPoint.fatMass).toFixed(1);
+  const muscleDelta = roundLb(latestPoint.muscleMass - firstPoint.muscleMass).toFixed(1);
+  const fatDelta = roundLb(latestPoint.fatMass - firstPoint.fatMass).toFixed(1);
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -336,13 +338,13 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
           <div className="h-44 w-full">
             <svg viewBox="0 0 460 165" className="w-full h-full overflow-visible">
               <text x="28" y="32" textAnchor="end" className="text-[11px] fill-gray-400 tabular-nums">
-                {latestPoint.muscleMass}
+                {roundLb(latestPoint.muscleMass)}
               </text>
               <text x="28" y="75" textAnchor="end" className="text-[11px] fill-gray-400 tabular-nums">
-                {firstPoint.muscleMass}
+                {roundLb(firstPoint.muscleMass)}
               </text>
               <text x="28" y="128" textAnchor="end" className="text-[11px] fill-gray-400 tabular-nums">
-                {latestPoint.fatMass}
+                {roundLb(latestPoint.fatMass)}
               </text>
 
               <line x1="38" y1="18" x2="38" y2="138" stroke="#E5E7EB" strokeWidth="1" />
@@ -367,10 +369,10 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
 
               {/* Legend Labels */}
               <text x="435" y="20" textAnchor="end" className="text-[11px] font-semibold fill-[#111827]">
-                Muscle ({latestPoint.muscleMass} {WEIGHT_UNIT})
+                Muscle ({roundLb(latestPoint.muscleMass)} {WEIGHT_UNIT})
               </text>
               <text x="435" y="120" textAnchor="end" className="text-[11px] font-medium fill-gray-500">
-                Fat ({latestPoint.fatMass} {WEIGHT_UNIT})
+                Fat ({roundLb(latestPoint.fatMass)} {WEIGHT_UNIT})
               </text>
 
               <text x="42" y="156" textAnchor="middle" className="text-[11px] fill-gray-400">

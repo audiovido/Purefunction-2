@@ -1,4 +1,5 @@
 import { ClientProfile, MonthlyReportData } from '../types';
+import { WEIGHT_UNIT } from './units';
 
 const zero = (unit: string) => ({ week0: 0, current: 0, unit });
 
@@ -11,11 +12,11 @@ function emptyReport(month: 1 | 2 | 3): MonthlyReportData {
     coachSummary: '',
     nextPhaseFocus: [],
     metrics: {
-      weightKg: zero('kg'),
-      muscleMassKg: zero('kg'),
+      weightKg: zero(WEIGHT_UNIT),
+      muscleMassKg: zero(WEIGHT_UNIT),
       bodyFatPct: zero('%'),
       hipIrAsymmetryPct: zero('%'),
-      squat1RmKg: zero('kg'),
+      squat1RmKg: zero(WEIGHT_UNIT),
       adherencePct: zero('%')
     }
   };

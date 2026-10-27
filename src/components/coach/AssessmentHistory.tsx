@@ -4,9 +4,16 @@ import { AssessmentSnapshot, ClientProfile } from '../../types';
 import { ComparisonRow, compareAssessments, verdict } from '../../lib/assessments';
 import { MeasureSheet } from './MeasureSheet';
 import { formatDate } from '../../lib/workouts';
+import { WEIGHT_UNIT, roundLb } from '../../lib/units';
 
-const fmt = (v: number | null, unit: string) =>
-  v == null ? '—' : `${Number(v.toFixed(1))}${unit && unit !== '%' && unit !== '°' ? ' ' : ''}${unit}`;
+const isWeightUnit = (unit: string) => unit === WEIGHT_UNIT || unit === 'kg';
+
+const fmt = (v: number | null, unit: string) => {
+  if (v == null) return '—';
+  const val = isWeightUnit(unit) ? roundLb(v) : Number(v.toFixed(1));
+  const u = isWeightUnit(unit) ? WEIGHT_UNIT : unit;
+  return `${val}${u && u !== '%' && u !== '°' ? ' ' : ''}${u}`;
+};
 
 /** Pick any two saved assessments and see every number side by side. */
 export const AssessmentHistory: React.FC<{
@@ -94,7 +101,8 @@ export const AssessmentHistory: React.FC<{
                   .filter((r) => r.group === g)
                   .map((r) => {
                     const v = verdict(r);
-                    const d = r.before != null && r.after != null ? r.after - r.before : null;
+                    const rawD = r.before != null && r.after != null ? r.after - r.before : null;
+                    const d = rawD != null && isWeightUnit(r.unit) ? roundLb(rawD) : rawD;
                     return (
                       <tr key={r.label} className="border-t border-gray-100">
                         <td className="py-2 px-4 sm:px-0 text-gray-700">

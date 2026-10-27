@@ -3,7 +3,7 @@ import { CalendarPlus, Trash2, TrendingDown, TrendingUp, Minus } from 'lucide-re
 import { ClientProfile } from '../types';
 import { LineChart } from './LineChart';
 import { chartableMeasures, linearTrend, loggedExercises, measureSeries, strengthSeries } from '../lib/trends';
-import { WEIGHT_UNIT } from '../lib/units';
+import { WEIGHT_UNIT, roundLb } from '../lib/units';
 import { formatDate, todayISO } from '../lib/workouts';
 
 /**
@@ -29,17 +29,21 @@ export const ProgressCharts: React.FC<{
   const measure = measures.find((m) => m.key === measureKey) ?? measures[0];
   const lift = lifts.find((l) => l.id === liftId) ?? lifts[0];
 
-  let points = tab === 'body' && measure ? measureSeries(client, measure.key) : [];
+  let rawPoints = tab === 'body' && measure ? measureSeries(client, measure.key) : [];
   let unit = measure?.unit ?? '';
   let better: 'up' | 'down' = measure?.better ?? 'up';
   let title = measure?.label ?? '';
-  const goal = tab === 'body' && measure ? client.goals?.find((g) => g.metricKey === measure.key)?.target : undefined;
+  const rawGoal = tab === 'body' && measure ? client.goals?.find((g) => g.metricKey === measure.key)?.target : undefined;
   if (tab === 'strength' && lift) {
-    points = strengthSeries(client, lift.id).e1rm;
+    rawPoints = strengthSeries(client, lift.id).e1rm;
     unit = WEIGHT_UNIT;
     better = 'up';
     title = `${lift.name} — estimated 1RM per session`;
   }
+  const isWeight = unit === WEIGHT_UNIT || unit === 'kg';
+  if (isWeight) unit = WEIGHT_UNIT;
+  const points = isWeight ? rawPoints.map((p) => ({ date: p.date, value: roundLb(p.value) })) : rawPoints;
+  const goal = rawGoal != null && isWeight ? roundLb(rawGoal) : rawGoal;
   const trend = linearTrend(points);
   const good = trend ? (trend.perWeek > 0) === (better === 'up') : null;
   const fmt = (v: number) => `${v > 0 ? '+' : ''}${Number(v.toFixed(2))}${unit === '%' || unit === '°' ? unit : ` ${unit}`}`;

@@ -18,8 +18,9 @@ import {
 import { ClientProfile, Exercise, Workout, WorkoutBlock } from '../../types';
 import { searchExercises, useExerciseLibrary } from '../../state/ExerciseLibrary';
 import { MUSCLE_GROUPS, equipmentTypeOf, groupOf } from '../../lib/exerciseSearch';
-import { WEIGHT_UNIT } from '../../lib/units';
+import { WEIGHT_UNIT, roundLb } from '../../lib/units';
 import { ExerciseThumb } from '../ExerciseMedia';
+import { WeightInput } from '../WeightInput';
 import {
   addDays,
   blankWorkout,
@@ -466,16 +467,26 @@ export const WorkoutBuilderView: React.FC<WorkoutBuilderViewProps> = ({
                                 placeholder="8-10"
                                 className={numInput}
                               />
+                            ) : key === 'loadKg' ? (
+                              <WeightInput
+                                min={0}
+                                step={0.5}
+                                kg={b.loadKg}
+                                onChangeKg={(kg) => patchBlock(b.id, { loadKg: kg ?? 0 })}
+                                className={numInput}
+                              />
                             ) : (
                               <input
                                 type="number"
                                 inputMode="decimal"
                                 min={0}
-                                step={key === 'loadKg' ? 0.5 : 1}
+                                step={1}
                                 value={b[key]}
                                 onChange={(e) => {
                                   const v = Math.max(0, Number(e.target.value) || 0);
-                                  patchBlock(b.id, { [key]: key === 'sets' ? Math.min(20, Math.round(v)) : v } as Partial<WorkoutBlock>);
+                                  patchBlock(b.id, {
+                                    [key]: key === 'sets' ? Math.min(20, Math.round(v)) : v
+                                  } as Partial<WorkoutBlock>);
                                 }}
                                 className={numInput}
                               />
@@ -495,7 +506,7 @@ export const WorkoutBuilderView: React.FC<WorkoutBuilderViewProps> = ({
                         <div className="mt-2.5 text-xs text-[#111827] bg-[#F9FAFB] rounded-lg px-3 py-2">
                           <span className="font-semibold">Logged: </span>
                           {done.length
-                            ? done.map((s) => `${s.kg ? `${s.kg}×` : ''}${s.reps ?? '–'}`).join(', ')
+                            ? done.map((s) => `${s.kg ? `${roundLb(s.kg)}×` : ''}${s.reps ?? '–'}`).join(', ')
                             : 'no sets'}
                           {b.rpe ? ` · RPE ${b.rpe}` : ''}
                           {b.pain && <span className="ml-1 font-semibold text-red-600">· Pain reported</span>}
