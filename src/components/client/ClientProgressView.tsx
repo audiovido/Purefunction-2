@@ -4,8 +4,10 @@ import { ClientProfile, calculateAsymmetryPercent } from '../../types';
 import { EmptyProgress } from '../EmptyProgress';
 import { GoalsPanel } from '../coach/GoalsPanel';
 import { RecordsPanel } from '../RecordsPanel';
-import { ProgressCharts } from '../ProgressCharts';
+import { ClientProgressCharts } from './ClientProgressCharts';
 import { BeforeAfter } from '../BeforeAfter';
+import { WEIGHT_UNIT } from '../../lib/units';
+import { getClientBodyCompAlert } from '../../lib/bodyCompAlerts';
 
 interface ClientProgressViewProps {
   client: ClientProfile;
@@ -17,22 +19,7 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
   onUpdateClient
 }) => {
   const history = client.progressHistory;
-  if (history.length === 0) {
-    return (
-      <div className="max-w-lg mx-auto">
-        {(client.goals?.length ?? 0) > 0 && (
-          <GoalsPanel goals={client.goals!} assessments={client.assessments ?? []} />
-        )}
-        <ProgressCharts client={client} />
-      <BeforeAfter client={client} />
-      <RecordsPanel client={client} onUpdateClient={onUpdateClient} by="client" />
-        <EmptyProgress
-          title="Your progress starts here"
-          text="After your first assessment and a few logged workouts, your strength, body composition and symmetry charts show up here."
-        />
-      </div>
-    );
-  }
+  const bodyCompAlert = getClientBodyCompAlert(client);
   const firstPt = history[0] || {
     week: 0,
     squat1RM: 80,
@@ -67,14 +54,38 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
           My Progress
         </h1>
       </div>
+      {bodyCompAlert && (
+        <div
+          role="region"
+          aria-label={bodyCompAlert.title}
+          className="bg-[#FFFDF5] rounded-2xl p-4 sm:p-5 border border-[#FFC809]/60 shadow-[0_2px_14px_rgba(0,0,0,0.03)]"
+        >
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <h2 className="text-sm font-bold text-[#111827]">{bodyCompAlert.title}</h2>
+            <span className="bg-[#FEF3C7] text-[#92400E] text-xs font-semibold px-2.5 py-0.5 rounded-full tabular-nums">
+              {bodyCompAlert.startMuscleMass.toFixed(1)} {WEIGHT_UNIT} → {bodyCompAlert.latestMuscleMass.toFixed(1)} {WEIGHT_UNIT} (-{bodyCompAlert.dropPercent.toFixed(1)}%)
+            </span>
+          </div>
+          <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
+            {bodyCompAlert.message}
+          </p>
+        </div>
+      )}
       {(client.goals?.length ?? 0) > 0 && (
         <GoalsPanel goals={client.goals!} assessments={client.assessments ?? []} />
       )}
-      <ProgressCharts client={client} />
+      <ClientProgressCharts client={client} />
       <BeforeAfter client={client} />
       <RecordsPanel client={client} onUpdateClient={onUpdateClient} by="client" />
 
-      {/* 1. Phase Progress Card */}
+      {history.length === 0 ? (
+        <EmptyProgress
+          title="Your progress starts here"
+          text="After your first assessment and a few logged workouts, your strength, body composition and symmetry charts show up here."
+        />
+      ) : (
+        <>
+          {/* 1. Phase Progress Card */}
       <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_2px_14px_rgba(0,0,0,0.04)] border border-gray-100">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-bold text-[#111827]">Phase Progress</h2>
@@ -133,7 +144,7 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
             <p className="text-xs text-gray-400"> Squat +22% since Week 0</p>
           </div>
           <span className="text-xl font-bold text-[#111827] tabular-nums">
-            {latestPt.squat1RM} kg
+            {latestPt.squat1RM} {WEIGHT_UNIT}
           </span>
         </div>
 
@@ -151,10 +162,10 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
             <circle cx="24" cy="78" r="4" fill="#FFC809" />
             <circle cx="320" cy="18" r="4.5" fill="#111827" stroke="#FFC809" strokeWidth="2" />
             <text x="24" y="96" className="text-[10px] fill-gray-400">
-              Wk 0 ({firstPt.squat1RM}kg)
+              Wk 0 ({firstPt.squat1RM}{WEIGHT_UNIT})
             </text>
             <text x="320" y="96" textAnchor="end" className="text-[10px] fill-[#111827] font-semibold">
-              Current ({latestPt.squat1RM}kg)
+              Current ({latestPt.squat1RM}{WEIGHT_UNIT})
             </text>
           </svg>
         </div>
@@ -163,19 +174,19 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
           <div className="p-2 rounded-xl bg-gray-50">
             <div className="text-[11px] text-gray-500">Squat</div>
             <div className="text-sm font-bold text-[#111827]">
-              {latestPt.squat1RM} kg
+              {latestPt.squat1RM} {WEIGHT_UNIT}
             </div>
           </div>
           <div className="p-2 rounded-xl bg-gray-50">
             <div className="text-[11px] text-gray-500">RDL</div>
             <div className="text-sm font-bold text-[#111827]">
-              {latestPt.rdl1RM} kg
+              {latestPt.rdl1RM} {WEIGHT_UNIT}
             </div>
           </div>
           <div className="p-2 rounded-xl bg-gray-50">
             <div className="text-[11px] text-gray-500">Bench</div>
             <div className="text-sm font-bold text-[#111827]">
-              {latestPt.bench1RM} kg
+              {latestPt.bench1RM} {WEIGHT_UNIT}
             </div>
           </div>
         </div>
@@ -196,16 +207,16 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
           <div className="p-3 rounded-xl border border-gray-100">
             <div className="text-[11px] text-gray-500">Weight</div>
             <div className="text-base font-bold text-[#111827] mt-0.5">
-              {client.inBody.weight} kg
+              {client.inBody.weight} {WEIGHT_UNIT}
             </div>
           </div>
           <div className="p-3 rounded-xl border border-gray-100">
             <div className="text-[11px] text-gray-500">Muscle Mass</div>
             <div className="text-base font-bold text-[#111827] mt-0.5">
-              {latestPt.muscleMass} kg
+              {latestPt.muscleMass} {WEIGHT_UNIT}
             </div>
             <div className="text-[10px] font-semibold text-emerald-700">
-              +{(latestPt.muscleMass - firstPt.muscleMass).toFixed(1)} kg
+              +{(latestPt.muscleMass - firstPt.muscleMass).toFixed(1)} {WEIGHT_UNIT}
             </div>
           </div>
           <div className="p-3 rounded-xl border border-gray-100">
@@ -303,6 +314,8 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 };

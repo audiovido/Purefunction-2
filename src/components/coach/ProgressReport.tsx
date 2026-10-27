@@ -4,6 +4,7 @@ import { AssessmentSnapshot, ClientProfile } from '../../types';
 import { buildReport } from '../../lib/report';
 import { verdict } from '../../lib/assessments';
 import { formatDate } from '../../lib/workouts';
+import { WEIGHT_UNIT } from '../../lib/units';
 import { ClientAvatar, PureFunctionLogo } from '../VisualAssets';
 import { ExerciseVideoPlayer } from '../ExerciseMedia';
 
@@ -154,8 +155,8 @@ export const ProgressReport: React.FC<{
                   <li key={record.key} className="flex items-center gap-1.5 text-sm text-gray-700">
                     <Trophy className="w-3.5 h-3.5 text-[#B45309] shrink-0" />
                     <span>
-                      {record.name}: <b className="text-[#111827]">{record.kg} kg × {record.reps}</b>
-                      {previous ? ` (was ${previous.kg} kg × ${previous.reps})` : ' (first record)'}
+                      {record.name}: <b className="text-[#111827]">{record.kg} {WEIGHT_UNIT} × {record.reps}</b>
+                      {previous ? ` (was ${previous.kg} ${WEIGHT_UNIT} × ${previous.reps})` : ' (first record)'}
                     </span>
                   </li>
                 ))}

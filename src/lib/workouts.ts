@@ -7,6 +7,7 @@ import {
   WorkoutBlock,
   WorkoutExerciseBlock
 } from '../types';
+import { WEIGHT_UNIT } from './units';
 
 /* ===========================================================================
  * Dates (local calendar days as YYYY-MM-DD, weeks start on Monday)
@@ -296,7 +297,7 @@ export function formatPerformance(p: Performance): string {
   const sameKg = p.sets.every((s) => s.kg === p.sets[0].kg);
   if (sameKg) {
     const kg = p.sets[0].kg;
-    return `${kg > 0 ? `${kg} kg` : 'Bodyweight'} × ${p.sets.map((s) => s.reps).join(', ')}`;
+    return `${kg > 0 ? `${kg} ${WEIGHT_UNIT}` : 'Bodyweight'} × ${p.sets.map((s) => s.reps).join(', ')}`;
   }
   return p.sets.map((s) => `${s.kg > 0 ? s.kg : 'BW'}×${s.reps}`).join(', ');
 }
@@ -334,7 +335,7 @@ export function suggestLoad(
   const top = Math.max(...last.sets.map((s) => s.kg));
   if (!(top > 0)) return null;
 
-  const fmt = (n: number) => `${Number(n.toFixed(2))} kg`;
+  const fmt = (n: number) => `${Number(n.toFixed(2))} ${WEIGHT_UNIT}`;
 
   if (last.pain) {
     return { action: 'hold', kg: top, reason: 'Pain reported last time — same load, tell your coach how it feels.' };

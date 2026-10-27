@@ -26,6 +26,7 @@ export interface InBodyData {
   visceralFatLevel: number;
   bmr: number;
   inBodyScore: number;
+  totalBodyWater?: number;
   segments: {
     leftArm: number;
     rightArm: number;

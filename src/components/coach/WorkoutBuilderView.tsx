@@ -18,6 +18,7 @@ import {
 import { ClientProfile, Exercise, Workout, WorkoutBlock } from '../../types';
 import { searchExercises, useExerciseLibrary } from '../../state/ExerciseLibrary';
 import { MUSCLE_GROUPS, equipmentTypeOf, groupOf } from '../../lib/exerciseSearch';
+import { WEIGHT_UNIT } from '../../lib/units';
 import { ExerciseThumb } from '../ExerciseMedia';
 import {
   addDays,
@@ -452,7 +453,7 @@ export const WorkoutBuilderView: React.FC<WorkoutBuilderViewProps> = ({
                           [
                             ['Sets', 'sets'],
                             ['Reps', 'reps'],
-                            ['kg', 'loadKg'],
+                            [WEIGHT_UNIT, 'loadKg'],
                             ['Rest s', 'restSec']
                           ] as const
                         ).map(([label, key]) => (

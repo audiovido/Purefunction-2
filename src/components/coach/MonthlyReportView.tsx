@@ -9,6 +9,7 @@ import {
   Play
 } from 'lucide-react';
 import { ClientProfile } from '../../types';
+import { WEIGHT_UNIT } from '../../lib/units';
 import { ClientAvatar, PureFunctionLogo } from '../VisualAssets';
 
 interface MonthlyReportViewProps {
@@ -83,9 +84,9 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
   const metricCards = [
     {
       label: 'Estimated Squat 1RM',
-      week0: `${report.metrics.squat1RmKg.week0} kg`,
-      current: `${report.metrics.squat1RmKg.current} kg`,
-      delta: `+${report.metrics.squat1RmKg.current - report.metrics.squat1RmKg.week0} kg (+${Math.round(
+      week0: `${report.metrics.squat1RmKg.week0} ${WEIGHT_UNIT}`,
+      current: `${report.metrics.squat1RmKg.current} ${WEIGHT_UNIT}`,
+      delta: `+${report.metrics.squat1RmKg.current - report.metrics.squat1RmKg.week0} ${WEIGHT_UNIT} (+${Math.round(
         ((report.metrics.squat1RmKg.current - report.metrics.squat1RmKg.week0) /
           report.metrics.squat1RmKg.week0) *
           100
@@ -101,11 +102,11 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
     },
     {
       label: 'Skeletal Muscle Mass',
-      week0: `${report.metrics.muscleMassKg.week0} kg`,
-      current: `${report.metrics.muscleMassKg.current} kg`,
+      week0: `${report.metrics.muscleMassKg.week0} ${WEIGHT_UNIT}`,
+      current: `${report.metrics.muscleMassKg.current} ${WEIGHT_UNIT}`,
       delta: `+${(
         report.metrics.muscleMassKg.current - report.metrics.muscleMassKg.week0
-      ).toFixed(1)} kg`,
+      ).toFixed(1)} ${WEIGHT_UNIT}`,
       highlight: false
     },
     {
@@ -119,11 +120,11 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
     },
     {
       label: 'Body Weight (InBody 270)',
-      week0: `${report.metrics.weightKg.week0} kg`,
-      current: `${report.metrics.weightKg.current} kg`,
+      week0: `${report.metrics.weightKg.week0} ${WEIGHT_UNIT}`,
+      current: `${report.metrics.weightKg.current} ${WEIGHT_UNIT}`,
       delta: `${(
         report.metrics.weightKg.current - report.metrics.weightKg.week0
-      ).toFixed(1)} kg`,
+      ).toFixed(1)} ${WEIGHT_UNIT}`,
       highlight: false
     },
     {
@@ -353,7 +354,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                 Squat 1RM Progression
               </span>
               <span className="text-xs font-bold text-[#111827] tabular-nums">
-                {report.metrics.squat1RmKg.week0} kg → {report.metrics.squat1RmKg.current} kg
+                {report.metrics.squat1RmKg.week0} {WEIGHT_UNIT} → {report.metrics.squat1RmKg.current} {WEIGHT_UNIT}
               </span>
             </div>
             <svg viewBox="0 0 320 90" className="w-full h-24">

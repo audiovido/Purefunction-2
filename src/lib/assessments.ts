@@ -1,4 +1,5 @@
 import { AssessmentSnapshot, ClientProfile, Goal, calculateAsymmetryPercent } from '../types';
+import { WEIGHT_UNIT } from './units';
 import { estimated1RM, parseISODate, todayISO } from './workouts';
 
 /**
@@ -52,9 +53,9 @@ const num = (v: unknown): number | null => (typeof v === 'number' && isFinite(v)
 export function compareAssessments(a: AssessmentSnapshot, b: AssessmentSnapshot): ComparisonRow[] {
   const rows: ComparisonRow[] = [];
   const body: [keyof AssessmentSnapshot['inBody'], string, string, 'up' | 'down'][] = [
-    ['weight', 'Weight', 'kg', 'down'],
-    ['skeletalMuscleMass', 'Skeletal muscle mass', 'kg', 'up'],
-    ['bodyFatMass', 'Body fat mass', 'kg', 'down'],
+    ['weight', 'Weight', WEIGHT_UNIT, 'down'],
+    ['skeletalMuscleMass', 'Skeletal muscle mass', WEIGHT_UNIT, 'up'],
+    ['bodyFatMass', 'Body fat mass', WEIGHT_UNIT, 'down'],
     ['bodyFatPercent', 'Body fat', '%', 'down'],
     ['visceralFatLevel', 'Visceral fat level', '', 'down'],
     ['inBodyScore', 'InBody score', '', 'up']
@@ -81,7 +82,7 @@ export function compareAssessments(a: AssessmentSnapshot, b: AssessmentSnapshot)
       const t = list.find((s) => s.exercise === lift);
       return t ? num(Math.round(estimated1RM(t.loadKg, t.reps))) : null;
     };
-    rows.push({ key: `str:${lift}`, group: 'Strength', label: `${lift} (est. 1RM)`, unit: 'kg', before: e(a.strengthTests), after: e(b.strengthTests), better: 'up' });
+    rows.push({ key: `str:${lift}`, group: 'Strength', label: `${lift} (est. 1RM)`, unit: WEIGHT_UNIT, before: e(a.strengthTests), after: e(b.strengthTests), better: 'up' });
   }
   return rows;
 }

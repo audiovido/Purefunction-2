@@ -3,6 +3,7 @@ import { CalendarPlus, Trash2, TrendingDown, TrendingUp, Minus } from 'lucide-re
 import { ClientProfile } from '../types';
 import { LineChart } from './LineChart';
 import { chartableMeasures, linearTrend, loggedExercises, measureSeries, strengthSeries } from '../lib/trends';
+import { WEIGHT_UNIT } from '../lib/units';
 import { formatDate, todayISO } from '../lib/workouts';
 
 /**
@@ -35,7 +36,7 @@ export const ProgressCharts: React.FC<{
   const goal = tab === 'body' && measure ? client.goals?.find((g) => g.metricKey === measure.key)?.target : undefined;
   if (tab === 'strength' && lift) {
     points = strengthSeries(client, lift.id).e1rm;
-    unit = 'kg';
+    unit = WEIGHT_UNIT;
     better = 'up';
     title = `${lift.name} — estimated 1RM per session`;
   }

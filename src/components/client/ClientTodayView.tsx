@@ -16,6 +16,7 @@ import {
 import { ClientProfile, SetLog, Workout, WorkoutBlock } from '../../types';
 import { useExerciseLibrary } from '../../state/ExerciseLibrary';
 import { isNewRecord } from '../../lib/records';
+import { WEIGHT_UNIT } from '../../lib/units';
 import { ExerciseVideoPlayer } from '../ExerciseMedia';
 import {
   addDays,
@@ -291,7 +292,7 @@ export const ClientTodayView: React.FC<ClientTodayViewProps> = ({ client, onUpda
                         <h2 className="text-base font-bold text-[#111827] leading-snug">{block.name}</h2>
                         <p className="text-xs text-gray-500 mt-0.5">
                           {block.sets} × {block.reps || '–'}
-                          {block.loadKg > 0 ? ` @ ${block.loadKg} kg` : ''}
+                          {block.loadKg > 0 ? ` @ ${block.loadKg} ${WEIGHT_UNIT}` : ''}
                           {block.restSec ? ` · ${block.restSec}s rest` : ''}
                           {paired ? ' · superset' : ''}
                         </p>
@@ -337,7 +338,7 @@ export const ClientTodayView: React.FC<ClientTodayViewProps> = ({ client, onUpda
                           ) : (
                             <Minus className="w-3.5 h-3.5" />
                           )}
-                          Use {suggestion.kg} kg
+                          Use {suggestion.kg} {WEIGHT_UNIT}
                         </button>
                       )}
                       {suggestion && !allDone && <p className="basis-full text-[11px] text-gray-500">{suggestion.reason}</p>}
@@ -347,7 +348,7 @@ export const ClientTodayView: React.FC<ClientTodayViewProps> = ({ client, onUpda
                   {/* Sets */}
                   <div className="grid grid-cols-[2rem_1fr_1fr_2.75rem] gap-2 items-center text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1.5 px-0.5">
                     <span>Set</span>
-                    <span className="text-center">kg</span>
+                    <span className="text-center">{WEIGHT_UNIT}</span>
                     <span className="text-center">{target.kind === 'time' ? 'sec' : 'reps'}</span>
                     <span />
                   </div>

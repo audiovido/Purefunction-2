@@ -1,5 +1,6 @@
 import React from 'react';
 import { Exercise } from '../types';
+import { WEIGHT_UNIT } from '../lib/units';
 
 export const PureFunctionLogo: React.FC<{
   compact?: boolean;
@@ -370,13 +371,13 @@ export const InBodySegmentSilhouette: React.FC<{
                 value={segments.leftArm}
                 onChange={(e) => onChangeSegment('leftArm', parseFloat(e.target.value) || 0)}
                 className="w-9 text-right bg-transparent focus:outline-none tabular-nums"
-                aria-label="Left Arm Lean Mass kg"
+                aria-label={`Left Arm Lean Mass ${WEIGHT_UNIT}`}
               />
-              <span>kg</span>
+              <span>{WEIGHT_UNIT}</span>
             </label>
           ) : (
             <span className="text-[13px] font-medium text-[#111827] tabular-nums">
-              {segments.leftArm} kg
+              {segments.leftArm} {WEIGHT_UNIT}
             </span>
           )}
         </div>
@@ -391,13 +392,13 @@ export const InBodySegmentSilhouette: React.FC<{
                 value={segments.rightArm}
                 onChange={(e) => onChangeSegment('rightArm', parseFloat(e.target.value) || 0)}
                 className="w-9 text-right bg-transparent focus:outline-none tabular-nums"
-                aria-label="Right Arm Lean Mass kg"
+                aria-label={`Right Arm Lean Mass ${WEIGHT_UNIT}`}
               />
-              <span>kg</span>
+              <span>{WEIGHT_UNIT}</span>
             </label>
           ) : (
             <span className="text-[13px] font-medium text-[#111827] tabular-nums">
-              {segments.rightArm} kg
+              {segments.rightArm} {WEIGHT_UNIT}
             </span>
           )}
         </div>
@@ -412,13 +413,13 @@ export const InBodySegmentSilhouette: React.FC<{
                 value={segments.trunk}
                 onChange={(e) => onChangeSegment('trunk', parseFloat(e.target.value) || 0)}
                 className="w-10 text-center bg-transparent focus:outline-none tabular-nums"
-                aria-label="Trunk Lean Mass kg"
+                aria-label={`Trunk Lean Mass ${WEIGHT_UNIT}`}
               />
-              <span>kg</span>
+              <span>{WEIGHT_UNIT}</span>
             </label>
           ) : (
             <span className="text-[13px] font-medium text-[#111827] tabular-nums">
-              {segments.trunk} kg
+              {segments.trunk} {WEIGHT_UNIT}
             </span>
           )}
         </div>
@@ -433,13 +434,13 @@ export const InBodySegmentSilhouette: React.FC<{
                 value={segments.leftLeg}
                 onChange={(e) => onChangeSegment('leftLeg', parseFloat(e.target.value) || 0)}
                 className="w-9 text-right bg-transparent focus:outline-none tabular-nums"
-                aria-label="Left Leg Lean Mass kg"
+                aria-label={`Left Leg Lean Mass ${WEIGHT_UNIT}`}
               />
-              <span>kg</span>
+              <span>{WEIGHT_UNIT}</span>
             </label>
           ) : (
             <span className="text-[13px] font-medium text-[#111827] tabular-nums">
-              {segments.leftLeg} kg
+              {segments.leftLeg} {WEIGHT_UNIT}
             </span>
           )}
         </div>
@@ -454,13 +455,13 @@ export const InBodySegmentSilhouette: React.FC<{
                 value={segments.rightLeg}
                 onChange={(e) => onChangeSegment('rightLeg', parseFloat(e.target.value) || 0)}
                 className="w-9 text-right bg-transparent focus:outline-none tabular-nums"
-                aria-label="Right Leg Lean Mass kg"
+                aria-label={`Right Leg Lean Mass ${WEIGHT_UNIT}`}
               />
-              <span>kg</span>
+              <span>{WEIGHT_UNIT}</span>
             </label>
           ) : (
             <span className="text-[13px] font-medium text-[#111827] tabular-nums">
-              {segments.rightLeg} kg
+              {segments.rightLeg} {WEIGHT_UNIT}
             </span>
           )}
         </div>

@@ -22,6 +22,7 @@ import {
   calculateAsymmetryPercent,
   calculateEstimated1RM
 } from '../../types';
+import { WEIGHT_UNIT } from '../../lib/units';
 import { InBodyPrintoutThumbnail, InBodySegmentSilhouette } from '../VisualAssets';
 import { isCloud } from '../../cloud/supabase';
 import { deletePrintout, printoutUrl, uploadPrintout } from '../../cloud/printouts';
@@ -481,7 +482,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                       className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 pr-10 text-[15px] font-medium text-[#111827] tabular-nums focus:outline-none focus:border-[#111827]"
                     />
                     <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">
-                      kg
+                      {WEIGHT_UNIT}
                     </span>
                   </div>
                 </div>
@@ -505,7 +506,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                       className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 pr-10 text-[15px] font-medium text-[#111827] tabular-nums focus:outline-none focus:border-[#111827]"
                     />
                     <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">
-                      kg
+                      {WEIGHT_UNIT}
                     </span>
                   </div>
                 </div>
@@ -526,7 +527,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                       className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 pr-10 text-[15px] font-medium text-[#111827] tabular-nums focus:outline-none focus:border-[#111827]"
                     />
                     <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">
-                      kg
+                      {WEIGHT_UNIT}
                     </span>
                   </div>
                 </div>
@@ -619,6 +620,33 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                       }
                       className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-[15px] font-medium text-[#111827] tabular-nums focus:outline-none focus:border-[#111827]"
                     />
+                  </div>
+                </div>
+
+                {/* Total Body Water (optional) */}
+                <div className="sm:col-span-1">
+                  <label className="block text-xs font-medium text-[#111827] mb-1.5">
+                    Total Body Water <span className="text-gray-400 font-normal">(optional)</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder="—"
+                      value={client.inBody.totalBodyWater ?? ''}
+                      onChange={(e) => {
+                        const raw = e.target.value.trim();
+                        const parsed = parseFloat(raw);
+                        updateInBodyField(
+                          'totalBodyWater',
+                          raw === '' || !Number.isFinite(parsed) ? undefined : parsed
+                        );
+                      }}
+                      className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 pr-10 text-[15px] font-medium text-[#111827] tabular-nums focus:outline-none focus:border-[#111827]"
+                    />
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">
+                      {WEIGHT_UNIT}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -916,7 +944,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
               <thead>
                 <tr className="border-b border-gray-100 text-xs sm:text-sm font-semibold text-[#111827]">
                   <th className="py-3.5 pl-6 pr-4">Indicator Lift</th>
-                  <th className="py-3.5 px-4">Test Load (kg)</th>
+                  <th className="py-3.5 px-4">Test Load ({WEIGHT_UNIT})</th>
                   <th className="py-3.5 px-4">Reps Completed</th>
                   <th className="py-3.5 pl-4 pr-6 text-right">Estimated 1RM</th>
                 </tr>
@@ -961,7 +989,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                       </td>
                       <td className="py-4 pl-4 pr-6 text-right">
                         <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#FEF3C7] text-[#111827] font-bold text-sm tabular-nums">
-                          {est1Rm > 0 ? `${est1Rm} kg` : '—'}
+                          {est1Rm > 0 ? `${est1Rm} ${WEIGHT_UNIT}` : '—'}
                         </span>
                       </td>
                     </tr>

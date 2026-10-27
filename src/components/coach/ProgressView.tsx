@@ -8,6 +8,7 @@ import { RecordsPanel } from '../RecordsPanel';
 import { ProgressCharts } from '../ProgressCharts';
 import { PatternSpectrum } from '../PatternSpectrum';
 import { BeforeAfter } from '../BeforeAfter';
+import { WEIGHT_UNIT } from '../../lib/units';
 
 interface ProgressViewProps {
   clients: ClientProfile[];
@@ -255,7 +256,7 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
                 +{liftPctGain}%
               </div>
               <div className="text-xs sm:text-sm text-gray-500 mt-1">
-                {current1RM} kg
+                {current1RM} {WEIGHT_UNIT}
               </div>
             </div>
           </div>
@@ -324,10 +325,10 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
 
             <div className="text-right shrink-0 tabular-nums">
               <div className="text-2xl sm:text-[28px] font-bold text-[#111827] leading-none">
-                +{muscleDelta} kg
+                +{muscleDelta} {WEIGHT_UNIT}
               </div>
               <div className="text-xs sm:text-sm text-gray-500 mt-1">
-                SMM ({fatDelta} kg fat)
+                SMM ({fatDelta} {WEIGHT_UNIT} fat)
               </div>
             </div>
           </div>
@@ -366,10 +367,10 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
 
               {/* Legend Labels */}
               <text x="435" y="20" textAnchor="end" className="text-[11px] font-semibold fill-[#111827]">
-                Muscle ({latestPoint.muscleMass} kg)
+                Muscle ({latestPoint.muscleMass} {WEIGHT_UNIT})
               </text>
               <text x="435" y="120" textAnchor="end" className="text-[11px] font-medium fill-gray-500">
-                Fat ({latestPoint.fatMass} kg)
+                Fat ({latestPoint.fatMass} {WEIGHT_UNIT})
               </text>
 
               <text x="42" y="156" textAnchor="middle" className="text-[11px] fill-gray-400">

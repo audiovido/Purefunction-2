@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Trophy, Plus, Trash2, X } from 'lucide-react';
 import { ClientProfile, ManualRecord } from '../types';
 import { personalRecords } from '../lib/records';
+import { WEIGHT_UNIT } from '../lib/units';
 import { formatDate } from '../lib/workouts';
 import { useExerciseLibrary } from '../state/ExerciseLibrary';
 
@@ -24,7 +25,7 @@ export const RecordsPanel: React.FC<{
     const k = Number(kg);
     const r = Math.round(Number(reps));
     if (!name.trim()) return setError('Which exercise?');
-    if (!(k > 0) || k > 1000) return setError('Enter the weight in kg.');
+    if (!(k > 0) || k > 1000) return setError(`Enter the weight in ${WEIGHT_UNIT}.`);
     if (!(r >= 1) || r > 100) return setError('Enter the reps (1 for a one-rep max).');
     const match = exercises.find((e) => e.name.toLowerCase() === name.trim().toLowerCase());
     const rec: ManualRecord = {
@@ -92,7 +93,7 @@ export const RecordsPanel: React.FC<{
             ))}
           </datalist>
           <div className="grid grid-cols-3 gap-2 mb-2">
-            <input type="number" inputMode="decimal" value={kg} onChange={(e) => setKg(e.target.value)} placeholder="kg" aria-label="Weight in kg" className={field} />
+            <input type="number" inputMode="decimal" value={kg} onChange={(e) => setKg(e.target.value)} placeholder={WEIGHT_UNIT} aria-label={`Weight in ${WEIGHT_UNIT}`} className={field} />
             <input type="number" inputMode="numeric" value={reps} onChange={(e) => setReps(e.target.value)} placeholder="reps" aria-label="Reps" className={field} />
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="Date (optional)" className={field} />
           </div>
@@ -114,15 +115,15 @@ export const RecordsPanel: React.FC<{
                 <div className="text-xs text-gray-500">
                   {r.date ? formatDate(r.date) : 'Date not set'} ·{' '}
                   {r.source === 'manual' ? 'added by hand' : 'logged'}
-                  {r.heaviestKg > r.kg ? ` · heaviest ${r.heaviestKg} kg` : ''}
+                  {r.heaviestKg > r.kg ? ` · heaviest ${r.heaviestKg} ${WEIGHT_UNIT}` : ''}
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <div className="text-right">
                   <div className="text-sm font-bold text-[#111827] tabular-nums">
-                    {r.kg} kg × {r.reps}
+                    {r.kg} {WEIGHT_UNIT} × {r.reps}
                   </div>
-                  <div className="text-[11px] text-gray-500 tabular-nums">est. 1RM {Math.round(r.best1RM)} kg</div>
+                  <div className="text-[11px] text-gray-500 tabular-nums">est. 1RM {Math.round(r.best1RM)} {WEIGHT_UNIT}</div>
                 </div>
                 {onUpdateClient && r.manualId && (
                   <button onClick={() => remove(r.manualId!)} aria-label={`Remove record ${r.name}`} className="p-1.5 text-gray-300 hover:text-red-600 cursor-pointer">
