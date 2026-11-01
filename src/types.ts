@@ -8,7 +8,7 @@ export type CoachTab =
   | 'progress'
   | 'reports';
 
-export type ClientTab = 'today' | 'progress';
+export type ClientTab = 'today' | 'progress' | 'refer';
 
 export interface RomMovement {
   id: string;
