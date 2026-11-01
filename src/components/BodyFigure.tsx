@@ -5,6 +5,7 @@
  */
 import React from 'react';
 import { Joints, Pose, Pt, View, solve } from '../lib/bodyModel';
+import { LABEL_VIEWBOX_FRONT, LABEL_VIEWBOX_SIDE, PlacedLabel, layoutLabels } from '../lib/labelLayout';
 
 export interface FigureLabel {
   at: Pt;
@@ -855,36 +856,39 @@ export const BodyFigure: React.FC<{
     };
   };
 
-  const tag = (l: FigureLabel, i: number) => {
-    const w = l.text.length * 6.4 + 18;
-    const x = l.side === 'right' ? 308 - w : -8;
-    const y = l.at[1] + (l.dy ?? 0);
-    const lx = l.side === 'right' ? x : x + w;
-    return (
-      <g
-        key={i}
-        onClick={l.onClick}
-        className={l.onClick ? 'cursor-pointer' : undefined}
-        role={l.onClick ? 'button' : undefined}
+  const placedLabels = labels?.length ? layoutLabels(labels, { view }) : [];
+
+  const tag = (l: PlacedLabel, i: number) => (
+    <g
+      key={i}
+      onClick={l.onClick}
+      className={l.onClick ? 'cursor-pointer' : undefined}
+      role={l.onClick ? 'button' : undefined}
+    >
+      <line x1={l.jointX} y1={l.jointY} x2={l.lineX} y2={l.lineY} stroke={l.color} strokeWidth={1.5} />
+      <circle cx={l.jointX} cy={l.jointY} r={3} fill={l.color} />
+      <rect x={l.x} y={l.y} width={l.width} height={l.height} rx={l.height / 2} fill={l.color} />
+      <text
+        x={l.x + l.width / 2}
+        y={l.centerY + 4}
+        fontSize={11}
+        fontWeight={700}
+        textAnchor="middle"
+        fill={l.color === '#F59E0B' || l.color === '#FFC809' ? '#111827' : '#fff'}
       >
-        <line x1={l.at[0]} y1={l.at[1]} x2={lx} y2={y} stroke={l.color} strokeWidth={1.2} />
-        <rect x={x} y={y - 11} width={w} height={22} rx={11} fill={l.color} />
-        <text
-          x={x + w / 2}
-          y={y + 4}
-          fontSize={11.2}
-          fontWeight={700}
-          textAnchor="middle"
-          fill={l.color === '#F59E0B' || l.color === '#FFC809' ? '#111827' : '#fff'}
-        >
-          {l.text}
-        </text>
-      </g>
-    );
-  };
+        {l.text}
+      </text>
+    </g>
+  );
+
+  const svgViewBox = placedLabels.length
+    ? view === 'side'
+      ? LABEL_VIEWBOX_SIDE
+      : LABEL_VIEWBOX_FRONT
+    : '-10 -70 320 620';
 
   return (
-    <svg viewBox="-10 -70 320 620" className={className} role="img" aria-label={title ?? 'Body model'}>
+    <svg viewBox={svgViewBox} className={className} role="img" aria-label={title ?? 'Body model'}>
       <defs>
         <radialGradient id="pf-floor" cx="50%" cy="50%" r="50%">
           <stop offset="0" stopColor="#111827" stopOpacity="0.12" />
@@ -1115,7 +1119,7 @@ export const BodyFigure: React.FC<{
               </g>
             );
           })}
-      {labels?.map(tag)}
+      {placedLabels.map(tag)}
     </svg>
   );
 };

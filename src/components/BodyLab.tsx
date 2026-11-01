@@ -256,7 +256,6 @@ export const BodyLab: React.FC<{
     }
 
     // 2. Limited findings from clientFindings(client) attached to their joint (shoulder, hip, ankle)
-    const jointTagSlots: Record<string, number> = {};
     const limitedFindings = sortWorstFindings(findings.filter((f) => f.sideLimited !== 'none'));
 
     limitedFindings.forEach((f) => {
@@ -287,16 +286,12 @@ export const BodyLab: React.FC<{
       // Place tag on viewer's left for client's R side, viewer's right for client's L side
       const tagSide: 'left' | 'right' =
         mapView === 'front' ? (limSide === 'R' ? 'left' : 'right') : 'left';
-      const slotKey = `${jointKey}-${tagSide}`;
-      const idx = jointTagSlots[slotKey] ?? 0;
-      jointTagSlots[slotKey] = idx + 1;
 
       labels.push({
         at: pt,
         side: tagSide,
         color: SEVERITY_COLOR[sev],
         text: `${limSide} ${shortFindingLabel(f.label)} ${Math.round(val)}°`,
-        dy: idx * 26,
         onClick: () => selectMovement(m.id, limSide)
       });
     });
