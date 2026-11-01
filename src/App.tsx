@@ -5,6 +5,10 @@ import { useSession, Profile } from './cloud/Session';
 import { AuthScreen, LoadingScreen, NewPasswordScreen, NoAccessScreen } from './cloud/AuthScreen';
 import { ClientsStore, SyncState, useCloudClientsStore, useLocalClientsStore } from './cloud/useClientsStore';
 import { ExerciseLibraryProvider } from './state/ExerciseLibrary';
+import { ReferView } from './components/client/ReferView';
+import { ReferralLanding } from './components/ReferralLanding';
+import { ReferralsPanel } from './components/coach/ReferralsPanel';
+import { refCodeFromUrl } from './cloud/referrals';
 import { createClientProfile } from './lib/clients';
 import {
   Users,
@@ -14,6 +18,7 @@ import {
   LineChart,
   FileText,
   CalendarCheck,
+  Gift,
   TrendingUp,
   Smartphone,
   Monitor,
@@ -83,10 +88,17 @@ export default function App() {
   const { status, profile } = useSession();
   if (status === 'local') return <LocalApp />;
   if (status === 'loading') return <LoadingScreen />;
-  if (status === 'signed-out') return <AuthScreen />;
+  if (status === 'signed-out') return <SignedOut />;
   if (status === 'no-access') return <NoAccessScreen />;
   if (status === 'reset') return <NewPasswordScreen />;
   return <CloudApp profile={profile!} />;
+}
+
+/** Invite links (?ref=CODE) show the referral form; everyone else sees sign-in. */
+function SignedOut() {
+  const [code, setCode] = useState(() => refCodeFromUrl());
+  if (code) return <ReferralLanding code={code} onSignIn={() => setCode(null)} />;
+  return <AuthScreen />;
 }
 
 function LocalApp() {
@@ -475,6 +487,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
                 joinedIds={joinedIds}
               />
             )}
+            {coachTab === 'clients' && supabase && <ReferralsPanel clients={clients} />}
 
             {coachTab !== 'clients' && coachTab !== 'library' && !selectedClient && (
               <NoClientsYet onAdd={() => setCoachTab('clients')} />
@@ -546,6 +559,8 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
                 client={selectedClient}
                 onUpdateClient={handleUpdateClient}
               />
+            ) : clientTab === 'refer' ? (
+              <ReferView firstName={selectedClient.name.split(' ')[0]} />
             ) : (
               <ClientProgressView client={selectedClient} onUpdateClient={handleUpdateClient} />
             )}
@@ -591,7 +606,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
          ===================================================================== */}
       {role === 'client' && (
         <nav className="no-print fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 z-40">
-          <div className="max-w-md mx-auto grid grid-cols-2 gap-2 px-4 py-2">
+          <div className="max-w-md mx-auto grid grid-cols-3 gap-2 px-4 py-2">
             <button
               onClick={() => setClientTab('today')}
               className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
@@ -618,6 +633,21 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
               <TrendingUp className="w-4 h-4" />
               <span>My Progress</span>
               {clientTab === 'progress' && (
+                <span className="w-2 h-2 rounded-full bg-[#FFC809]" />
+              )}
+            </button>
+
+            <button
+              onClick={() => setClientTab('refer')}
+              className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
+                clientTab === 'refer'
+                  ? 'bg-[#111827] text-white'
+                  : 'text-gray-500 hover:text-[#111827]'
+              }`}
+            >
+              <Gift className="w-4 h-4" />
+              <span>Refer</span>
+              {clientTab === 'refer' && (
                 <span className="w-2 h-2 rounded-full bg-[#FFC809]" />
               )}
             </button>
