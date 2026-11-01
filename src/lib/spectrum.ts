@@ -4,8 +4,8 @@ import { MOVEMENTS, Severity, latestRom, rateRom, romFor, sideDifference } from 
 export interface ClientFinding {
   key: string;
   label: string;
-  left: number;
-  right: number;
+  left: number | null;
+  right: number | null;
   full: number;
   sideLimited: 'none' | 'L' | 'R' | 'both';
   worse: 'L' | 'R' | null;
@@ -184,18 +184,10 @@ export function resolveSpectrumTests(
   for (const row of SPECTRUM_ROWS) {
     const s = saved[row.id];
     const matchedRom = row.romName ? romFor(rom, row.romName) : undefined;
-    const left =
-      s?.left !== undefined && s?.left !== ''
-        ? s.left
-        : matchedRom
-          ? matchedRom.left
-          : undefined;
-    const right =
-      s?.right !== undefined && s?.right !== ''
-        ? s.right
-        : matchedRom
-          ? matchedRom.right
-          : undefined;
+    // A saved blank explicitly clears that side; never refill it from ROM.
+    // ROM defaults of zero mean "not entered". A saved zero is a real measurement.
+    const left = resolvedSide(s, 'left', matchedRom?.left, row.kind);
+    const right = resolvedSide(s, 'right', matchedRom?.right, row.kind);
     if (left !== undefined || right !== undefined) {
       out[row.id] = { left, right };
     }
@@ -204,36 +196,62 @@ export function resolveSpectrumTests(
 }
 
 function toNum(v: number | string | undefined): number | null {
-  if (v === undefined || v === null || v === '') return null;
+  if (v === undefined || v === null || String(v).trim() === '') return null;
   const n = typeof v === 'number' ? v : Number(v);
-  return Number.isFinite(n) ? n : null;
+  return Number.isFinite(n) && n >= 0 && n <= 180 ? n : null;
+}
+
+/** Browser input guard: only whole degrees from 0 through 180 can be saved. */
+export function parseDegreeInput(raw: string): number | null {
+  if (!/^(0|[1-9]\d*)$/.test(raw)) return null;
+  const n = Number(raw);
+  return Number.isInteger(n) && n <= 180 ? n : null;
+}
+
+function resolvedSide(
+  saved: SpectrumEntry | undefined,
+  side: 'left' | 'right',
+  romValue: number | undefined,
+  kind: SpectrumRowKind = 'degrees'
+): number | string | undefined {
+  const hasSaved = saved != null && Object.prototype.hasOwnProperty.call(saved, side);
+  const value = hasSaved ? saved![side] : romValue;
+  if (kind !== 'degrees') return value === '' ? undefined : value;
+  // Negative, non-numeric and out-of-range historical values are unmeasured.
+  const parsed = toNum(value);
+  if (parsed === null || (!hasSaved && parsed === 0)) return undefined;
+  return parsed;
 }
 
 export function buildDegreeFinding(
   key: string,
   label: string,
-  left: number,
-  right: number,
+  left: number | null,
+  right: number | null,
   full: number
 ): ClientFinding {
-  const sevL = rateRom(left, full);
-  const sevR = rateRom(right, full);
-  const lLim = sevL !== 'ok';
-  const rLim = sevR !== 'ok';
+  const lLim = left !== null && rateRom(left, full) !== 'ok';
+  const rLim = right !== null && rateRom(right, full) !== 'ok';
 
   let sideLimited: 'none' | 'L' | 'R' | 'both' = 'none';
   if (lLim && rLim) sideLimited = 'both';
   else if (lLim) sideLimited = 'L';
   else if (rLim) sideLimited = 'R';
 
+  // Never invent a comparison if only one side has been measured.
   let worse: 'L' | 'R' | null = null;
-  if (sideLimited === 'L') worse = 'L';
-  else if (sideLimited === 'R') worse = 'R';
-  else if (sideLimited === 'both') worse = left <= right ? 'L' : 'R';
-  else if (Math.round(Math.abs(left - right)) >= 1) worse = left < right ? 'L' : 'R';
+  if (left !== null && right !== null) {
+    if (sideLimited === 'L') worse = 'L';
+    else if (sideLimited === 'R') worse = 'R';
+    else if (sideLimited === 'both') worse = left <= right ? 'L' : 'R';
+    else if (Math.round(Math.abs(left - right)) >= 1) worse = left < right ? 'L' : 'R';
+  }
 
-  const severity = rateRom(Math.min(left, right), full);
-  const diffText = sideDifference(left, right);
+  const measured = [left, right].filter((n): n is number => n !== null);
+  const severity = rateRom(Math.min(...measured), full);
+  const diffText = left === null ? 'Only Right measured'
+    : right === null ? 'Only Left measured'
+      : sideDifference(left, right);
 
   return {
     key,
@@ -269,9 +287,7 @@ export function clientFindings(
     const r = toNum(entry?.right);
     if (l === null && r === null) continue;
     const full = Number(row.full);
-    const left = l ?? r ?? full;
-    const right = r ?? l ?? full;
-    findings.push(buildDegreeFinding(row.id, row.label, left, right, full));
+    findings.push(buildDegreeFinding(row.id, row.label, l, r, full));
     seenKeys.add(row.id);
   }
 
@@ -281,13 +297,11 @@ export function clientFindings(
     if (seenKeys.has(m.sopKey)) continue;
     const s = saved[m.sopKey];
     const matchedRom = romFor(rom, m.romName);
-    const l = toNum(s?.left !== undefined && s?.left !== '' ? s.left : matchedRom?.left);
-    const r = toNum(s?.right !== undefined && s?.right !== '' ? s.right : matchedRom?.right);
+    const l = toNum(resolvedSide(s, 'left', matchedRom?.left));
+    const r = toNum(resolvedSide(s, 'right', matchedRom?.right));
     if (l === null && r === null) continue;
     const full = m.normal;
-    const left = l ?? r ?? full;
-    const right = r ?? l ?? full;
-    findings.push(buildDegreeFinding(m.sopKey, m.label, left, right, full));
+    findings.push(buildDegreeFinding(m.sopKey, m.label, l, r, full));
     seenKeys.add(m.sopKey);
   }
 
@@ -333,7 +347,7 @@ export function classifyRow(row: SpectrumRowDef, entry?: SpectrumEntry): RowResu
   if (l === null && r === null) return null;
 
   const full = Number(row.full);
-  const f = buildDegreeFinding(row.id, row.label, l ?? full, r ?? full, full);
+  const f = buildDegreeFinding(row.id, row.label, l, r, full);
   const lLim = l !== null && rateRom(l, full) !== 'ok';
   const rLim = r !== null && rateRom(r, full) !== 'ok';
 

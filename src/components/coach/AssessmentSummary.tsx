@@ -13,8 +13,8 @@ import { sortWorstFindings } from '../BodyLab';
 const dotStyle = (sev: Severity) => ({ backgroundColor: SEVERITY_COLOR[sev] });
 
 function formatFindingSummary(f: ClientFinding): string {
-  const side = f.worse ?? (f.left <= f.right ? 'L' : 'R');
-  const val = Math.round(side === 'L' ? f.left : f.right);
+  const side = f.worse ?? (f.left !== null ? 'L' : 'R');
+  const val = Math.round((side === 'L' ? f.left : f.right) ?? 0);
   return `${side} ${f.label} ${val}° (Full ${f.full}°) — ${f.diffText}`;
 }
 

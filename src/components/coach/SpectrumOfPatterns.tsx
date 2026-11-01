@@ -6,9 +6,9 @@ import {
   SPECTRUM_PATTERNS,
   SPECTRUM_ROWS,
   SpectrumRowDef,
-  clientFindings,
   evaluateSpectrum,
   resolveSpectrumTests,
+  parseDegreeInput,
   scoreCellMatch
 } from '../../lib/spectrum';
 
@@ -16,11 +16,6 @@ export const SpectrumOfPatterns: React.FC<{
   client: ClientProfile;
   onUpdateClient?: (c: ClientProfile) => void;
 }> = ({ client, onUpdateClient }) => {
-  const findings = useMemo(() => clientFindings(client), [client]);
-  const findingsByKey = useMemo(
-    () => new Map(findings.map((f) => [f.key, f])),
-    [findings]
-  );
   const resolved = useMemo(() => resolveSpectrumTests(client), [client]);
   const evaluation = useMemo(() => evaluateSpectrum(resolved), [resolved]);
 
@@ -33,8 +28,9 @@ export const SpectrumOfPatterns: React.FC<{
     if (raw === '') {
       nextVal = '';
     } else if (rowDef?.kind === 'degrees') {
-      const n = Number(raw);
-      nextVal = Number.isFinite(n) ? n : raw;
+      const n = parseDegreeInput(raw);
+      if (n === null) return; // Reject negative, fractions, >180 and non-numbers.
+      nextVal = n;
     } else {
       nextVal = raw;
     }
@@ -58,7 +54,7 @@ export const SpectrumOfPatterns: React.FC<{
     if (row.kind === 'foot') {
       const val = String(entry.left ?? entry.right ?? '');
       return (
-        <td colSpan={2} data-label="Selection" className="px-2.5 py-2 border-b border-gray-100">
+        <td colSpan={2} data-label="Selection" className="pf-spectrum-choice px-2.5 py-2 border-b border-gray-100">
           <select
             aria-label={`${row.label} selection`}
             value={val}
@@ -81,7 +77,7 @@ export const SpectrumOfPatterns: React.FC<{
       return (['left', 'right'] as const).map((side) => {
         const val = String(entry[side] ?? '');
         return (
-          <td key={side} data-label={side === 'left' ? 'Left' : 'Right'} className="px-2 py-2 border-b border-gray-100">
+          <td key={side} data-label={side === 'left' ? 'Left' : 'Right'} className="pf-spectrum-side px-2 py-2 border-b border-gray-100">
             <select
               aria-label={`${row.label} ${side}`}
               value={val}
@@ -101,16 +97,18 @@ export const SpectrumOfPatterns: React.FC<{
       });
     }
 
-    const finding = findingsByKey.get(row.id);
     return (['left', 'right'] as const).map((side) => {
-      const rawVal = entry[side];
-      const val = rawVal !== undefined ? rawVal : finding ? finding[side] : '';
+      // Independent fields: blank must not display the opposite side's finding.
+      const val = entry[side] ?? '';
       return (
-        <td key={side} data-label={side === 'left' ? 'Left' : 'Right'} className="px-2 py-2 border-b border-gray-100">
+        <td key={side} data-label={side === 'left' ? 'Left' : 'Right'} className="pf-spectrum-side px-2 py-2 border-b border-gray-100">
           <label className="inline-flex items-center rounded-xl border border-gray-200 bg-white px-2.5 py-1">
             <input
               type="number"
-              inputMode="decimal"
+              inputMode="numeric"
+              min={0}
+              max={180}
+              step={1}
               aria-label={`${row.label} ${side} degrees`}
               value={val}
               disabled={!onUpdateClient}
@@ -168,14 +166,14 @@ export const SpectrumOfPatterns: React.FC<{
               const actual = evaluation.rowResults[row.id];
               return (
                 <tr key={row.id} className="hover:bg-gray-50/60">
-                  <td data-label="Test" className="py-2 pr-3 border-b border-gray-100 font-semibold text-[#111827] whitespace-nowrap">
+                  <td data-label="Test" className="pf-spectrum-test py-2 pr-3 border-b border-gray-100 font-semibold text-[#111827] whitespace-nowrap">
                     {row.label}
                   </td>
-                  <td data-label="Full" className="py-2 px-2 border-b border-gray-100 text-gray-500 whitespace-nowrap">
+                  <td data-label="Full" className="pf-spectrum-full py-2 px-2 border-b border-gray-100 text-gray-500 whitespace-nowrap">
                     {typeof row.full === 'number' ? `${row.full}°` : row.full}
                   </td>
                   {renderInputs(row)}
-                  <td data-label="Limited" className="py-2 px-2 border-b border-gray-100 font-bold text-[#111827] whitespace-nowrap">
+                  <td data-label="Limited" className="pf-spectrum-limited py-2 px-2 border-b border-gray-100 font-bold text-[#111827] whitespace-nowrap">
                     {actual ?? '—'}
                   </td>
                   {SPECTRUM_PATTERNS.map((pat) => {
@@ -188,7 +186,7 @@ export const SpectrumOfPatterns: React.FC<{
                       <td
                         key={pat.key}
                         data-label={`${pat.code} · ${pat.label}`}
-                        className={`py-2 px-2.5 border-b border-gray-100 whitespace-nowrap font-medium ${
+                        className={`pf-spectrum-desktop-pattern py-2 px-2.5 border-b border-gray-100 whitespace-nowrap font-medium ${
                           isExact
                             ? 'bg-green-100/90 text-green-900 font-bold'
                             : isPartial
@@ -200,6 +198,35 @@ export const SpectrumOfPatterns: React.FC<{
                       </td>
                     );
                   })}
+                  <td colSpan={6} className="pf-spectrum-patterns" data-label="Patterns">
+                    <details className="w-full">
+                      <summary className="min-h-[44px] cursor-pointer rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-semibold text-[#111827]">
+                        Patterns
+                      </summary>
+                      <div className="mt-2 space-y-1.5">
+                        {SPECTRUM_PATTERNS.map((pat) => {
+                          const exp = row.expected[pat.key];
+                          const disp = row.displayExpected?.[pat.key] ?? exp;
+                          const pts = scoreCellMatch(actual, exp);
+                          return (
+                            <div
+                              key={pat.key}
+                              className={`flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs ${
+                                pts === 1
+                                  ? 'bg-green-100/90 text-green-900 font-bold'
+                                  : pts === 0.5
+                                    ? 'bg-green-50 text-green-800 font-semibold'
+                                    : 'bg-white text-gray-600'
+                              }`}
+                            >
+                              <span className="min-w-0 break-words">{pat.code} · {pat.label}</span>
+                              <span className="break-words">{disp}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </details>
+                  </td>
                 </tr>
               );
             })}

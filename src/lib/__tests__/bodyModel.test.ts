@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MOVEMENTS, POSTURE, rateRom, ratePosture, sideDifference, solve } from '../bodyModel';
+import { MOVEMENTS, POSTURE, movementPose, rateRom, ratePosture, sideDifference, solve } from '../bodyModel';
 
 describe('solve', () => {
   it('raises the arm overhead at 180° shoulder flexion', () => {
@@ -20,13 +20,25 @@ describe('solve', () => {
   it('every movement produces finite joints', () => {
     for (const m of MOVEMENTS) {
       for (const s of ['L', 'R'] as const) {
-        const j = solve(m.view, m.pose(m.normal, s));
-        Object.values(j.p).forEach(([x, y]) => {
-          expect(Number.isFinite(x)).toBe(true);
-          expect(Number.isFinite(y)).toBe(true);
-        });
+        for (const view of ['front', 'side'] as const) {
+          const j = solve(view, movementPose(m, view, m.normal, s));
+          Object.values(j.p).forEach(([x, y]) => {
+            expect(Number.isFinite(x)).toBe(true);
+            expect(Number.isFinite(y)).toBe(true);
+          });
+        }
       }
     }
+  });
+});
+
+describe('alternate frontal ankle model', () => {
+  it('rotates the shin while keeping its ankle pivot planted', () => {
+    const m = MOVEMENTS.find((movement) => movement.id === 'ankle-dorsiflexion')!;
+    const start = solve('front', movementPose(m, 'front', 0, 'L'));
+    const end = solve('front', movementPose(m, 'front', m.normal, 'L'));
+    expect(start.p.anL).toEqual(end.p.anL);
+    expect(start.p.knL).not.toEqual(end.p.knL);
   });
 });
 
