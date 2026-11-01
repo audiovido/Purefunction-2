@@ -351,6 +351,8 @@ export interface ClientEvent {
 
 export interface ClientProfile {
   id: string;
+  /** Sample record for demonstrations; never a real client. */
+  isTestClient?: boolean;
   name: string;
   email: string;
   /** Cloud: morning email on workout days (default on). */

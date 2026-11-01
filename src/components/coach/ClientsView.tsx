@@ -15,6 +15,8 @@ interface ClientsViewProps {
     phaseName: ClientProfile['phaseName'];
   }) => string | void;
   onUpdateClient?: (updated: ClientProfile) => void;
+  onCreateTestClient: () => void;
+  onDeleteTestClient: (id: string) => void;
   /** client ids that have an account (cloud only; undefined in demo mode) */
   joinedIds?: Set<string>;
 }
@@ -25,6 +27,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   onSelectClient,
   onAddClient,
   onUpdateClient,
+  onCreateTestClient,
+  onDeleteTestClient,
   joinedIds
 }) => {
   const [inviteFor, setInviteFor] = useState<string | null>(null);
@@ -129,6 +133,11 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           />
         </div>
 
+        <div className="flex flex-wrap gap-2">
+          <button type="button" disabled={clients.some((c) => c.isTestClient)} onClick={onCreateTestClient}
+            className="min-h-[44px] px-4 py-2.5 border border-gray-300 rounded-xl font-semibold text-sm disabled:opacity-50">
+            + Test Client
+          </button>
         <button
           onClick={() => setIsAddModalOpen(true)}
           className="inline-flex items-center justify-center gap-2 bg-[#111827] hover:bg-[#1F2937] text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors cursor-pointer whitespace-nowrap shrink-0"
@@ -136,6 +145,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           <Plus className="w-4 h-4" />
           <span>Add client</span>
         </button>
+        </div>
       </div>
 
       {/* Client List Card matching Mockup 6 */}
@@ -177,7 +187,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     <span className="inline-flex items-center bg-[#F3F4F6] text-[#374151] text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap">
                       Phase {client.phaseNumber} · {client.phaseName}
                     </span>
-                    {joinedIds && !joinedIds.has(client.id) && (
+                    {client.isTestClient && <span className="text-xs font-bold rounded-full bg-[#FEF3C7] px-3 py-1">DEMO — NOT REAL</span>}
+                    {joinedIds && !joinedIds.has(client.id) && !client.isTestClient && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -228,6 +239,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     </span>
                   </div>
 
+                  {client.isTestClient && (
+                    <button type="button" onClick={(e) => { e.stopPropagation(); if (window.confirm('Delete the TEST CLIENT and all of its demo workouts and assessments?')) onDeleteTestClient(client.id); }}
+                      className="min-h-[44px] px-3 rounded-lg border border-red-200 text-red-700 text-xs font-semibold">Delete test client</button>
+                  )}
                   {/* Quick contextual shortcuts for Coach */}
                   <div
                     className="flex items-center gap-1 opacity-100 [@media(hover:hover)]:@2xl:opacity-0 [@media(hover:hover)]:@2xl:group-hover:opacity-100 transition-opacity"

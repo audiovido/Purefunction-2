@@ -48,7 +48,9 @@ import { ClientAvatar, PureFunctionLogo } from './components/VisualAssets';
 import { ClientsView } from './components/coach/ClientsView';
 import { ClientDetail } from './components/coach/ClientDetail';
 import { ProgramsView } from './components/coach/ProgramsView';
-import { CoachMessages, ClientMessages } from './components/MessagesView';
+import { CoachMessages, ClientMessages, useUnreadCount } from './components/MessagesView';
+import { ProgramTemplate, applyProgramTemplate } from './lib/programTemplates';
+import { createTestClient } from './lib/testClient';
 import { NutritionTodayCard } from './components/NutritionPanel';
 import { CoachNotesCard } from './components/client/CoachNotesCard';
 import { ExerciseLibraryView } from './components/coach/ExerciseLibraryView';
@@ -187,6 +189,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
   const selectedClient: ClientProfile | undefined =
     clients.find((c) => c.id === selectedClientId) || (isClientUser ? undefined : clients[0]);
   const canPreviewClient = !!selectedClient;
+  const unreadCount = useUnreadCount(role, role === 'client' ? selectedClient?.id ?? null : null);
 
   // Cloud: which clients have created their account (for "Not joined · Invite").
   const [joinedIds, setJoinedIds] = useState<Set<string> | undefined>(undefined);
@@ -235,6 +238,26 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
     setClients((prev) => [created, ...prev]);
     setSelectedClientId(created.id);
     return created.id;
+  };
+
+  const handleCreateTestClient = () => {
+    if (clients.some((c) => c.isTestClient)) return;
+    const sample = createTestClient();
+    setClients((prev) => [sample, ...prev]);
+    setSelectedClientId(sample.id);
+  };
+
+  const handleDeleteTestClient = (id: string) => {
+    if (!clients.some((c) => c.id === id && c.isTestClient)) return;
+    setClients((prev) => prev.filter((c) => c.id !== id || !c.isTestClient));
+    if (selectedClientIdState === id) {
+      setSelectedClientId('');
+      setClientOpen(false);
+    }
+  };
+
+  const handleApplyTemplate = (template: ProgramTemplate, ids: string[], start: string) => {
+    setClients((prev) => applyProgramTemplate(prev, template, ids, start).clients);
   };
 
   const handleAddExerciseToClientWorkout = (
@@ -307,6 +330,9 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
                       <span className="whitespace-nowrap">
                         <span className="lg:hidden">{item.shortLabel}</span>
                         <span className="hidden lg:inline">{item.label}</span>
+                      {item.id === 'messages' && unreadCount > 0 && (
+                        <span aria-label={`${unreadCount} unread messages`} className="inline-flex min-w-5 h-5 px-1 rounded-full bg-[#FFC809] text-[#111827] font-bold text-[10px] items-center justify-center">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                      )}
                       </span>
                     </div>
                     {isActive && (
@@ -487,6 +513,8 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
                     selectedClientId={selectedClientId}
                     onSelectClient={handleSelectClient}
                     onAddClient={handleAddClient}
+                    onCreateTestClient={handleCreateTestClient}
+                    onDeleteTestClient={handleDeleteTestClient}
                     onUpdateClient={handleUpdateClient}
                     joinedIds={joinedIds}
                   />
@@ -502,6 +530,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
                 client={selectedClient}
                 onSelectClientId={setSelectedClientId}
                 onUpdateClient={handleUpdateClient}
+                onApplyTemplate={handleApplyTemplate}
               />
             )}
 
@@ -563,7 +592,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
               <button
                 key={item.id}
                 onClick={() => setCoachTab(item.id)}
-                className={`min-h-[44px] flex flex-col items-center justify-center py-1 rounded-xl transition-colors cursor-pointer ${
+                className={`relative min-h-[44px] flex flex-col items-center justify-center py-1 rounded-xl transition-colors cursor-pointer ${
                   isActive
                     ? 'bg-[#111827] text-white font-semibold'
                     : 'text-[#1F2937] font-medium'
@@ -578,6 +607,9 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
                 <span className="text-[10px] mt-0.5 truncate max-w-full px-0.5">
                   {item.shortLabel}
                 </span>
+                {item.id === 'messages' && unreadCount > 0 && (
+                  <span aria-label={`${unreadCount} unread messages`} className="absolute top-0 right-1 rounded-full bg-[#FFC809] text-[#111827] min-w-5 h-5 px-1 text-[10px] font-bold">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                )}
               </button>
             );
           })}
@@ -602,12 +634,15 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
                 <button
                   key={t.id}
                   onClick={() => setClientTab(t.id)}
-                  className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 py-2 rounded-full text-[11px] font-semibold transition-colors cursor-pointer ${
+                  className={`relative min-h-[44px] flex flex-col items-center justify-center gap-0.5 py-2 rounded-full text-[11px] font-semibold transition-colors cursor-pointer ${
                     active ? 'bg-[#111827] text-white' : 'text-gray-500 hover:text-[#111827]'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
                   <span>{t.label}</span>
+                  {t.id === 'messages' && unreadCount > 0 && (
+                    <span aria-label={`${unreadCount} unread messages`} className="absolute top-0 right-1 min-w-5 h-5 px-1 rounded-full bg-[#FFC809] text-[#111827] font-bold text-[10px]">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                  )}
                 </button>
               );
             })}

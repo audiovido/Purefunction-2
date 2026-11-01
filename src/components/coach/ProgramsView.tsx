@@ -1,6 +1,8 @@
 import React from 'react';
 import { ClientProfile } from '../../types';
 import { WorkoutBuilderView } from './WorkoutBuilderView';
+import { ProgramTemplates } from './ProgramTemplates';
+import { ProgramTemplate } from '../../lib/programTemplates';
 
 /** 12-week programs: pick a client, build week by week with the library beside the calendar. */
 export const ProgramsView: React.FC<{
@@ -8,7 +10,8 @@ export const ProgramsView: React.FC<{
   client: ClientProfile;
   onSelectClientId: (id: string) => void;
   onUpdateClient: (c: ClientProfile) => void;
-}> = ({ clients, client, onSelectClientId, onUpdateClient }) => (
+  onApplyTemplate: (template: ProgramTemplate, ids: string[], start: string) => void;
+}> = ({ clients, client, onSelectClientId, onUpdateClient, onApplyTemplate }) => (
   <div className="max-w-7xl mx-auto">
     <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
       <div>
@@ -30,6 +33,7 @@ export const ProgramsView: React.FC<{
         ))}
       </select>
     </div>
+    <ProgramTemplates key={client.id} clients={clients} client={client} onApply={onApplyTemplate} />
     <div className="pf-embed pf-programs">
       <WorkoutBuilderView clients={[client]} client={client} onSelectClientId={() => {}} onUpdateClient={onUpdateClient} />
     </div>
