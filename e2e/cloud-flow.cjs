@@ -107,12 +107,11 @@ const today = iso(new Date());
   await C.getByPlaceholder(/Search name or muscle/).fill('goblet squat');
   await C.waitForTimeout(300);
   await C.getByRole('button', { name: 'Add Goblet Squat' }).first().click();
-  const kg = C.locator('input[type=number]').nth(2); // Sets, Reps(text), kg
   await C.locator('input[placeholder="8-10"]').first().fill('8-10');
-  await C.locator('label:has-text("kg") input').first().fill('40');
+  await C.locator('label:has-text("lb") input[type=number]').first().fill('40');
   await C.waitForTimeout(1500);
   const w = mock.db.workouts.find((x) => x.client_id === ryanRow.id && x.date === today);
-  ok(!!w && w.data.blocks.length === 1 && w.data.blocks[0].loadKg === 40, 'workout saved to the cloud (one row per workout)');
+  ok(!!w && w.data.blocks.length === 1 && Math.abs(w.data.blocks[0].loadKg - 18.1437) < 0.05, '40 lb displayed and kg persisted to the cloud (one row per workout)');
   ok(await C.getByText('Saved', { exact: true }).first().isVisible(), 'sync badge shows Saved');
   await shot(C, 'cloud-coach-builder');
 
@@ -195,8 +194,10 @@ const today = iso(new Date());
   ok(mock.log.some((l) => l.startsWith('GET /storage/v1/object/sign/exercise-videos/')), 'browser fetched the video through that link');
 
   /* ---------------- private assessment video for Ryan ---------------- */
-  await C.getByRole('button', { name: 'Assessment' }).first().click();
-  await C.getByRole('combobox').first().selectOption({ label: 'Ryan Lee' }).catch(() => {});
+  await C.getByRole('button', { name: 'Clients' }).first().click();
+  await C.locator('main').getByText('Ryan Lee', { exact: true }).first().click();
+  await C.getByRole('button', { name: 'Assessment', exact: true }).click();
+  await C.getByRole('button', { name: /^(Start assessment|New assessment)$/ }).click();
   await C.getByRole('button', { name: 'Confirm & next' }).click();
   for (let i = 0; i < 4; i++) await C.getByRole('button', { name: 'Save & next' }).click();
   await C.locator('input[type=file][accept^="video"]').setInputFiles(path.join(__dirname, 'fixtures', 'demo.webm'));
@@ -205,7 +206,7 @@ const today = iso(new Date());
   ok(clipKeys.length === 1 && clipKeys[0].startsWith(ryanRow.id + '/'), 'assessment video stored in the client’s private folder (' + clipKeys.join(',') + ')');
   await C.getByRole('button', { name: 'Complete Assessment' }).click();
   await C.waitForTimeout(1500);
-  await R.getByRole('button', { name: /My Progress/ }).click();
+  await R.getByRole('button', { name: 'Progress', exact: true }).click();
   await R.locator('section', { hasText: 'Before / after' }).waitFor({ timeout: 8000 }).catch(() => {});
   ok(await R.locator('section', { hasText: 'Before / after' }).isVisible(), 'client sees their assessment video');
   ok(mock.log.some((l) => l.startsWith('POST /storage/v1/object/sign/client-videos/' + ryanRow.id)), 'client got a signed link to their own video');
