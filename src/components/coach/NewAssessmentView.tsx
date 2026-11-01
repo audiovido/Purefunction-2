@@ -23,6 +23,7 @@ import {
   calculateEstimated1RM
 } from '../../types';
 import { WEIGHT_UNIT, formatWeight } from '../../lib/units';
+import { parseDegreeInput } from '../../lib/spectrum';
 import { InBodyPrintoutThumbnail, InBodySegmentSilhouette } from '../VisualAssets';
 import { WeightInput } from '../WeightInput';
 import { isCloud } from '../../cloud/supabase';
@@ -179,9 +180,12 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
   };
 
   // Handlers for Step 3: Range of Motion
-  const updateRomValue = (id: string, side: 'left' | 'right', value: number) => {
+  const updateRomValue = (id: string, side: 'left' | 'right', raw: string) => {
+    // ROM rows store numeric values; empty input means unmeasured (0 in legacy schema).
+    const value = raw === '' ? 0 : parseDegreeInput(raw);
+    if (value === null) return;
     const updatedRom = client.rom.map((item) =>
-      item.id === id ? { ...item, [side]: Math.max(0, value) } : item
+      item.id === id ? { ...item, [side]: value } : item
     );
     onUpdateClient({
       ...client,
@@ -768,15 +772,10 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                         <input
                           type="number"
                           min="0"
-                          max="220"
+                          max="180"
+                          step="1"
                           value={item.left}
-                          onChange={(e) =>
-                            updateRomValue(
-                              item.id,
-                              'left',
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
+                          onChange={(e) => updateRomValue(item.id, 'left', e.target.value)}
                           aria-label={`${item.name} Left degrees`}
                           className="w-20 border border-gray-200 rounded-lg px-3 py-2 text-[15px] text-[#111827] tabular-nums focus:outline-none focus:border-[#111827] transition-colors"
                         />
@@ -786,15 +785,10 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                         <input
                           type="number"
                           min="0"
-                          max="220"
+                          max="180"
+                          step="1"
                           value={item.right}
-                          onChange={(e) =>
-                            updateRomValue(
-                              item.id,
-                              'right',
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
+                          onChange={(e) => updateRomValue(item.id, 'right', e.target.value)}
                           aria-label={`${item.name} Right degrees`}
                           className="w-20 border border-gray-200 rounded-lg px-3 py-2 text-[15px] text-[#111827] tabular-nums focus:outline-none focus:border-[#111827] transition-colors"
                         />

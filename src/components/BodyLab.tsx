@@ -12,6 +12,7 @@ import {
   postureToPose,
   ratePosture,
   rateRom,
+  movementPose,
   solve
 } from '../lib/bodyModel';
 import { ClientFinding, clientFindings } from '../lib/spectrum';
@@ -49,10 +50,11 @@ export function sortWorstFindings(findings: ClientFinding[]): ClientFinding[] {
     if (sevRank[b.severity] !== sevRank[a.severity]) {
       return sevRank[b.severity] - sevRank[a.severity];
     }
-    const ratioA = Math.min(a.left, a.right) / (a.full || 90);
-    const ratioB = Math.min(b.left, b.right) / (b.full || 90);
+    const ratioA = Math.min(...[a.left, a.right].filter((v): v is number => v !== null)) / (a.full || 90);
+    const ratioB = Math.min(...[b.left, b.right].filter((v): v is number => v !== null)) / (b.full || 90);
     if (Math.abs(ratioA - ratioB) > 1e-3) return ratioA - ratioB;
-    return Math.abs(b.left - b.right) - Math.abs(a.left - a.right);
+    return Math.abs((b.left ?? b.right ?? 0) - (b.right ?? b.left ?? 0))
+      - Math.abs((a.left ?? a.right ?? 0) - (a.right ?? a.left ?? 0));
   });
 }
 
@@ -130,11 +132,11 @@ export const BodyLab: React.FC<{
   // Separate Front / Side toggles for Body map and Movements
   const [mapView, setMapView] = useState<View>('front');
   const [moveViewPref, setMoveViewPref] = useState<View | null>(null);
-  // Each movement in MOVEMENTS has its natural view (front or side); keep active view synced to move.view
-  const moveView: View = moveViewPref === move.view ? moveViewPref : move.view;
+  // Natural view is the default; a user can freely choose the other view.
+  const moveView: View = moveViewPref ?? move.view;
 
   const worseSide: 'L' | 'R' = finding
-    ? (finding.worse ?? (finding.left <= finding.right ? 'L' : 'R'))
+    ? (finding.worse ?? (finding.left !== null ? 'L' : 'R'))
     : 'L';
   const [sideSel, setSideSel] = useState<'L' | 'R' | null>(null);
   const side = sideSel ?? worseSide;
@@ -142,7 +144,9 @@ export const BodyLab: React.FC<{
   const [t, setT] = useCycle(playing, `${move.id}-${side}`);
 
   const normal = finding?.full ?? move.normal;
-  const target = finding ? (side === 'L' ? finding.left : finding.right) : normal;
+  // Unmeasured side animates to Full, without pretending it was measured.
+  const measuredTarget = finding ? (side === 'L' ? finding.left : finding.right) : null;
+  const target = measuredTarget ?? normal;
 
   const selectMovement = (targetMoveId: string, preferredSide?: 'L' | 'R' | null) => {
     const m = MOVEMENTS.find((x) => x.id === targetMoveId || x.sopKey === targetMoveId);
@@ -258,8 +262,8 @@ export const BodyLab: React.FC<{
     limitedFindings.forEach((f) => {
       const m = MOVEMENTS.find((x) => x.sopKey === f.key);
       if (!m) return;
-      const limSide: 'L' | 'R' = f.worse ?? (f.left <= f.right ? 'L' : 'R');
-      const val = limSide === 'L' ? f.left : f.right;
+      const limSide: 'L' | 'R' = f.worse ?? (f.left !== null && rateRom(f.left, f.full) !== 'ok' ? 'L' : 'R');
+      const val = (limSide === 'L' ? f.left : f.right) ?? f.full;
       const sev = rateRom(val, f.full);
 
       const jointKey =
@@ -303,7 +307,7 @@ export const BodyLab: React.FC<{
   // ---------------- Movement figure
   const movementFigure = (() => {
     const v = target * t;
-    const pose = move.pose(v, side);
+    const pose = movementPose(move, moveView, v, side);
     const j = solve(moveView, pose);
     const arcs: FigureArc[] = [];
     const sideKey = (k: string) => (moveView === 'front' ? `${k}${side}` : k);
@@ -311,10 +315,12 @@ export const BodyLab: React.FC<{
       const c = j.p[sideKey(move.pivot)];
       const e = j.p[sideKey(move.end)];
       if (c && e) {
-        const sign = moveView === 'front' && side === 'R' ? -1 : 1;
-        const zr = (move.zeroDown * Math.PI) / 180;
-        const zeroScreen = (Math.atan2(Math.cos(zr), sign * Math.sin(zr)) * 180) / Math.PI;
-        const sev = finding ? rateRom(target, normal) : 'ok';
+        // The zero-angle arc starts on this exact limb, in the selected view.
+        const neutral = solve(moveView, movementPose(move, moveView, 0, side)).p;
+        const c0 = neutral[sideKey(move.pivot)];
+        const e0 = neutral[sideKey(move.end)];
+        const zeroScreen = c0 && e0 ? screenDeg(c0, e0) : screenDeg(c, e);
+        const sev = measuredTarget !== null ? rateRom(target, normal) : 'ok';
         arcs.push({
           center: c,
           fromDeg: zeroScreen,
@@ -327,20 +333,22 @@ export const BodyLab: React.FC<{
     }
     const ghostKeys =
       moveView === 'front'
-        ? move.pivot === 'sh'
-          ? [`ua${side}`, `fa${side}`]
+        ? move.pivot === 'el'
+          ? [`fa${side}`]
+          : move.pivot === 'sh'
+            ? [`ua${side}`, `fa${side}`]
           : move.pivot === 'hip'
             ? [`th${side}`, `sh${side}`]
             : [`sh${side}`]
         : move.pivot === 'an' || move.pivot === 'hip'
           ? ['th', 'sh']
           : ['ua', 'fa'];
-    const showGhost = finding && target < normal * 0.9 && t > 0.98;
+    const showGhost = measuredTarget !== null && target < normal * 0.9 && t > 0.98;
     return (
       <BodyFigure
         view={moveView}
         pose={pose}
-        ghost={showGhost ? move.pose(normal, side) : undefined}
+        ghost={showGhost ? movementPose(move, moveView, normal, side) : undefined}
         ghostKeys={ghostKeys}
         arcs={arcs}
         className="w-full h-full"
@@ -391,8 +399,8 @@ export const BodyLab: React.FC<{
   };
 
   const movePanel = (m: MovementDef) => {
-    const sevL = finding ? rateRom(finding.left, normal) : null;
-    const sevR = finding ? rateRom(finding.right, normal) : null;
+    const sevL = finding?.left != null ? rateRom(finding.left, normal) : null;
+    const sevR = finding?.right != null ? rateRom(finding.right, normal) : null;
     return (
       <div className="space-y-3 mt-4">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -410,7 +418,7 @@ export const BodyLab: React.FC<{
           <div className="grid grid-cols-2 gap-2.5">
             {(['L', 'R'] as const).map((s) => {
               const val = s === 'L' ? finding.left : finding.right;
-              const sev = s === 'L' ? sevL! : sevR!;
+              const sev = s === 'L' ? sevL : sevR;
               return (
                 <button
                   key={s}
@@ -429,12 +437,14 @@ export const BodyLab: React.FC<{
                   >
                     {s === 'L' ? 'Left' : 'Right'}
                   </div>
-                  <div className="text-2xl font-bold tabular-nums">{val}°</div>
-                  <span
-                    className={`inline-block mt-1 text-[10.5px] font-bold px-2 py-0.5 rounded-full ${sevBg[sev]}`}
-                  >
-                    {sevText[sev]}
-                  </span>
+                  <div className="text-2xl font-bold tabular-nums">{val === null ? '—' : `${val}°`}</div>
+                  {sev ? (
+                    <span className={`inline-block mt-1 text-[10.5px] font-bold px-2 py-0.5 rounded-full ${sevBg[sev]}`}>
+                      {sevText[sev]}
+                    </span>
+                  ) : (
+                    <span className="inline-block mt-1 text-[10.5px] text-gray-400">Not measured</span>
+                  )}
                 </button>
               );
             })}
@@ -575,25 +585,17 @@ export const BodyLab: React.FC<{
           {/* Front / Side toggle on Movements card */}
           <div className="absolute left-3 top-3 z-10 flex gap-1.5">
             {(['front', 'side'] as const).map((v) => {
-              const supported = move.view === v;
               const active = moveView === v;
               return (
                 <button
                   key={v}
                   type="button"
-                  disabled={!supported}
-                  title={
-                    supported
-                      ? `Show ${v} view`
-                      : `${move.label} is only shown in ${move.view} view`
-                  }
-                  onClick={() => supported && setMoveViewPref(v)}
+                  title={`Show ${v} view`}
+                  onClick={() => setMoveViewPref(v)}
                   className={`${pill} border ${
                     active
                       ? 'bg-[#111827] border-[#111827] text-white'
-                      : supported
-                        ? 'bg-white border-gray-200 text-gray-600'
-                        : 'bg-white/70 border-gray-200 text-gray-400 opacity-55 cursor-not-allowed'
+                      : 'bg-white border-gray-200 text-gray-600'
                   }`}
                 >
                   {v === 'front' ? 'Front' : 'Side'}
@@ -645,10 +647,10 @@ export const BodyLab: React.FC<{
             <div className="flex justify-between text-[11px] text-gray-500">
               <span>Start</span>
               <span>
-                {finding ? `${side === 'L' ? 'Left' : 'Right'} ${target}°` : ''} · Full {normal}°
+                {measuredTarget !== null ? `${side === 'L' ? 'Left' : 'Right'} ${target}°` : 'Not measured'} · Full {normal}°
               </span>
             </div>
-            {finding && target < normal * 0.9 && (
+            {measuredTarget !== null && target < normal * 0.9 && (
               <div className="text-[11px] text-gray-500 mt-1">
                 Shaded limb = where Full ({normal}°) range reaches.
               </div>

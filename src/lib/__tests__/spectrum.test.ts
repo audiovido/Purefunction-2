@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { ClientProfile } from '../../types';
+import { SpectrumOfPatterns } from '../../components/coach/SpectrumOfPatterns';
 import {
   SPECTRUM_ROWS,
   SpectrumTestsMap,
   classifyRow,
   clientFindings,
-  evaluateSpectrum
+  evaluateSpectrum,
+  parseDegreeInput,
+  resolveSpectrumTests
 } from '../spectrum';
 
 describe('spectrum of patterns', () => {
@@ -104,5 +110,73 @@ describe('spectrum of patterns', () => {
     expect(hipIr.sideLimited).toBe('none'); // both >= 36 (90% of 40)
     expect(hipIr.severity).toBe('ok');
     expect(hipIr.diffText).toBe('Left 1° less than right');
+  });
+
+  it('keeps Left and Right independent with one side measured and an explicit blank', () => {
+    const client = {
+      rom: [],
+      spectrumTests: { 'shoulder-ir': { left: 62, right: '' } }
+    };
+    const resolved = resolveSpectrumTests(client);
+    expect(resolved['shoulder-ir']).toEqual({ left: 62, right: undefined });
+    const found = clientFindings(client).find((f) => f.key === 'shoulder-ir')!;
+    expect(found.left).toBe(62);
+    expect(found.right).toBeNull();
+    expect(found.worse).toBeNull();
+    expect(found.sideLimited).toBe('L');
+    expect(evaluateSpectrum(resolved).rowResults['shoulder-ir']).toBe('L');
+  });
+
+  it('renders an empty Right input when only Left was typed', () => {
+    const client = { rom: [], spectrumTests: { 'shoulder-ir': { left: 62, right: '' } } } as unknown as ClientProfile;
+    const html = renderToStaticMarkup(createElement(SpectrumOfPatterns, { client, onUpdateClient: () => {} }));
+    const left = html.match(/<input[^>]*aria-label="Shoulder IR left degrees"[^>]*>/)?.[0];
+    const right = html.match(/<input[^>]*aria-label="Shoulder IR right degrees"[^>]*>/)?.[0];
+    expect(left).toContain('value="62"');
+    expect(right).toContain('value=""');
+  });
+
+  it('finds only Right measured and does not fabricate a Left value', () => {
+    const client = { rom: [], spectrumTests: { 'hip-ir': { right: 21 } } };
+    const found = clientFindings(client).find((f) => f.key === 'hip-ir')!;
+    expect(found.left).toBeNull();
+    expect(found.right).toBe(21);
+    expect(found.worse).toBeNull();
+    expect(found.severity).toBe('work');
+    expect(evaluateSpectrum(resolveSpectrumTests(client)).rowResults['hip-ir']).toBe('R');
+  });
+
+  it('treats negative historical saved degrees as unmeasured', () => {
+    const client = { rom: [], spectrumTests: { 'shoulder-ir': { left: -8, right: 75 } } };
+    const resolved = resolveSpectrumTests(client);
+    expect(resolved['shoulder-ir'].left).toBeUndefined();
+    const found = clientFindings(client).find((f) => f.key === 'shoulder-ir')!;
+    expect(found.left).toBeNull();
+    expect(found.right).toBe(75);
+    expect(classifyRow(SPECTRUM_ROWS[0], { left: -8 })).toBeNull();
+    expect(evaluateSpectrum({ 'shoulder-ir': { left: -8 } }).measuredCount).toBe(0);
+  });
+
+  it('validates 0..180 integer input without persisting negative or non-numeric values', () => {
+    expect(parseDegreeInput('0')).toBe(0);
+    expect(parseDegreeInput('180')).toBe(180);
+    for (const invalid of ['-1', '181', '2.5', 'foo', '1e3', 'Infinity', ' 3']) {
+      expect(parseDegreeInput(invalid)).toBeNull();
+    }
+  });
+
+  it('renders paired side fields and closed mobile Patterns for every row', () => {
+    const client = {
+      rom: [], spectrumTests: { 'shoulder-ir': { left: 65, right: 90 } }
+    } as unknown as ClientProfile;
+    const html = renderToStaticMarkup(createElement(SpectrumOfPatterns, { client }));
+    expect((html.match(/<details\b/g) ?? []).length).toBe(SPECTRUM_ROWS.length);
+    expect(html).not.toMatch(/<details[^>]*\sopen(?:\s|=|>)/);
+    expect(html).toContain('pf-spectrum-side');
+    expect(html).toContain('pf-spectrum-full');
+    expect(html).toContain('pf-spectrum-limited');
+    expect(html).toContain('pf-spectrum-desktop-pattern');
+    expect(html).toContain('pf-spectrum-patterns');
+    expect(html).toContain('bg-green-100/90');
   });
 });

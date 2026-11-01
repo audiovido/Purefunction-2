@@ -36,13 +36,17 @@ App: coaching PWA (like TrueCoach) for a coach in the US, up to ~100 clients. Co
 - Notes, Nutrition, Posture and spectrumTests live in `clients.data` JSON, so they need no migration.
 - e2e: `e2e/cloud-flow.cjs` (mock Supabase); `e2e/responsive-check.cjs` (overflow crawler)
 
-## Status (2026-11-01, evening)
-- Done: `clientFindings` unification, Front/Side toggle on both BodyLab cards, tapping a joint selects its movement.
-- Done (PR `fix/responsive-no-overflow`, ChatGPT patch + Claude fixes): no horizontal scroll anywhere. `node e2e/responsive-check.cjs <demo-dist>` → 0 failures, 0 unvisited views across 88 views at 375/768/1024/1440. lint, 69 tests and build pass. Spectrum table switches to cards below 1400px; at 1400px+ it uses a fixed-layout table. Sidebar is sticky; safe-area padding added.
-- Open polish (small):
-  1. On phone, Spectrum cards are long (6 pattern rows per test). Consider collapsing the pattern rows behind "Show patterns".
-  2. In Spectrum cards, the Left and Right inputs should sit side by side.
-  3. `e2e/cloud-flow.cjs` is out of date (looks for kg instead of lb; old Assessment button).
+## Status (2026-11-01, night)
+- Done: responsive pass (PR #28). No horizontal scroll; responsive-check exits 0 (88 views).
+- Done (PR `fix/t0-t1`, ChatGPT pf_t0_t1.py + Claude fix):
+  - T0a: Spectrum Left and Right are independent (no mirroring in clientFindings). Degree inputs accept only 0–180; negative or invalid values are not saved.
+  - T0b: Front and Side work for every movement (movementPose() in bodyModel.ts).
+  - T1: Spectrum cards below 1400px: Left/Right side by side; Full + Limited on one row; Patterns collapsed (<details>). A closed card is 216px tall at 375px.
+  - 76 tests pass. Claude fix: a `\b` in the Python string became a backspace character inside spectrum.test.ts. Use raw strings (r'...') in patch scripts.
+- Open:
+  1. Pose quality: Hip flexion in Front view looks like hip abduction (leg goes sideways). It should be foreshortened forward (knee toward the viewer). Review the other non-natural views the same way. Best done by Gemini (body drawing).
+  2. `e2e/cloud-flow.cjs` is out of date (T2).
+  3. Backlog: T2 cloud e2e, T3 program templates, T4 unread message badges, T5 Test Client, T6 video replacement plan.
 
 ## Next ideas
 - Auto joint detection on real photos (MediaPipe on phone) + photo analysis with green/red lines.

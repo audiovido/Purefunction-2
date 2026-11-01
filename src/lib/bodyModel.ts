@@ -35,6 +35,10 @@ export interface Pose {
   hipFlex?: number;
   kneeFlex?: number;
   ankleDorsi?: number; // shin forward over the foot
+  /** frontal ankle projection: rotate each shin around a planted ankle */
+  groundedFront?: boolean;
+  ankleDorsiL?: number;
+  ankleDorsiR?: number;
   trunkLean?: number; // + = forward
   headForward?: number;
   roundedShoulders?: number;
@@ -98,6 +102,14 @@ function solveFront(o: Pose): Joints {
     knR = [hipR[0] - 8, hipR[1] + 46];
     anL = add(knL, SH, o.hipRotL ?? 0, 1);
     anR = add(knR, SH, o.hipRotR ?? 0, -1);
+  } else if (o.groundedFront) {
+    // The ankles remain planted while the shins angle over them.
+    anL = [hipL[0] + 8, 536];
+    anR = [hipR[0] - 8, 536];
+    knL = [anL[0] + SH * Math.sin(rad(o.ankleDorsiL ?? 0)),
+      anL[1] - SH * Math.cos(rad(o.ankleDorsiL ?? 0))];
+    knR = [anR[0] - SH * Math.sin(rad(o.ankleDorsiR ?? 0)),
+      anR[1] - SH * Math.cos(rad(o.ankleDorsiR ?? 0))];
   } else {
     knL = add(hipL, TH, o.hipAbdL ?? 3, 1);
     knR = add(hipR, TH, o.hipAbdR ?? 3, -1);
@@ -296,6 +308,41 @@ export const MOVEMENTS: MovementDef[] = [
     tip: 'Knee-to-wall drill, calf/soleus stretch; heel-elevated squats while it improves.'
   }
 ];
+
+/**
+ * Project each ROM movement into both figures without changing BodyFigure.
+ * In the non-natural view a foreshortened limb rotates around the SAME joint.
+ * This is a visual projection, not a second clinical measurement.
+ */
+export function movementPose(m: MovementDef, view: View, value: number, side: 'L' | 'R'): Pose {
+  if (view === m.view) return m.pose(value, side);
+  const l = side === 'L';
+  const arm = (abd: number, elbow: number): Pose => l
+    ? { shAbdL: abd, elFlexL: elbow }
+    : { shAbdR: abd, elFlexR: elbow };
+  const leg = (abd: number, valgus = 0): Pose => l
+    ? { hipAbdL: abd, valgusL: valgus }
+    : { hipAbdR: abd, valgusR: valgus };
+  switch (m.id) {
+    // Shoulder 90/90 rotation: the projected FOREARM turns around the elbow.
+    case 'shoulder-ir': return arm(70, value * 0.65);
+    case 'shoulder-er': return arm(70, -value * 0.65);
+    // Out-of-plane shoulder/hip motion is foreshortened in the other view.
+    case 'shoulder-abd': return { shFlex: value * 0.65, elFlex: 2 };
+    case 'shoulder-flex': return arm(value * 0.65, 4);
+    case 'hip-abd': return { hipFlex: value * 0.65, kneeFlex: 0 };
+    case 'hip-flex': return leg(value * 0.45);
+    case 'slr': return leg(value * 0.45);
+    // Seated hip IR/ER: rotate the SHIN about the knee in side view.
+    case 'hip-ir': return { hipFlex: 0, kneeFlex: value * 0.65 };
+    case 'hip-er': return { hipFlex: 0, kneeFlex: -value * 0.65 };
+    // Dorsiflexion in front view: tibia inclines about the ankle.
+    case 'ankle-dorsiflexion': return l
+      ? { groundedFront: true, ankleDorsiL: value * 0.65 }
+      : { groundedFront: true, ankleDorsiR: value * 0.65 };
+    default: throw new Error(`Missing alternate movement pose: ${m.id}`);
+  }
+}
 
 export function romFor(rom: RomMovement[], name?: string): RomMovement | undefined {
   if (!name) return undefined;
