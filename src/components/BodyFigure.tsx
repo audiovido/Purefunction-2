@@ -667,6 +667,10 @@ function buildBodyPaths(j: Joints, view: View, pose?: Pose) {
   const isShRot = pose?.shRot != null;
   const isShAbd = pose?.shAbd != null;
   const isHipAbd = pose?.hipAbd != null;
+  const isHipFlexSide = pose?.hipFlex != null && (pose?.kneeFlex ?? 0) > 0;
+  const isSlrSide = pose?.hipFlex != null && (pose?.kneeFlex ?? 0) === 0;
+  const isShFlexSide = pose?.shFlex != null && !pose?.grounded;
+  const isGroundedSide = !!pose?.grounded;
   const seated = !!pose?.seated;
 
   const findLimb = (key: string) => j.limbs.find((l) => l.key === key);
@@ -675,15 +679,34 @@ function buildBodyPaths(j: Joints, view: View, pose?: Pose) {
   const uaF = findLimb('uaF');
   const faF = findLimb('faF');
   const farHip = thF?.a ?? [hip[0] - 8, hip[1] - 2];
-  const farKn = thF?.b ?? [kn[0] - 8, kn[1] - 2];
-  const farAn = shF?.b ?? [an[0] - 8, an[1] - 2];
+  const farKn: Pt = isHipFlexSide
+    ? [farHip[0] + 104, farHip[1] + 6]
+    : isSlrSide || isGroundedSide
+      ? [farHip[0], farHip[1] + 110]
+      : (thF?.b ?? [kn[0] - 8, kn[1] - 2]);
+  const farAn: Pt = isHipFlexSide
+    ? [farKn[0], farKn[1] + 110]
+    : isSlrSide || isGroundedSide
+      ? [farKn[0], farKn[1] + 110]
+      : (shF?.b ?? [an[0] - 8, an[1] - 2]);
   const farToe: Pt = [farAn[0] + 34, farAn[1] + 6];
   const farSh = uaF?.a ?? [sh[0] - 8, sh[1] - 2];
-  const farEl = uaF?.b ?? [el[0] - 8, el[1] - 2];
-  const farWr = faF?.b ?? [wr[0] - 8, wr[1] - 2];
+  const farEl: Pt = isHipFlexSide
+    ? [farSh[0] - 8, farSh[1] + 84]
+    : isShFlexSide
+      ? [farSh[0] + 6, farSh[1] + 84]
+      : (uaF?.b ?? [el[0] - 8, el[1] - 2]);
+  const farWr: Pt = isHipFlexSide
+    ? [farEl[0] + 22, farEl[1] + 62]
+    : isShFlexSide
+      ? [farEl[0] + 14, farEl[1] + 74]
+      : (faF?.b ?? [wr[0] - 8, wr[1] - 2]);
 
-  const uaNear = upperArmPath(sh, el, 1, 'side', isShAbd);
-  const faNear = forearmHandPath(el, wr, 1, 'side', isShAbd);
+  const elNear: Pt = isHipFlexSide ? [sh[0] - 8, sh[1] + 84] : el;
+  const wrNear: Pt = isHipFlexSide ? [elNear[0] + 22, elNear[1] + 62] : wr;
+
+  const uaNear = upperArmPath(sh, elNear, 1, 'side', isShAbd);
+  const faNear = forearmHandPath(elNear, wrNear, 1, 'side', isShAbd);
   const thNear = thighPath(hip, kn, 1, 'side');
   const shNear = shinFootPath(kn, an, 1, 'side', toe);
 
@@ -700,11 +723,11 @@ function buildBodyPaths(j: Joints, view: View, pose?: Pose) {
           forearmHandPath(farEl, farWr, 1, 'side')
         ],
     mainPaths:
-      isHipAbd || seated
+      isHipAbd || seated || isHipFlexSide || isSlrSide
         ? [sideHeadNeckPath(j), sideTorsoPath(j)]
         : [sideHeadNeckPath(j), sideTorsoPath(j), thNear, shNear],
     nearArmPaths:
-      isHipAbd || seated
+      isHipAbd || seated || isHipFlexSide || isSlrSide
         ? [thNear, shNear, uaNear, faNear]
         : [uaNear, faNear],
     limbByKey: {
@@ -895,7 +918,7 @@ export const BodyFigure: React.FC<{
           <stop offset="1" stopColor="#111827" stopOpacity="0" />
         </radialGradient>
       </defs>
-      {pose?.seated ? (
+      {pose?.seated || (view === 'side' && pose?.hipFlex != null && (pose?.kneeFlex ?? 0) > 0) ? (
         view === 'front' ? (
           <g aria-label="Examination stool">
             <ellipse cx={150} cy={488} rx={82} ry={8} fill="url(#pf-floor)" />

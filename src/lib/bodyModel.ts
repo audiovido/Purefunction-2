@@ -361,7 +361,7 @@ export const MOVEMENTS: MovementDef[] = [
   },
   {
     id: 'hip-flex', sopKey: 'hip-flex', label: 'Hip flexion', romName: 'Hip flexion', view: 'side', normal: 140,
-    joint: 'hip', pivot: 'hip', end: 'kn', zeroDown: 0, pose: (v) => ({ hipFlex: v, kneeFlex: Math.min(v * 0.75, 100) }),
+    joint: 'hip', pivot: 'hip', end: 'kn', zeroDown: 0, pose: (v) => ({ hipFlex: v, kneeFlex: Math.max(0.01, Math.min(v * 0.75, 100)) }),
     setup: 'Bringing the knee toward the chest with a neutral lumbar spine (Full = 140°).',
     limited: 'When hip flexion stops early, the pelvis tucks under (posterior tilt / butt wink) at the bottom of a squat or deadlift setup.',
     tip: 'Posterior hip capsule mobilization, 90/90 breathing with hamstring pull, and squat depth matched to hip range.'
@@ -389,7 +389,7 @@ export const MOVEMENTS: MovementDef[] = [
   },
   {
     id: 'ankle-dorsiflexion', sopKey: 'ankle-dorsiflexion', label: 'Ankle dorsiflexion', romName: 'Ankle dorsiflexion', view: 'side', normal: 20,
-    joint: 'ankle', pivot: 'an', end: 'kn', zeroDown: 180, pose: (v) => ({ grounded: true, ankleDorsi: v, kneeFlex: v * 1.4, trunkLean: v * 0.4, shFlex: 36 }),
+    joint: 'ankle', pivot: 'an', end: 'kn', zeroDown: 180, pose: (v) => ({ grounded: true, ankleDorsi: v, kneeFlex: v }),
     setup: 'Knee-to-wall lunge: the knee travels forward over the toes with the heel down (Full = 20°).',
     limited: 'A stiff ankle stops the knee from travelling over the toes: heels lift, the knee caves in, or the torso tips forward at the bottom of a squat.',
     tip: 'Knee-to-wall drill, calf/soleus stretch; heel-elevated squats while it improves.'
