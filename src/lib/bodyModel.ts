@@ -16,8 +16,19 @@ export interface Pose {
   shAbdR?: number;
   elFlexL?: number;
   elFlexR?: number;
+  /** front view: arm flexed toward viewer in the sagittal plane (foreshortened along shoulder line) */
+  shFlexL?: number;
+  shFlexR?: number;
+  /** front view 90/90 shoulder rotation: upper arm abducted 90°, forearm points at viewer and rotates down (+IR) or up (−ER) */
+  shRotL?: number;
+  shRotR?: number;
   hipAbdL?: number;
   hipAbdR?: number;
+  /** front view: thigh flexed toward viewer in the sagittal plane (foreshortened along leg's own vertical line) */
+  hipFlexL?: number;
+  hipFlexR?: number;
+  kneeFlexL?: number;
+  kneeFlexR?: number;
   valgusL?: number;
   valgusR?: number;
   shoulderTilt?: number; // + = left shoulder lower
@@ -30,10 +41,16 @@ export interface Pose {
   // side view (client faces right)
   shFlex?: number;
   elFlex?: number;
+  /** side view: arm abducted in the frontal plane toward viewer (foreshortened vertically, not forward) */
+  shAbd?: number;
   /** arm out to the side at 90°, elbow 90°: + = internal rotation (forearm down), − = external */
   shRot?: number;
   hipFlex?: number;
   kneeFlex?: number;
+  /** side view: leg abducted in the frontal plane toward viewer (foreshortened vertically, not forward) */
+  hipAbd?: number;
+  /** side view: seated hip internal/external rotation (+ = IR, − = ER) */
+  hipRot?: number;
   ankleDorsi?: number; // shin forward over the foot
   /** frontal ankle projection: rotate each shin around a planted ankle */
   groundedFront?: boolean;
@@ -87,13 +104,26 @@ function solveFront(o: Pose): Joints {
   const neck: Pt = [CX, 98];
   const head = rotAbout([CX, 56], neck, -(o.headTilt ?? 0));
 
-  const arm = (sh: Pt, abd: number, flex: number, s: 1 | -1) => {
+  const arm = (sh: Pt, abd: number, flex: number, s: 1 | -1, sagFlex?: number, shRot?: number) => {
+    if (shRot != null) {
+      // Front-view 90/90 shoulder rotation: upper arm abducted 90° horizontally (slightly foreshortened inside frame),
+      // forearm starts pointing toward viewer (0°) and rotates vertically down (+shRot = IR) or up (−shRot = ER).
+      const el: Pt = [sh[0] + s * 66, sh[1]];
+      const wr: Pt = [el[0] + s * 4, el[1] + FA * Math.sin(rad(shRot))];
+      return { el, wr };
+    }
+    if (sagFlex != null) {
+      // Sagittal shoulder flexion in front view: arm rises toward viewer & overhead along shoulder's own line
+      const el: Pt = [sh[0] + s * 4, sh[1] + UA * Math.cos(rad(sagFlex))];
+      const wr: Pt = [el[0], el[1] + FA * Math.cos(rad(sagFlex + flex))];
+      return { el, wr };
+    }
     const el = add(sh, UA, abd, s);
     const wr = add(el, FA, abd + flex, s);
     return { el, wr };
   };
-  const L = arm(shL, o.shAbdL ?? 6, o.elFlexL ?? 4, 1);
-  const R = arm(shR, o.shAbdR ?? 6, o.elFlexR ?? 4, -1);
+  const L = arm(shL, o.shAbdL ?? 6, o.elFlexL ?? 4, 1, o.shFlexL, o.shRotL);
+  const R = arm(shR, o.shAbdR ?? 6, o.elFlexR ?? 4, -1, o.shFlexR, o.shRotR);
 
   let knL: Pt, knR: Pt, anL: Pt, anR: Pt;
   if (o.seated) {
@@ -111,10 +141,30 @@ function solveFront(o: Pose): Joints {
     knR = [anR[0] - SH * Math.sin(rad(o.ankleDorsiR ?? 0)),
       anR[1] - SH * Math.cos(rad(o.ankleDorsiR ?? 0))];
   } else {
-    knL = add(hipL, TH, o.hipAbdL ?? 3, 1);
-    knR = add(hipR, TH, o.hipAbdR ?? 3, -1);
-    anL = add(knL, SH, (o.hipAbdL ?? 3) - (o.valgusL ?? 0), 1);
-    anR = add(knR, SH, (o.hipAbdR ?? 3) - (o.valgusR ?? 0), -1);
+    const legSag = (hip: Pt, hf: number, kf: number, s: 1 | -1) => {
+      // Sagittal hip flexion / SLR in front view: thigh foreshortens & knee rises straight up along leg's own vertical line
+      const knX = hip[0] + s * TH * Math.sin(rad(3));
+      const knY = hip[1] + TH * Math.cos(rad(hf));
+      const kn: Pt = [knX, knY];
+      const an: Pt = [knX, knY + SH * Math.cos(rad(hf - kf))];
+      return { kn, an };
+    };
+    if (o.hipFlexL != null) {
+      const lLeg = legSag(hipL, o.hipFlexL, o.kneeFlexL ?? 0, 1);
+      knL = lLeg.kn;
+      anL = lLeg.an;
+    } else {
+      knL = add(hipL, TH, o.hipAbdL ?? 3, 1);
+      anL = add(knL, SH, (o.hipAbdL ?? 3) - (o.valgusL ?? 0), 1);
+    }
+    if (o.hipFlexR != null) {
+      const rLeg = legSag(hipR, o.hipFlexR, o.kneeFlexR ?? 0, -1);
+      knR = rLeg.kn;
+      anR = rLeg.an;
+    } else {
+      knR = add(hipR, TH, o.hipAbdR ?? 3, -1);
+      anR = add(knR, SH, (o.hipAbdR ?? 3) - (o.valgusR ?? 0), -1);
+    }
   }
   const toe = (an: Pt, s: 1 | -1): Pt => [an[0] + s * 16, an[1] + 10];
 
@@ -156,6 +206,18 @@ function solveSide(o: Pose): Joints {
     const a = o.ankleDorsi ?? 0, k = o.kneeFlex ?? 0;
     kn = [an[0] + SH * Math.sin(rad(a)), an[1] - SH * Math.cos(rad(a))];
     hip = [kn[0] + TH * Math.sin(rad(a - k)), kn[1] - TH * Math.cos(rad(a - k))];
+  } else if (o.seated) {
+    hip = [CX - 10, 300];
+    kn = [hip[0] + 104, hip[1] + 6];
+    const rot = o.hipRot ?? 0;
+    // Seated side view: shin hangs down from 90° knee; foreshortens vertically as foot swings in/out in frontal plane
+    an = [kn[0] + SH * Math.sin(rad(rot * 0.22)), kn[1] + SH * Math.cos(rad(Math.abs(rot) * 1.15))];
+  } else if (o.hipAbd != null) {
+    // Frontal-plane hip abduction in side view: leg opens toward viewer, foreshortening vertically (not forward)
+    hip = [CX, 300];
+    const abd = o.hipAbd;
+    kn = [hip[0] + TH * Math.sin(rad(abd * 0.08)), hip[1] + TH * Math.cos(rad(abd * 1.15))];
+    an = [kn[0] + SH * Math.sin(rad(abd * 0.08)), kn[1] + SH * Math.cos(rad(abd * 1.15))];
   } else {
     hip = [CX, 300];
     const hf = o.hipFlex ?? 0, kf = o.kneeFlex ?? 0;
@@ -176,6 +238,16 @@ function solveSide(o: Pose): Joints {
     upperW = 30;
     // 0° = forearm points forward; + internal rotation turns it down, − external turns it up
     wr = add(el, FA, 90 - o.shRot, 1);
+  } else if (o.shAbd != null) {
+    // Frontal-plane shoulder abduction in side view: arm rises out toward the viewer (foreshortened/up, not forward)
+    const abd = o.shAbd;
+    el = [sh[0] + UA * Math.sin(rad(3 + abd * 0.08)), sh[1] + UA * Math.cos(rad(abd * 1.25))];
+    wr = [el[0] + FA * Math.sin(rad(5 + abd * 0.1)), el[1] + FA * Math.cos(rad((abd + (o.elFlex ?? 2)) * 1.25))];
+    upperW = 26;
+  } else if (o.seated) {
+    // Seated side view: arm rests comfortably with hand near lap so the knee & shin are clearly visible
+    el = [sh[0] - 8, sh[1] + 84];
+    wr = [el[0] + 54, el[1] + 42];
   } else {
     const f = o.shFlex ?? 4;
     el = add(sh, UA, f, 1);
@@ -188,23 +260,38 @@ function solveSide(o: Pose): Joints {
   ].map((p) => [p[0] - CX + hip[0], p[1] - 300 + hip[1]] as Pt);
   const a = o.ankleDorsi ?? 0;
   const toe: Pt = [an[0] + 34, an[1] + 6 - (o.grounded ? 0 : a * 0.3)];
-  // far side (behind): same pose, nudged back, drawn lighter
+  // far side (behind): in out-of-plane tests (shAbd, hipAbd, seated hipRot) the far limb stays stationary in neutral
   const back = (q: Pt): Pt => [q[0] - 7, q[1] - 2];
+  const farHip = back(hip);
+  const farKn: Pt = o.seated
+    ? [farHip[0] + 104, farHip[1] + 6]
+    : o.hipAbd != null
+      ? [farHip[0], farHip[1] + TH]
+      : back(kn);
+  const farAn: Pt = o.seated
+    ? [farKn[0], farKn[1] + SH]
+    : o.hipAbd != null
+      ? [farKn[0], farKn[1] + SH]
+      : back(an);
+  const farToe: Pt = [farAn[0] + 34, farAn[1] + 6];
+  const farSh = back(sh);
+  const farEl: Pt = o.shAbd != null ? add(farSh, UA, 4, 1) : back(el);
+  const farWr: Pt = o.shAbd != null ? add(farEl, FA, 10, 1) : back(wr);
   return {
     head, headR: 25, neck, torso,
     limbs: [
-      { a: back(hip), b: back(kn), w: 32, key: 'thF', far: true },
-      { a: back(kn), b: back(an), w: 24, key: 'shF', far: true },
-      { a: back(sh), b: back(el), w: upperW - 2, key: 'uaF', far: true },
-      { a: back(el), b: back(wr), w: 18, key: 'faF', far: true },
+      { a: farHip, b: farKn, w: 32, key: 'thF', far: true },
+      { a: farKn, b: farAn, w: 24, key: 'shF', far: true },
+      { a: farSh, b: farEl, w: upperW - 2, key: 'uaF', far: true },
+      { a: farEl, b: farWr, w: 18, key: 'faF', far: true },
       { a: neck, b: up(neck, -16, lean), w: 18, key: 'neck' },
       { a: hip, b: kn, w: 34, key: 'th' },
       { a: kn, b: an, w: 25, key: 'sh' },
       { a: sh, b: el, w: upperW, key: 'ua' },
       { a: el, b: wr, w: 19, key: 'fa' }
     ],
-    hands: [{ p: back(wr), far: true }, { p: wr }],
-    feet: [{ a: back(an), b: back(toe), far: true }, { a: an, b: toe }],
+    hands: [{ p: farWr, far: true }, { p: wr }],
+    feet: [{ a: farAn, b: farToe, far: true }, { a: an, b: toe }],
     p: { head, neck, sh, el, wr, hip, kn, an, toe }
   };
 }
@@ -302,7 +389,7 @@ export const MOVEMENTS: MovementDef[] = [
   },
   {
     id: 'ankle-dorsiflexion', sopKey: 'ankle-dorsiflexion', label: 'Ankle dorsiflexion', romName: 'Ankle dorsiflexion', view: 'side', normal: 20,
-    joint: 'ankle', pivot: 'an', end: 'kn', zeroDown: 180, pose: (v) => ({ grounded: true, ankleDorsi: v, kneeFlex: v * 1.4, trunkLean: v * 0.4, shFlex: 50 }),
+    joint: 'ankle', pivot: 'an', end: 'kn', zeroDown: 180, pose: (v) => ({ grounded: true, ankleDorsi: v, kneeFlex: v * 1.4, trunkLean: v * 0.4, shFlex: 36 }),
     setup: 'Knee-to-wall lunge: the knee travels forward over the toes with the heel down (Full = 20°).',
     limited: 'A stiff ankle stops the knee from travelling over the toes: heels lift, the knee caves in, or the torso tips forward at the bottom of a squat.',
     tip: 'Knee-to-wall drill, calf/soleus stretch; heel-elevated squats while it improves.'
@@ -317,25 +404,25 @@ export const MOVEMENTS: MovementDef[] = [
 export function movementPose(m: MovementDef, view: View, value: number, side: 'L' | 'R'): Pose {
   if (view === m.view) return m.pose(value, side);
   const l = side === 'L';
-  const arm = (abd: number, elbow: number): Pose => l
-    ? { shAbdL: abd, elFlexL: elbow }
-    : { shAbdR: abd, elFlexR: elbow };
-  const leg = (abd: number, valgus = 0): Pose => l
-    ? { hipAbdL: abd, valgusL: valgus }
-    : { hipAbdR: abd, valgusR: valgus };
   switch (m.id) {
-    // Shoulder 90/90 rotation: the projected FOREARM turns around the elbow.
-    case 'shoulder-ir': return arm(70, value * 0.65);
-    case 'shoulder-er': return arm(70, -value * 0.65);
-    // Out-of-plane shoulder/hip motion is foreshortened in the other view.
-    case 'shoulder-abd': return { shFlex: value * 0.65, elFlex: 2 };
-    case 'shoulder-flex': return arm(value * 0.65, 4);
-    case 'hip-abd': return { hipFlex: value * 0.65, kneeFlex: 0 };
-    case 'hip-flex': return leg(value * 0.45);
-    case 'slr': return leg(value * 0.45);
-    // Seated hip IR/ER: rotate the SHIN about the knee in side view.
-    case 'hip-ir': return { hipFlex: 0, kneeFlex: value * 0.65 };
-    case 'hip-er': return { hipFlex: 0, kneeFlex: -value * 0.65 };
+    // Shoulder 90/90 rotation in front view: upper arm out 90°, forearm foreshortens down (IR) or up (ER) from elbow.
+    case 'shoulder-ir': return l ? { shRotL: value } : { shRotR: value };
+    case 'shoulder-er': return l ? { shRotL: -value } : { shRotR: -value };
+    // Out-of-plane shoulder/hip motion is foreshortened along its own line in the other view.
+    case 'shoulder-abd': return { shAbd: value, elFlex: 2 };
+    case 'shoulder-flex': return l
+      ? { shFlexL: value, elFlexL: 4 }
+      : { shFlexR: value, elFlexR: 4 };
+    case 'hip-abd': return { hipAbd: value };
+    case 'hip-flex': return l
+      ? { hipFlexL: value, kneeFlexL: Math.min(value * 0.75, 100) }
+      : { hipFlexR: value, kneeFlexR: Math.min(value * 0.75, 100) };
+    case 'slr': return l
+      ? { hipFlexL: value, kneeFlexL: 0 }
+      : { hipFlexR: value, kneeFlexR: 0 };
+    // Seated hip IR/ER in side view: seated on stool, shin foreshortens as foot swings in/out.
+    case 'hip-ir': return { seated: true, hipRot: value };
+    case 'hip-er': return { seated: true, hipRot: -value };
     // Dorsiflexion in front view: tibia inclines about the ankle.
     case 'ankle-dorsiflexion': return l
       ? { groundedFront: true, ankleDorsiL: value * 0.65 }

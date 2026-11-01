@@ -66,9 +66,9 @@ function limbFrame(a: Pt, b: Pt, outSide: 1 | -1 = 1) {
  * - Front view: sculpted deltoid cap at shoulder, bicep/tricep taper to elbow at waist level.
  * - Side view: full adult arm thickness (bicep in front, tricep/deltoid behind).
  */
-function upperArmPath(a: Pt, b: Pt, outSide: 1 | -1, view: View): string {
+function upperArmPath(a: Pt, b: Pt, outSide: 1 | -1, view: View, foreshortened?: boolean): string {
   const { len, pt } = limbFrame(a, b, outSide);
-  if (len < 24) {
+  if (view === 'side' && len < 24 && !foreshortened) {
     // Side-view 90/90 shoulder rotation: upper arm abducted 90° pointing at the viewer,
     // foreshortened from shoulder `a` to round elbow `b` in front of the shoulder.
     const shR = 16.5;
@@ -79,6 +79,25 @@ function upperArmPath(a: Pt, b: Pt, outSide: 1 | -1, view: View): string {
       `C ${P([a[0] + 6, a[1] + shR])} ${P([b[0] - 4, b[1] + elR])} ${P([b[0], b[1] + elR])}`,
       `C ${P([b[0] + elR * 1.15, b[1] + elR])} ${P([b[0] + elR * 1.15, b[1] - elR])} ${P([b[0], b[1] - elR])}`,
       `C ${P([b[0] - 4, b[1] - elR])} ${P([a[0] + 6, a[1] - shR])} ${P([a[0], a[1] - shR])}`,
+      'Z'
+    ].join(' ');
+  }
+
+  if (foreshortened) {
+    // Foreshortened upper arm (front-view shoulder flexion or side-view shoulder abduction):
+    // keeps vertical X-axis symmetry so the arm never flips left-to-right when passing 90°.
+    const dirY = b[1] >= a[1] ? 1 : -1;
+    const shR = 15.5;
+    const elR = 13.5;
+    const midY = (a[1] + b[1]) / 2;
+    const midX = (a[0] + b[0]) / 2;
+    const wMid = 16.0;
+    return [
+      `M ${P([a[0] - shR, a[1]])}`,
+      `C ${P([a[0] - shR, a[1] - dirY * shR * 1.15])} ${P([a[0] + shR, a[1] - dirY * shR * 1.15])} ${P([a[0] + shR, a[1]])}`,
+      `C ${P([midX + wMid, midY])} ${P([b[0] + elR, b[1] - dirY * 4])} ${P([b[0] + elR, b[1]])}`,
+      `C ${P([b[0] + elR, b[1] + dirY * elR * 1.15])} ${P([b[0] - elR, b[1] + dirY * elR * 1.15])} ${P([b[0] - elR, b[1]])}`,
+      `C ${P([b[0] - elR, b[1] - dirY * 4])} ${P([midX - wMid, midY])} ${P([a[0] - shR, a[1]])}`,
       'Z'
     ].join(' ');
   }
@@ -117,9 +136,30 @@ function upperArmPath(a: Pt, b: Pt, outSide: 1 | -1, view: View): string {
  * Anatomical forearm + wrist + hand with fingers (`el -> wr`).
  * Extends past `wr` so fingertips naturally reach mid-thigh (`y ≈ 352`) when arms hang at side.
  */
-function forearmHandPath(a: Pt, b: Pt, outSide: 1 | -1, view: View): string {
+function forearmHandPath(a: Pt, b: Pt, outSide: 1 | -1, view: View, foreshortened?: boolean): string {
   const { len, pt } = limbFrame(a, b, outSide);
   const wristT = len + 16;
+
+  if (foreshortened) {
+    // Foreshortened forearm + hand moving along its vertical line (front shoulder-flex or side shoulder-abd)
+    const dirY = b[1] >= a[1] ? 1 : -1;
+    const elR = 12.5;
+    const wrR = 8.2;
+    const handR = 9.8;
+    const tipY = b[1] + dirY * 26;
+    const midY = (a[1] + b[1]) / 2;
+    const midX = (a[0] + b[0]) / 2;
+    return [
+      `M ${P([a[0] - elR, a[1]])}`,
+      `C ${P([a[0] - elR, a[1] - dirY * elR * 1.1])} ${P([a[0] + elR, a[1] - dirY * elR * 1.1])} ${P([a[0] + elR, a[1]])}`,
+      `C ${P([midX + 12.8, midY])} ${P([b[0] + wrR, b[1] - dirY * 4])} ${P([b[0] + wrR, b[1]])}`,
+      // Foreshortened palm & fingers
+      `C ${P([b[0] + handR, b[1] + dirY * 8])} ${P([b[0] + handR, tipY - dirY * 4])} ${P([b[0], tipY])}`,
+      `C ${P([b[0] - handR, tipY - dirY * 4])} ${P([b[0] - handR, b[1] + dirY * 8])} ${P([b[0] - wrR, b[1]])}`,
+      `C ${P([b[0] - wrR, b[1] - dirY * 4])} ${P([midX - 12.8, midY])} ${P([a[0] - elR, a[1]])}`,
+      'Z'
+    ].join(' ');
+  }
 
   if (view === 'side') {
     return [
@@ -173,12 +213,20 @@ function forearmHandPath(a: Pt, b: Pt, outSide: 1 | -1, view: View): string {
 /**
  * Anatomical thigh (`hip -> kn`).
  * - Seated (`pose.seated`): foreshortened thigh coming toward the viewer (short and wide, knees rounded at 90°).
+ * - Foreshortened (`foreshortened`): knee coming toward the viewer along the leg's own vertical line (hip-flex / SLR in front view).
  * - Side view: prominent anterior quadriceps sweep and posterior hamstring contour.
  * - Front view: full upper thigh at pelvis tapering smoothly to the knee.
  */
-function thighPath(a: Pt, b: Pt, outSide: 1 | -1, view: View, seated?: boolean): string {
+function thighPath(
+  a: Pt,
+  b: Pt,
+  outSide: 1 | -1,
+  view: View,
+  seated?: boolean,
+  foreshortened?: boolean
+): string {
   const { len, pt } = limbFrame(a, b, outSide);
-  if (seated) {
+  if (seated && view === 'front') {
     // Seated front view: thigh comes forward toward viewer from hip (y=300) to knee (y=346),
     // short and wide, with a well-rounded 90° knee cap in front.
     return [
@@ -190,6 +238,27 @@ function thighPath(a: Pt, b: Pt, outSide: 1 | -1, view: View, seated?: boolean):
       `C ${P(pt(len + 18.0, 16.5))} ${P(pt(len + 18.0, -16.5))} ${P(pt(len, -19.2))}`,
       // Foreshortened inner thigh back to hip
       `C ${P(pt(len * 0.80, -20.5))} ${P(pt(len * 0.42, -19.5))} ${P(pt(0, -18.5))}`,
+      'Z'
+    ].join(' ');
+  }
+
+  if (foreshortened && view === 'front') {
+    // Front-view sagittal hip flexion / SLR: thigh foreshortens toward viewer and knee rises straight up
+    // along the leg's own vertical line (even when kn[1] < hip[1] above 90°!).
+    const dirY = b[1] >= a[1] ? 1 : -1;
+    const out = outSide;
+    const hipIn = -17.5 * out;
+    const hipOut = 22.0 * out;
+    const knIn = -16.2 * out;
+    const knOut = 17.8 * out;
+    const midY = (a[1] + b[1]) / 2;
+    const midX = (a[0] + b[0]) / 2;
+    return [
+      `M ${P([a[0] + hipIn, a[1]])}`,
+      `C ${P([a[0] + hipIn, a[1] - dirY * 18.0])} ${P([a[0] + hipOut, a[1] - dirY * 18.0])} ${P([a[0] + hipOut, a[1]])}`,
+      `C ${P([midX + 21.5 * out, midY])} ${P([b[0] + knOut, b[1] - dirY * 6.0])} ${P([b[0] + knOut, b[1]])}`,
+      `C ${P([b[0] + knOut, b[1] + dirY * 16.5])} ${P([b[0] + knIn, b[1] + dirY * 16.5])} ${P([b[0] + knIn, b[1]])}`,
+      `C ${P([b[0] + knIn, b[1] - dirY * 6.0])} ${P([midX - 17.5 * out, midY])} ${P([a[0] + hipIn, a[1]])}`,
       'Z'
     ].join(' ');
   }
@@ -232,7 +301,8 @@ function shinFootPath(
   outSide: 1 | -1,
   view: View,
   toePt?: Pt,
-  seated?: boolean
+  seated?: boolean,
+  foreshortened?: boolean
 ): string {
   const { len, pt } = limbFrame(a, b, outSide);
   if (view === 'side') {
@@ -256,6 +326,32 @@ function shinFootPath(
       `C ${P([b[0] + 24.0, b[1] - 1.5])} ${P(instep)} ${P(pt(len * 0.92, -7.4))}`,
       // Anterior shin (tibia) line back up to patella
       `C ${P(pt(len * 0.58, -9.6))} ${P(pt(len * 0.24, -12.2))} ${P(pt(0, -13.0))}`,
+      'Z'
+    ].join(' ');
+  }
+
+  if (foreshortened) {
+    // Foreshortened front-view shin & foot (hip-flex or straight leg raise toward viewer):
+    // when SLR approaches 90° (`len` small), the sole of the foot faces the viewer cleanly at `b`.
+    const dirY = b[1] >= a[1] ? 1 : -1;
+    const out = outSide;
+    const knIn = -13.5 * out;
+    const knOut = 14.5 * out;
+    const anIn = -8.5 * out;
+    const anOut = 9.5 * out;
+    const footIn = -11.0 * out;
+    const footOut = 13.5 * out;
+    const footEnd = b[1] + 18.0;
+    const midY = (a[1] + b[1]) / 2;
+    const midX = (a[0] + b[0]) / 2;
+    return [
+      `M ${P([a[0] + knIn, a[1]])}`,
+      `C ${P([a[0] + knIn, a[1] - dirY * 12.0])} ${P([a[0] + knOut, a[1] - dirY * 12.0])} ${P([a[0] + knOut, a[1]])}`,
+      `C ${P([midX + 16.0 * out, midY])} ${P([b[0] + anOut, b[1] - dirY * 4.0])} ${P([b[0] + anOut, b[1]])}`,
+      // Foreshortened foot below/in front of ankle
+      `C ${P([b[0] + footOut, b[1] + 6.0])} ${P([b[0] + footOut, footEnd])} ${P([b[0] + 2.0 * out, footEnd])}`,
+      `C ${P([b[0] + footIn, footEnd])} ${P([b[0] + footIn, b[1] + 6.0])} ${P([b[0] + anIn, b[1]])}`,
+      `C ${P([b[0] + anIn, b[1] - dirY * 4.0])} ${P([midX - 14.5 * out, midY])} ${P([a[0] + knIn, a[1]])}`,
       'Z'
     ].join(' ');
   }
@@ -467,88 +563,154 @@ function buildBodyPaths(j: Joints, view: View, pose?: Pose) {
   if (view === 'front') {
     const { shL, elL, wrL, shR, elR, wrR, hipL, knL, anL, hipR, knR, anR } = j.p;
     const seated = !!pose?.seated;
+    const sagArmL = pose?.shFlexL != null;
+    const sagArmR = pose?.shFlexR != null;
+    const rotArmL = pose?.shRotL != null;
+    const rotArmR = pose?.shRotR != null;
+    const sagLegL = pose?.hipFlexL != null;
+    const sagLegR = pose?.hipFlexR != null;
+    const slrL = sagLegL && (pose?.kneeFlexL ?? 0) === 0;
+    const slrR = sagLegR && (pose?.kneeFlexR ?? 0) === 0;
+
     // When seated, angle forearms inward so the hands rest naturally on the thighs
     const elLUse: Pt = seated ? [shL[0] + 10, shL[1] + 88] : elL;
     const elRUse: Pt = seated ? [shR[0] - 10, shR[1] + 88] : elR;
     const wrLUse: Pt = seated ? [knL[0] + 3, knL[1] - 48] : wrL;
     const wrRUse: Pt = seated ? [knR[0] - 3, knR[1] - 48] : wrR;
 
+    const uaLPath = upperArmPath(shL, elLUse, 1, 'front', sagArmL);
+    const faLPath = forearmHandPath(elLUse, wrLUse, 1, 'front', sagArmL || rotArmL);
+    const uaRPath = upperArmPath(shR, elRUse, -1, 'front', sagArmR);
+    const faRPath = forearmHandPath(elRUse, wrRUse, -1, 'front', sagArmR || rotArmR);
+    const thLPath = thighPath(hipL, knL, 1, 'front', seated, sagLegL);
+    const shLPath = shinFootPath(knL, anL, 1, 'front', undefined, seated, sagLegL);
+    const thRPath = thighPath(hipR, knR, -1, 'front', seated, sagLegR);
+    const shRPath = shinFootPath(knR, anR, -1, 'front', undefined, seated, sagLegR);
+
+    const mainPaths: string[] = [
+      frontHeadNeckPath(j),
+      frontTorsoPath(j, seated)
+    ];
+    const nearArmPaths: string[] = [];
+
+    if (seated) {
+      mainPaths.push(uaLPath, uaRPath, shLPath, shRPath);
+      nearArmPaths.push(thLPath, thRPath, faLPath, faRPath);
+    } else {
+      // Legs: if a leg is flexing toward the viewer (hip-flex or SLR), draw it in front of the torso/hip
+      // For hip-flex (bent knee), the hanging shin stays under the raised thigh; for SLR, shin & foot come forward.
+      if (sagLegL) {
+        if (slrL) {
+          nearArmPaths.push(thLPath, shLPath);
+        } else {
+          mainPaths.push(shLPath);
+          nearArmPaths.push(thLPath);
+        }
+      } else {
+        mainPaths.push(thLPath, shLPath);
+      }
+
+      if (sagLegR) {
+        if (slrR) {
+          nearArmPaths.push(thRPath, shRPath);
+        } else {
+          mainPaths.push(shRPath);
+          nearArmPaths.push(thRPath);
+        }
+      } else {
+        mainPaths.push(thRPath, shRPath);
+      }
+
+      if (sagArmL || rotArmL) {
+        if (rotArmL) {
+          mainPaths.push(uaLPath);
+          nearArmPaths.push(faLPath);
+        } else {
+          nearArmPaths.push(uaLPath, faLPath);
+        }
+      } else {
+        mainPaths.push(uaLPath, faLPath);
+      }
+
+      if (sagArmR || rotArmR) {
+        if (rotArmR) {
+          mainPaths.push(uaRPath);
+          nearArmPaths.push(faRPath);
+        } else {
+          nearArmPaths.push(uaRPath, faRPath);
+        }
+      } else {
+        mainPaths.push(uaRPath, faRPath);
+      }
+    }
+
     return {
       farPaths: [] as string[],
-      mainPaths: seated
-        ? [
-            frontHeadNeckPath(j),
-            frontTorsoPath(j, true),
-            upperArmPath(shL, elLUse, 1, 'front'),
-            upperArmPath(shR, elRUse, -1, 'front'),
-            shinFootPath(knL, anL, 1, 'front', undefined, true),
-            shinFootPath(knR, anR, -1, 'front', undefined, true)
-          ]
-        : [
-            frontHeadNeckPath(j),
-            frontTorsoPath(j, false),
-            thighPath(hipL, knL, 1, 'front', false),
-            thighPath(hipR, knR, -1, 'front', false),
-            shinFootPath(knL, anL, 1, 'front', undefined, false),
-            shinFootPath(knR, anR, -1, 'front', undefined, false),
-            upperArmPath(shL, elL, 1, 'front'),
-            upperArmPath(shR, elR, -1, 'front'),
-            forearmHandPath(elL, wrL, 1, 'front'),
-            forearmHandPath(elR, wrR, -1, 'front')
-          ],
-      // In seated pose, draw foreshortened thighs + hands resting on thighs in front of the torso/shins
-      nearArmPaths: seated
-        ? [
-            thighPath(hipL, knL, 1, 'front', true),
-            thighPath(hipR, knR, -1, 'front', true),
-            forearmHandPath(elLUse, wrLUse, 1, 'front'),
-            forearmHandPath(elRUse, wrRUse, -1, 'front')
-          ]
-        : ([] as string[]),
+      mainPaths,
+      nearArmPaths,
       limbByKey: {
-        uaL: [upperArmPath(shL, elLUse, 1, 'front')],
-        faL: [forearmHandPath(elLUse, wrLUse, 1, 'front')],
-        uaR: [upperArmPath(shR, elRUse, -1, 'front')],
-        faR: [forearmHandPath(elRUse, wrRUse, -1, 'front')],
-        thL: [thighPath(hipL, knL, 1, 'front', seated)],
-        shL: [shinFootPath(knL, anL, 1, 'front', undefined, seated)],
-        thR: [thighPath(hipR, knR, -1, 'front', seated)],
-        shR: [shinFootPath(knR, anR, -1, 'front', undefined, seated)]
+        uaL: [uaLPath],
+        faL: [faLPath],
+        uaR: [uaRPath],
+        faR: [faRPath],
+        thL: [thLPath],
+        shL: [shLPath],
+        thR: [thRPath],
+        shR: [shRPath]
       } as Record<string, string[]>
     };
   }
 
   // Side view (person facing right)
   const { sh, el, wr, hip, kn, an, toe } = j.p;
-  const back = (q: Pt): Pt => [q[0] - 8, q[1] - 2];
   const isShRot = pose?.shRot != null;
+  const isShAbd = pose?.shAbd != null;
+  const isHipAbd = pose?.hipAbd != null;
+  const seated = !!pose?.seated;
+
+  const findLimb = (key: string) => j.limbs.find((l) => l.key === key);
+  const thF = findLimb('thF');
+  const shF = findLimb('shF');
+  const uaF = findLimb('uaF');
+  const faF = findLimb('faF');
+  const farHip = thF?.a ?? [hip[0] - 8, hip[1] - 2];
+  const farKn = thF?.b ?? [kn[0] - 8, kn[1] - 2];
+  const farAn = shF?.b ?? [an[0] - 8, an[1] - 2];
+  const farToe: Pt = [farAn[0] + 34, farAn[1] + 6];
+  const farSh = uaF?.a ?? [sh[0] - 8, sh[1] - 2];
+  const farEl = uaF?.b ?? [el[0] - 8, el[1] - 2];
+  const farWr = faF?.b ?? [wr[0] - 8, wr[1] - 2];
+
+  const uaNear = upperArmPath(sh, el, 1, 'side', isShAbd);
+  const faNear = forearmHandPath(el, wr, 1, 'side', isShAbd);
+  const thNear = thighPath(hip, kn, 1, 'side');
+  const shNear = shinFootPath(kn, an, 1, 'side', toe);
+
   return {
     farPaths: isShRot
       ? [
-          thighPath(back(hip), back(kn), 1, 'side'),
-          shinFootPath(back(kn), back(an), 1, 'side', back(toe))
+          thighPath(farHip, farKn, 1, 'side'),
+          shinFootPath(farKn, farAn, 1, 'side', farToe)
         ]
       : [
-          thighPath(back(hip), back(kn), 1, 'side'),
-          shinFootPath(back(kn), back(an), 1, 'side', back(toe)),
-          upperArmPath(back(sh), back(el), 1, 'side'),
-          forearmHandPath(back(el), back(wr), 1, 'side')
+          thighPath(farHip, farKn, 1, 'side'),
+          shinFootPath(farKn, farAn, 1, 'side', farToe),
+          upperArmPath(farSh, farEl, 1, 'side'),
+          forearmHandPath(farEl, farWr, 1, 'side')
         ],
-    mainPaths: [
-      sideHeadNeckPath(j),
-      sideTorsoPath(j),
-      thighPath(hip, kn, 1, 'side'),
-      shinFootPath(kn, an, 1, 'side', toe)
-    ],
-    nearArmPaths: [
-      upperArmPath(sh, el, 1, 'side'),
-      forearmHandPath(el, wr, 1, 'side')
-    ],
+    mainPaths:
+      isHipAbd || seated
+        ? [sideHeadNeckPath(j), sideTorsoPath(j)]
+        : [sideHeadNeckPath(j), sideTorsoPath(j), thNear, shNear],
+    nearArmPaths:
+      isHipAbd || seated
+        ? [thNear, shNear, uaNear, faNear]
+        : [uaNear, faNear],
     limbByKey: {
-      ua: [upperArmPath(sh, el, 1, 'side')],
-      fa: [forearmHandPath(el, wr, 1, 'side')],
-      th: [thighPath(hip, kn, 1, 'side')],
-      sh: [shinFootPath(kn, an, 1, 'side', toe)]
+      ua: [uaNear],
+      fa: [faNear],
+      th: [thNear],
+      sh: [shNear]
     } as Record<string, string[]>
   };
 }
@@ -619,6 +781,16 @@ export const BodyFigure: React.FC<{
     ? (ghostKeys ?? Object.keys(ghostBody.limbByKey)).flatMap((k) => ghostBody.limbByKey[k] ?? [])
     : [];
 
+  const isForeshortenedMove =
+    (view === 'front' &&
+      (pose?.hipFlexL != null ||
+        pose?.hipFlexR != null ||
+        pose?.shFlexL != null ||
+        pose?.shFlexR != null ||
+        pose?.shRotL != null ||
+        pose?.shRotR != null)) ||
+    (view === 'side' && (pose?.shAbd != null || pose?.hipAbd != null || (pose?.seated && pose?.hipRot != null)));
+
   const arcPath = (a: FigureArc) => {
     const r = a.r ?? 34;
     const p = (deg: number): Pt => [
@@ -628,6 +800,53 @@ export const BodyFigure: React.FC<{
     let d = a.toDeg - a.fromDeg;
     while (d > 180) d -= 360;
     while (d < -180) d += 360;
+
+    // Front-view 90/90 shoulder rotation: forearm rotates down (+IR) or up (-ER) from horizontal 0° at the elbow
+    if (view === 'front' && (pose?.shRotL != null || pose?.shRotR != null)) {
+      const rotVal = pose?.shRotL ?? pose?.shRotR ?? 0;
+      const isLeft = a.center[0] >= 150;
+      const baseDeg = isLeft ? 180 : 0;
+      const sweep = (isLeft ? -1 : 1) * Math.sign(rotVal || 1) * Math.min(Math.abs(rotVal), 90);
+      const rUse = Math.min(r, 38);
+      const pR = (deg: number): Pt => [
+        a.center[0] + rUse * Math.cos((deg * Math.PI) / 180),
+        a.center[1] + rUse * Math.sin((deg * Math.PI) / 180)
+      ];
+      const s = pR(baseDeg);
+      const e = pR(baseDeg + sweep);
+      return {
+        d:
+          Math.abs(sweep) < 0.5
+            ? `M${a.center[0]},${a.center[1]} L${s[0]},${s[1]}`
+            : `M${a.center[0]},${a.center[1]} L${s[0]},${s[1]} A${rUse},${rUse} 0 0 ${sweep > 0 ? 1 : 0} ${e[0]},${e[1]} Z`,
+        mid: pR(baseDeg + sweep * 0.55)
+      };
+    }
+
+    // When a movement is foreshortened along its own vertical line (hip-flex, slr, shoulder-flex in front;
+    // shoulder-abd, hip-abd, seated hip-ir/er in side), display a clear perspective wedge showing the angle from 0° (down).
+    if (isForeshortenedMove && Math.abs(d) < 18) {
+      const degNum = a.text ? parseFloat(a.text) : 0;
+      const sideSign =
+        view === 'front'
+          ? a.center[0] >= 150
+            ? 1
+            : -1
+          : pose?.seated && (pose?.hipRot ?? 0) < 0
+            ? -1
+            : 1;
+      const sweep = -sideSign * Math.min(Math.max(degNum, 0), 155);
+      const s = p(90);
+      const e = p(90 + sweep);
+      return {
+        d:
+          Math.abs(sweep) < 0.5
+            ? `M${a.center[0]},${a.center[1]} L${s[0]},${s[1]}`
+            : `M${a.center[0]},${a.center[1]} L${s[0]},${s[1]} A${r},${r} 0 0 ${sweep > 0 ? 1 : 0} ${e[0]},${e[1]} Z`,
+        mid: p(90 + sweep * 0.55)
+      };
+    }
+
     const s = p(a.fromDeg),
       e = p(a.fromDeg + d);
     return {
@@ -673,25 +892,45 @@ export const BodyFigure: React.FC<{
         </radialGradient>
       </defs>
       {pose?.seated ? (
-        <g aria-label="Examination stool">
-          <ellipse cx={150} cy={488} rx={82} ry={8} fill="url(#pf-floor)" />
-          {/* Stool legs & footrest in the same clean outline/fill style */}
-          <line x1={102} y1={330} x2={90} y2={484} stroke={OUTLINE} strokeWidth={3.2} strokeLinecap="round" />
-          <line x1={198} y1={330} x2={210} y2={484} stroke={OUTLINE} strokeWidth={3.2} strokeLinecap="round" />
-          <line x1={150} y1={330} x2={150} y2={486} stroke={OUTLINE} strokeWidth={2.8} strokeLinecap="round" />
-          <line x1={96} y1={426} x2={204} y2={426} stroke={OUTLINE} strokeWidth={2.4} strokeLinecap="round" />
-          {/* Wide stool seat directly under pelvis */}
-          <rect
-            x={70}
-            y={314}
-            width={160}
-            height={18}
-            rx={9}
-            fill={FILL}
-            stroke={OUTLINE}
-            strokeWidth={1.8}
-          />
-        </g>
+        view === 'front' ? (
+          <g aria-label="Examination stool">
+            <ellipse cx={150} cy={488} rx={82} ry={8} fill="url(#pf-floor)" />
+            {/* Stool legs & footrest in the same clean outline/fill style */}
+            <line x1={102} y1={330} x2={90} y2={484} stroke={OUTLINE} strokeWidth={3.2} strokeLinecap="round" />
+            <line x1={198} y1={330} x2={210} y2={484} stroke={OUTLINE} strokeWidth={3.2} strokeLinecap="round" />
+            <line x1={150} y1={330} x2={150} y2={486} stroke={OUTLINE} strokeWidth={2.8} strokeLinecap="round" />
+            <line x1={96} y1={426} x2={204} y2={426} stroke={OUTLINE} strokeWidth={2.4} strokeLinecap="round" />
+            {/* Wide stool seat directly under pelvis */}
+            <rect
+              x={70}
+              y={314}
+              width={160}
+              height={18}
+              rx={9}
+              fill={FILL}
+              stroke={OUTLINE}
+              strokeWidth={1.8}
+            />
+          </g>
+        ) : (
+          <g aria-label="Examination stool">
+            <ellipse cx={155} cy={488} rx={82} ry={8} fill="url(#pf-floor)" />
+            <line x1={116} y1={334} x2={106} y2={484} stroke={OUTLINE} strokeWidth={3.2} strokeLinecap="round" />
+            <line x1={184} y1={334} x2={194} y2={484} stroke={OUTLINE} strokeWidth={3.2} strokeLinecap="round" />
+            <line x1={150} y1={334} x2={150} y2={486} stroke={OUTLINE} strokeWidth={2.8} strokeLinecap="round" />
+            <line x1={110} y1={426} x2={190} y2={426} stroke={OUTLINE} strokeWidth={2.4} strokeLinecap="round" />
+            <rect
+              x={98}
+              y={318}
+              width={108}
+              height={16}
+              rx={8}
+              fill={FILL}
+              stroke={OUTLINE}
+              strokeWidth={1.8}
+            />
+          </g>
+        )
       ) : (
         <ellipse cx={150} cy={548} rx={78} ry={8} fill="url(#pf-floor)" />
       )}
@@ -717,7 +956,7 @@ export const BodyFigure: React.FC<{
       {/* Main anatomical silhouette: one continuous #111827 (~1.8px) outline & #F3F4F6 fill */}
       <SilhouetteLayer paths={body.mainPaths} outline={OUTLINE} fill={FILL} outlineWidth={3.6} />
 
-      {/* Near arm in side view (or seated thighs + hands on thighs in front view) */}
+      {/* Near arm in side view (or seated/foreshortened limbs in front view) */}
       <SilhouetteLayer paths={body.nearArmPaths} outline={OUTLINE} fill={FILL} outlineWidth={3.6} />
 
       {/* 90/90 shoulder rotation foreshortened upper-arm cue & horizontal 0° reference line */}
@@ -777,16 +1016,23 @@ export const BodyFigure: React.FC<{
               x2={150}
               y2={(j.p.hipL[1] + j.p.hipR[1]) / 2 + 14}
             />
-            {/* Seated foreshortened knee-cap contour cues */}
-            {pose?.seated && (
-              <>
-                <path
-                  d={`M ${f1(j.p.knR[0] - 13)},${f1(j.p.knR[1] - 4)} Q ${f1(j.p.knR[0])},${f1(j.p.knR[1] - 14)} ${f1(j.p.knR[0] + 13)},${f1(j.p.knR[1] - 4)}`}
-                />
-                <path
-                  d={`M ${f1(j.p.knL[0] - 13)},${f1(j.p.knL[1] - 4)} Q ${f1(j.p.knL[0])},${f1(j.p.knL[1] - 14)} ${f1(j.p.knL[0] + 13)},${f1(j.p.knL[1] - 4)}`}
-                />
-              </>
+            {/* Seated or foreshortened knee-cap contour cues */}
+            {(pose?.seated || pose?.hipFlexR != null) && (
+              <path
+                d={`M ${f1(j.p.knR[0] - 13)},${f1(j.p.knR[1] - 4)} Q ${f1(j.p.knR[0])},${f1(j.p.knR[1] - 14)} ${f1(j.p.knR[0] + 13)},${f1(j.p.knR[1] - 4)}`}
+              />
+            )}
+            {(pose?.seated || pose?.hipFlexL != null) && (
+              <path
+                d={`M ${f1(j.p.knL[0] - 13)},${f1(j.p.knL[1] - 4)} Q ${f1(j.p.knL[0])},${f1(j.p.knL[1] - 14)} ${f1(j.p.knL[0] + 13)},${f1(j.p.knL[1] - 4)}`}
+              />
+            )}
+            {/* Foreshortened elbow-cap contour cues for front shoulder flexion or 90/90 rotation */}
+            {(pose?.shFlexR != null || pose?.shRotR != null) && (
+              <circle cx={j.p.elR[0]} cy={j.p.elR[1]} r={9.5} />
+            )}
+            {(pose?.shFlexL != null || pose?.shRotL != null) && (
+              <circle cx={j.p.elL[0]} cy={j.p.elL[1]} r={9.5} />
             )}
           </>
         ) : (
@@ -804,6 +1050,12 @@ export const BodyFigure: React.FC<{
               x2={j.p.hip[0] + 18}
               y2={j.p.hip[1] + 10}
             />
+            {pose?.shAbd != null && (
+              <circle cx={j.p.el[0]} cy={j.p.el[1]} r={10.0} />
+            )}
+            {pose?.hipAbd != null && (
+              <circle cx={j.p.kn[0]} cy={j.p.kn[1]} r={11.5} />
+            )}
           </>
         )}
       </g>
