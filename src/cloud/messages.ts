@@ -44,7 +44,7 @@ export function useMessages(clientId: string | null) {
     }
     const sb = supabase;
     let cancelled = false;
-    let q = sb.from('messages').select('*').order('created_at', { ascending: true }).limit(500);
+    let q = sb.from('coach_messages').select('*').order('created_at', { ascending: true }).limit(500);
     if (clientId) q = q.eq('client_id', clientId);
     q.then(({ data, error }) => {
       if (cancelled) return;
@@ -54,7 +54,7 @@ export function useMessages(clientId: string | null) {
     });
     const ch = sb
       .channel(`messages-${clientId ?? 'all'}-${Math.random().toString(36).slice(2, 7)}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', ...(clientId ? { filter: `client_id=eq.${clientId}` } : {}) }, (p) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'coach_messages', ...(clientId ? { filter: `client_id=eq.${clientId}` } : {}) }, (p) => {
         const row = (p.new && Object.keys(p.new).length ? p.new : p.old) as Row;
         const m = toMsg(row);
         setMessages((cur) => {
@@ -84,7 +84,7 @@ export function useMessages(clientId: string | null) {
         if (up.error) throw up.error;
       }
       const { data, error } = await supabase
-        .from('messages')
+        .from('coach_messages')
         .insert({ client_id: input.clientId, from_coach: input.fromCoach, body: input.body.trim(), attachment_path, attachment_type })
         .select()
         .single();
@@ -99,7 +99,7 @@ export function useMessages(clientId: string | null) {
     if (!supabase || !ids.length) return;
     const now = new Date().toISOString();
     setMessages((cur) => cur.map((m) => (ids.includes(m.id) ? { ...m, readAt: now } : m)));
-    await supabase.from('messages').update({ read_at: now }).in('id', ids);
+    await supabase.from('coach_messages').update({ read_at: now }).in('id', ids);
   }, []);
 
   return { messages, error, loading, send, markRead };

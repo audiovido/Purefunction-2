@@ -1,5 +1,5 @@
--- Messages between the coach and each client. Additive only.
-create table public.messages (
+-- Messages between the coach and each client (table coach_messages; an unused older 'messages' table is left untouched). Additive only.
+create table public.coach_messages (
   id uuid primary key default gen_random_uuid(),
   client_id text not null references public.clients(id) on delete cascade,
   from_coach boolean not null,
@@ -9,25 +9,25 @@ create table public.messages (
   created_at timestamptz not null default now(),
   read_at timestamptz
 );
-create index messages_client_created_idx on public.messages (client_id, created_at);
+create index coach_messages_client_created_idx on public.coach_messages (client_id, created_at);
 
-alter table public.messages enable row level security;
+alter table public.coach_messages enable row level security;
 
 -- coach: everything; client: only their own thread
-create policy "messages read" on public.messages for select to authenticated
+create policy "coach messages read" on public.coach_messages for select to authenticated
   using ((select private.is_coach()) or client_id = (select private.my_client_id()));
-create policy "messages insert" on public.messages for insert to authenticated
+create policy "coach messages insert" on public.coach_messages for insert to authenticated
   with check (
     ((select private.is_coach()) and from_coach)
     or (client_id = (select private.my_client_id()) and not from_coach)
   );
 -- mark as read: the receiving side only
-create policy "messages update" on public.messages for update to authenticated
+create policy "coach messages update" on public.coach_messages for update to authenticated
   using (((select private.is_coach()) and not from_coach) or (client_id = (select private.my_client_id()) and from_coach))
   with check (((select private.is_coach()) and not from_coach) or (client_id = (select private.my_client_id()) and from_coach));
 
 -- only read_at may change
-create function private.guard_message_update() returns trigger
+create function private.guard_coach_message_update() returns trigger
 language plpgsql set search_path = '' as $$
 begin
   if new.body is distinct from old.body or new.client_id is distinct from old.client_id
@@ -37,10 +37,10 @@ begin
   return new;
 end;
 $$;
-create trigger messages_guard before update on public.messages
-  for each row execute function private.guard_message_update();
+create trigger coach_messages_guard before update on public.coach_messages
+  for each row execute function private.guard_coach_message_update();
 
-alter publication supabase_realtime add table public.messages;
+alter publication supabase_realtime add table public.coach_messages;
 
 -- Private bucket for photos/videos in chat: path = <client_id>/<file>
 insert into storage.buckets (id, name, public, file_size_limit)
