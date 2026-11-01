@@ -1,4 +1,5 @@
 import { Equipment, Exercise } from '../types';
+import { hasApprovedVideo, needsApprovedVideo } from './videoLicense';
 
 /**
  * Exercise search and classification.
@@ -199,7 +200,7 @@ function entryOf(ex: Exercise): Entry {
     otherTokens: tokens([...(ex.muscles ?? []), group, ex.pattern ?? '', equipment, ex.plane ?? '', ex.bodyPart].join(' ')),
     group,
     equipment,
-    hasVideo: !!ex.video
+    hasVideo: hasApprovedVideo(ex.video)
   };
   cache.set(ex, e);
   return e;
@@ -218,7 +219,7 @@ export interface SearchFilters {
   pattern?: string;
   /** Legacy body-part filter, still used by older callers. */
   bodyPart?: string;
-  scope?: 'all' | 'pf' | 'mine' | 'favorites' | 'video';
+  scope?: 'all' | 'pf' | 'mine' | 'favorites' | 'video' | 'no-video';
 }
 
 export interface SearchOptions {
@@ -280,7 +281,9 @@ function passesFilters(e: Entry, f: SearchFilters, fav?: ReadonlySet<string>): b
     case 'favorites':
       return !!fav?.has(ex.id);
     case 'video':
-      return e.hasVideo;
+      return hasApprovedVideo(ex.video);
+    case 'no-video':
+      return needsApprovedVideo(ex);
     default:
       return true;
   }

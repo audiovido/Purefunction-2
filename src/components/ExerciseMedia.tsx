@@ -4,6 +4,9 @@ import { Exercise, ExerciseVideo } from '../types';
 import { embedUrl, thumbnailUrl, formatDuration } from '../lib/media';
 import { loadVideoFile } from '../lib/videoStore';
 import { videoUrl } from '../cloud/videos';
+import { useSession } from '../cloud/Session';
+import { useExerciseLibrary } from '../state/ExerciseLibrary';
+import { canViewExerciseVideo, VideoViewer } from '../lib/videoLicense';
 
 /** Resolves a playable src for a video (object URL for uploaded files). */
 function useVideoSrc(video?: ExerciseVideo): { src: string | null; missing: boolean } {
@@ -52,30 +55,47 @@ function useVideoSrc(video?: ExerciseVideo): { src: string | null; missing: bool
   return state;
 }
 
-const Placeholder: React.FC<{ className: string; label: string; compact?: boolean }> = ({
-  className,
-  label,
-  compact
-}) => (
-  <div
-    className={`${className} rounded-xl bg-[#F3F4F6] border border-dashed border-gray-300 flex flex-col items-center justify-center gap-1.5 text-gray-400 select-none`}
-  >
+const Placeholder: React.FC<{
+  className: string;
+  label: string;
+  title?: string;
+  cues?: string[];
+  compact?: boolean;
+  onAddVideo?: () => void;
+}> = ({ className, label, title, cues, compact, onAddVideo }) => (
+  <div className={`${className} rounded-xl bg-[#F3F4F6] border border-dashed border-gray-300 flex flex-col items-center justify-center gap-1.5 text-gray-600 px-3 py-3 text-center min-w-0`}>
     <VideoOff className={compact ? 'w-4 h-4' : 'w-6 h-6'} />
-    {!compact && <span className="text-xs font-medium">{label}</span>}
+    {!compact && <>
+      {title && <span className="text-sm font-semibold text-[#111827] break-words">{title}</span>}
+      <span className="text-xs font-medium">{label}</span>
+      {!!cues?.length && <ul className="text-xs text-gray-600 mt-1 space-y-1 max-w-full">{cues.slice(0, 3).map((cue, i) => <li key={i}>{cue}</li>)}</ul>}
+      {onAddVideo && <button type="button" onClick={onAddVideo} className="min-h-[44px] mt-2 px-4 py-2 rounded-xl bg-[#111827] text-white text-xs font-semibold cursor-pointer">Add video</button>}
+    </>}
   </div>
 );
+
+function useVideoPermission(video: ExerciseVideo | undefined, viewer?: VideoViewer): ExerciseVideo | undefined {
+  const { profile } = useSession();
+  const { showUnlicensedVideos } = useExerciseLibrary();
+  const actor: VideoViewer = viewer ?? (profile?.role === 'client' ? 'client' : 'coach');
+  return canViewExerciseVideo(video, actor, showUnlicensedVideos) ? video : undefined;
+}
 
 /** Full player: YouTube / Vimeo / Drive in an iframe, files & direct links in <video>. */
 export const ExerciseVideoPlayer: React.FC<{
   video?: ExerciseVideo;
   title: string;
   className?: string;
-}> = ({ video, title, className = 'w-full aspect-video' }) => {
-  const { src, missing } = useVideoSrc(video);
+  cues?: string[];
+  viewer?: VideoViewer;
+  onAddVideo?: () => void;
+}> = ({ video, title, className = 'w-full aspect-video', cues, viewer, onAddVideo }) => {
+  const allowed = useVideoPermission(video, viewer);
+  const { src, missing } = useVideoSrc(allowed);
 
-  if (!video) return <Placeholder className={className} label="No video yet" />;
+  if (!allowed) return <Placeholder className={className} title={title} cues={cues} onAddVideo={viewer === 'client' ? undefined : onAddVideo} label="Video coming soon" />;
   if (missing)
-    return <Placeholder className={className} label={video.kind === 'storage' ? "Video couldn’t be loaded" : "Video file not on this device"} />;
+    return <Placeholder className={className} title={title} cues={cues} label={allowed.kind === 'storage' ? "Video couldn’t be loaded" : "Video file not on this device"} />;
   if (!src) return <div className={`${className} rounded-xl bg-gray-100 animate-pulse`} />;
 
   if (video.kind === 'file' || video.kind === 'url' || video.kind === 'storage') {
@@ -110,11 +130,11 @@ export const ExerciseThumb: React.FC<{
   className?: string;
   compact?: boolean;
 }> = ({ exercise, className = 'w-full aspect-video', compact }) => {
-  const video = exercise.video;
+  const video = useVideoPermission(exercise.video);
   const { src, missing } = useVideoSrc(video?.kind === 'file' || video?.kind === 'url' || video?.kind === 'storage' ? video : undefined);
   const still = thumbnailUrl(video);
 
-  if (!video || missing) return <Placeholder className={className} label="No video yet" compact={compact} />;
+  if (!video || missing) return <Placeholder className={className} label="Video coming soon" title={exercise.name} compact={compact} />;
 
   return (
     <div className={`${className} rounded-xl overflow-hidden bg-[#111827] relative select-none`}>

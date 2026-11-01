@@ -4,10 +4,13 @@ export type VideoBucket = 'exercise-videos' | 'client-videos';
 const BUCKET: VideoBucket = 'exercise-videos';
 /** Cloud storage limit per file (Supabase free plan). */
 export const CLOUD_VIDEO_MAX_BYTES = 50 * 1024 * 1024;
+/** Small, mobile-friendly exercise demos. Assessment clips retain the 50MB limit. */
+export const EXERCISE_VIDEO_MAX_BYTES = 8 * 1024 * 1024;
 
 const signed = new Map<string, { url: string; expires: number }>();
 
 export async function uploadExerciseVideo(exerciseId: string, file: File): Promise<string> {
+  if (file.size > EXERCISE_VIDEO_MAX_BYTES) throw new Error('Exercise video must be 8 MB or smaller.');
   return uploadVideo(BUCKET, exerciseId, file);
 }
 

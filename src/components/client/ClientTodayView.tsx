@@ -541,7 +541,7 @@ export const ClientTodayView: React.FC<ClientTodayViewProps> = ({ client, onUpda
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <ExerciseVideoPlayer video={videoExercise?.video} title={videoExercise?.name ?? 'Exercise'} className="w-full aspect-video mb-4" />
+            <ExerciseVideoPlayer video={videoExercise?.video} title={videoExercise?.name ?? 'Exercise'} cues={videoExercise?.cues} viewer="client" className="w-full aspect-video mb-4" />
             {videoExercise && videoExercise.cues.length > 0 && (
               <ol className="space-y-2 mb-4">
                 {videoExercise.cues.map((cue, idx) => (

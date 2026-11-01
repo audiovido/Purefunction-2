@@ -23,6 +23,7 @@ import { useFavorites } from '../../state/favorites';
 import { formatDate, todayISO } from '../../lib/workouts';
 import { ExerciseThumb, ExerciseVideoPlayer } from '../ExerciseMedia';
 import { ExerciseEditorModal } from './ExerciseEditorModal';
+import { canViewExerciseVideo, hasApprovedVideo } from '../../lib/videoLicense';
 
 interface ExerciseLibraryViewProps {
   clients: ClientProfile[];
@@ -49,7 +50,11 @@ export const ExerciseLibraryView: React.FC<ExerciseLibraryViewProps> = ({
   const [selectedPattern, setSelectedPattern] = useState<string>('All');
   const [sort, setSort] = useState<'best' | 'az'>('best');
   const [shown, setShown] = useState(PAGE);
-  const { exercises, catalogLoaded, getExercise, saveExercise, deleteExercise } = useExerciseLibrary();
+  const {
+    exercises, catalogLoaded, catalogCount, ownCatalogVideoCount,
+    showUnlicensedVideos, setShowUnlicensedVideos,
+    getExercise, saveExercise, deleteExercise
+  } = useExerciseLibrary();
   const { favorites, toggle: toggleFavorite } = useFavorites();
   const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null);
   const activeExercise = activeExerciseId ? getExercise(activeExerciseId) ?? null : null;
@@ -105,7 +110,8 @@ export const ExerciseLibraryView: React.FC<ExerciseLibraryViewProps> = ({
     ['pf', 'Pure Function'],
     ['mine', 'Mine'],
     ['favorites', 'Favorites'],
-    ['video', 'With video']
+    ['video', 'With approved video'],
+    ['no-video', 'No video yet']
   ];
 
   const field =
@@ -150,13 +156,18 @@ export const ExerciseLibraryView: React.FC<ExerciseLibraryViewProps> = ({
       </div>
 
       <div className="mb-3">
-        <ExerciseVideoPlayer video={activeExercise.video} title={activeExercise.name} />
+        <ExerciseVideoPlayer
+          video={activeExercise.video}
+          title={activeExercise.name}
+          cues={activeExercise.cues}
+          onAddVideo={() => setEditing(activeExercise)}
+        />
       </div>
       <button
         onClick={() => setEditing(activeExercise)}
         className="w-full inline-flex items-center justify-center gap-2 mb-4 border border-gray-200 hover:border-[#111827] text-[#111827] text-xs font-semibold py-2.5 rounded-xl cursor-pointer"
       >
-        {activeExercise.video ? (
+        {canViewExerciseVideo(activeExercise.video, 'coach', showUnlicensedVideos) ? (
           <>
             <Pencil className="w-3.5 h-3.5" /> Edit exercise / replace video
           </>
@@ -278,6 +289,15 @@ export const ExerciseLibraryView: React.FC<ExerciseLibraryViewProps> = ({
       </div>
 
       <p className="text-[11px] text-gray-400 mb-2.5 -mt-1">Try “db press”, “rdl”, “glutes” or “single leg”.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3 rounded-xl bg-white border border-gray-100 px-3 py-2.5">
+        <p className="text-xs font-semibold text-[#111827]" aria-live="polite">
+          {ownCatalogVideoCount.toLocaleString()} of {catalogCount.toLocaleString()} exercises have their own video
+        </p>
+        <label className="inline-flex min-h-[44px] items-center gap-2 text-xs font-medium text-gray-700 cursor-pointer">
+          <input type="checkbox" checked={showUnlicensedVideos} onChange={(e) => setShowUnlicensedVideos(e.target.checked)} aria-label="Show unlicensed videos" className="w-4 h-4" />
+          Show unlicensed videos (coach preview only)
+        </label>
+      </div>
 
       {/* scope */}
       <div className="flex flex-wrap min-w-0 gap-1.5 pb-2" role="tablist" aria-label="Show">
@@ -368,6 +388,7 @@ export const ExerciseLibraryView: React.FC<ExerciseLibraryViewProps> = ({
                   <p className="text-xs text-gray-500 truncate mt-0.5">
                     {groupOf(exercise)} · {equipmentTypeOf(exercise)}
                     {(exercise.source === 'coach' || exercise.isCustom) && <span className="text-[#92400E] font-semibold"> · Yours</span>}
+                    {!hasApprovedVideo(exercise.video) && <span className="text-gray-400"> · Video coming soon</span>}
                   </p>
                 </div>
                 <button
