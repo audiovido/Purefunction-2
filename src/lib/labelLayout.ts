@@ -56,28 +56,29 @@ export const DEFAULT_BODY_BOX: BoxBounds = {
   bottom: 550
 };
 
-/** Outer figure box including left and right label gutters (centered at x = 150, height = 620) */
+/** Outer figure box including left and right label gutters (centered at x = 150, height = 638) */
 export const DEFAULT_FIGURE_BOX: BoxBounds = {
-  left: -104,
-  right: 404,
+  left: -112,
+  right: 412,
   top: -70,
-  bottom: 550
+  bottom: 568
 };
 
 export const DEFAULT_GUTTER_GAP = 16;
 export const DEFAULT_MIN_GAP = 6;
-export const DEFAULT_TAG_WIDTH = 144;
+export const DEFAULT_TAG_WIDTH = 140;
 export const DEFAULT_TAG_HEIGHT = 24;
+export const DEFAULT_BOX_PADDING = 20;
 
 export const LABEL_VIEWBOX_FRONT = `${DEFAULT_FIGURE_BOX.left} ${DEFAULT_FIGURE_BOX.top} ${DEFAULT_FIGURE_BOX.right - DEFAULT_FIGURE_BOX.left} ${DEFAULT_FIGURE_BOX.bottom - DEFAULT_FIGURE_BOX.top}`;
-export const LABEL_VIEWBOX_SIDE = `${DEFAULT_FIGURE_BOX.left} ${DEFAULT_FIGURE_BOX.top} ${250 - DEFAULT_FIGURE_BOX.left} ${DEFAULT_FIGURE_BOX.bottom - DEFAULT_FIGURE_BOX.top}`;
+export const LABEL_VIEWBOX_SIDE = `${DEFAULT_FIGURE_BOX.left} ${DEFAULT_FIGURE_BOX.top} ${252 - DEFAULT_FIGURE_BOX.left} ${DEFAULT_FIGURE_BOX.bottom - DEFAULT_FIGURE_BOX.top}`;
 
 /**
  * Pure layout function that places Body map finding tags into clean columns outside the body silhouette:
  * - Two columns ('left' and 'right') in front view, one column in side view.
  * - Sorted top-to-bottom within each column by the joint's height (`at[1]`) so leader lines do not cross.
  * - Spread vertically with at least `minGap` (6px) between tags while staying as close as possible to `at[1]`.
- * - Clamped inside `box` (no top/bottom/side clipping) and kept outside `bodyBox` by at least `gutterGap` (16px).
+ * - Clamped inside `box` (with padding from frame edges) and kept outside `bodyBox` by at least `gutterGap` (16px).
  */
 export function layoutLabels(
   labels: readonly LayoutLabelInput[],
@@ -95,8 +96,6 @@ export function layoutLabels(
   const sideViewColumn = options?.sideViewColumn ?? 'left';
 
   const step = tagHeight + minGap;
-  const minCenterY = box.top + tagHeight / 2;
-  const maxCenterY = box.bottom - tagHeight / 2;
 
   const leftEdgeRightCol = Math.max(bodyBox.right + gutterGap, box.left);
   const rightColX = Math.min(leftEdgeRightCol, box.right - tagWidth);
@@ -124,6 +123,11 @@ export function layoutLabels(
     items.sort((a, b) => a.label.at[1] - b.label.at[1] || a.index - b.index);
 
     const n = items.length;
+    const availH = box.bottom - box.top - tagHeight - (n - 1) * step;
+    const padY = Math.max(0, Math.min(DEFAULT_BOX_PADDING, availH / 2));
+    const minCenterY = box.top + padY + tagHeight / 2;
+    const maxCenterY = box.bottom - padY - tagHeight / 2;
+
     const desired = items.map((item) =>
       Math.min(maxCenterY, Math.max(minCenterY, item.label.at[1]))
     );
