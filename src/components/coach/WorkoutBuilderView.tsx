@@ -622,12 +622,12 @@ export const WorkoutBuilderView: React.FC<WorkoutBuilderViewProps> = ({
             />
           </div>
 
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-2">
+          <div className="flex flex-wrap min-w-0 items-center gap-1.5 pb-2 mb-2">
             {['All', ...MUSCLE_GROUPS].map((part) => (
               <button
                 key={part}
                 onClick={() => setBodyPart(part)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer whitespace-nowrap ${
+                className={`min-h-[44px] px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer whitespace-nowrap ${
                   bodyPart === part ? 'bg-[#111827] text-white' : 'bg-[#F3F4F6] text-gray-600 hover:text-[#111827]'
                 }`}
               >

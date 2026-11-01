@@ -45,7 +45,7 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
   ];
 
   return (
-    <div className="max-w-lg mx-auto space-y-4 pb-8">
+    <div className="max-w-lg mx-auto w-full min-w-0 space-y-4 pb-8">
       {/* Page Title */}
       <div>
         <span className="text-xs font-semibold text-gray-500">
@@ -61,7 +61,7 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
           aria-label={bodyCompAlert.title}
           className="bg-[#FFFDF5] rounded-2xl p-4 sm:p-5 border border-[#FFC809]/60 shadow-[0_2px_14px_rgba(0,0,0,0.03)]"
         >
-          <div className="flex items-center justify-between gap-2 mb-1">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
             <h2 className="text-sm font-bold text-[#111827]">{bodyCompAlert.title}</h2>
             <span className="bg-[#FEF3C7] text-[#92400E] text-xs font-semibold px-2.5 py-0.5 rounded-full tabular-nums">
               {bodyCompAlert.startMuscleMass.toFixed(1)} {WEIGHT_UNIT} → {bodyCompAlert.latestMuscleMass.toFixed(1)} {WEIGHT_UNIT} (-{bodyCompAlert.dropPercent.toFixed(1)}%)

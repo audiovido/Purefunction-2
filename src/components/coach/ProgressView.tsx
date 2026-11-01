@@ -161,8 +161,9 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
         <RecordsPanel client={client} onUpdateClient={onUpdateClient} by="coach" />
 
       {/* Phase Timeline (Week 0 / 4 / 8 / 12) matching Mockup 5 */}
-      <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-[0_2px_14px_rgba(0,0,0,0.04)] border border-gray-100 mb-6 overflow-x-auto">
-        <div className="min-w-[560px] pt-8 pb-2 px-6 relative">
+      <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-[0_2px_14px_rgba(0,0,0,0.04)] border border-gray-100 mb-6">
+        <div className="w-full min-w-0 pt-2 pb-2 px-1 sm:px-6 relative">
+          <div className="text-center mb-7"><span className="inline-flex rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-[#111827]">You are here · Week {clampedWeek}</span></div>
           {/* Base Track */}
           <div className="relative h-[3px] bg-gray-200 w-full rounded-full">
             {/* Completed Black Track */}
@@ -195,9 +196,6 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
               className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col items-center"
               style={{ left: `${progressPercent}%` }}
             >
-              <div className="absolute -top-9 whitespace-nowrap bg-white border border-gray-200 shadow-xs px-3 py-1 rounded-full text-xs font-medium text-[#111827]">
-                You are here · Week {clampedWeek}
-              </div>
               <div className="w-4 h-4 rounded-full bg-[#FFC809] ring-4 ring-[#FFC809]/25" />
             </div>
           </div>
@@ -213,10 +211,10 @@ export const ProgressView: React.FC<ProgressViewProps> = ({
                   : 'text-center';
               return (
                 <div key={phase.week} className={alignClass}>
-                  <div className="text-xs sm:text-sm font-medium text-[#111827]">
+                  <div className="text-[10px] sm:text-sm font-medium text-[#111827] break-words">
                     {phase.label}
                   </div>
-                  <div className="text-xs sm:text-sm text-gray-500">
+                  <div className="text-[10px] sm:text-sm text-gray-500 break-words">
                     {phase.sub}
                   </div>
                 </div>

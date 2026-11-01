@@ -58,7 +58,7 @@ export const SpectrumOfPatterns: React.FC<{
     if (row.kind === 'foot') {
       const val = String(entry.left ?? entry.right ?? '');
       return (
-        <td colSpan={2} className="px-2.5 py-2 border-b border-gray-100">
+        <td colSpan={2} data-label="Selection" className="px-2.5 py-2 border-b border-gray-100">
           <select
             aria-label={`${row.label} selection`}
             value={val}
@@ -81,7 +81,7 @@ export const SpectrumOfPatterns: React.FC<{
       return (['left', 'right'] as const).map((side) => {
         const val = String(entry[side] ?? '');
         return (
-          <td key={side} className="px-2 py-2 border-b border-gray-100">
+          <td key={side} data-label={side === 'left' ? 'Left' : 'Right'} className="px-2 py-2 border-b border-gray-100">
             <select
               aria-label={`${row.label} ${side}`}
               value={val}
@@ -106,7 +106,7 @@ export const SpectrumOfPatterns: React.FC<{
       const rawVal = entry[side];
       const val = rawVal !== undefined ? rawVal : finding ? finding[side] : '';
       return (
-        <td key={side} className="px-2 py-2 border-b border-gray-100">
+        <td key={side} data-label={side === 'left' ? 'Left' : 'Right'} className="px-2 py-2 border-b border-gray-100">
           <label className="inline-flex items-center rounded-xl border border-gray-200 bg-white px-2.5 py-1">
             <input
               type="number"
@@ -129,8 +129,8 @@ export const SpectrumOfPatterns: React.FC<{
 
   return (
     <section className="bg-white rounded-[28px] border border-gray-100 shadow-[0_2px_14px_rgba(0,0,0,0.04)] p-4 sm:p-6 mb-6">
-      <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-        <table className="min-w-[920px] w-full border-collapse text-left text-xs">
+      <div className="w-full min-w-0">
+        <table className="pf-responsive-table pf-spectrum-table w-full border-collapse text-left text-xs">
           <thead>
             <tr className="border-b border-gray-200 text-[11px] uppercase tracking-wider text-gray-500">
               <th className="py-2.5 pr-3 font-bold text-[#111827]">Test</th>
@@ -168,14 +168,14 @@ export const SpectrumOfPatterns: React.FC<{
               const actual = evaluation.rowResults[row.id];
               return (
                 <tr key={row.id} className="hover:bg-gray-50/60">
-                  <td className="py-2 pr-3 border-b border-gray-100 font-semibold text-[#111827] whitespace-nowrap">
+                  <td data-label="Test" className="py-2 pr-3 border-b border-gray-100 font-semibold text-[#111827] whitespace-nowrap">
                     {row.label}
                   </td>
-                  <td className="py-2 px-2 border-b border-gray-100 text-gray-500 whitespace-nowrap">
+                  <td data-label="Full" className="py-2 px-2 border-b border-gray-100 text-gray-500 whitespace-nowrap">
                     {typeof row.full === 'number' ? `${row.full}°` : row.full}
                   </td>
                   {renderInputs(row)}
-                  <td className="py-2 px-2 border-b border-gray-100 font-bold text-[#111827] whitespace-nowrap">
+                  <td data-label="Limited" className="py-2 px-2 border-b border-gray-100 font-bold text-[#111827] whitespace-nowrap">
                     {actual ?? '—'}
                   </td>
                   {SPECTRUM_PATTERNS.map((pat) => {
@@ -187,6 +187,7 @@ export const SpectrumOfPatterns: React.FC<{
                     return (
                       <td
                         key={pat.key}
+                        data-label={`${pat.code} · ${pat.label}`}
                         className={`py-2 px-2.5 border-b border-gray-100 whitespace-nowrap font-medium ${
                           isExact
                             ? 'bg-green-100/90 text-green-900 font-bold'

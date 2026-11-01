@@ -271,14 +271,14 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
           COACH DESKTOP SIDEBAR (Matches Mockups 1–9)
          ===================================================================== */}
       {role === 'coach' && (
-        <aside className="no-print hidden md:flex md:w-[84px] lg:w-60 md:flex-col md:fixed md:inset-y-0 bg-[#EAECEF] border-r border-gray-300/80 px-2 lg:px-4 py-6 justify-between select-none z-30">
+        <aside className="no-print hidden md:flex md:w-[84px] lg:w-60 md:flex-col md:sticky md:top-0 md:h-dvh md:shrink-0 md:overflow-y-auto bg-[#EAECEF] border-r border-gray-300/80 px-2 lg:px-4 py-6 justify-between select-none z-30">
           <div>
             {/* Brand Logo placed directly above Clients */}
             <div
               onClick={() => setCoachTab('clients')}
               className="px-1 lg:px-3 pt-1 pb-7 cursor-pointer flex justify-center lg:block"
             >
-              <span className="lg:hidden"><PureFunctionLogo compact /></span>
+              <span className="lg:hidden pf-sidebar-logo"><PureFunctionLogo compact /></span>
               <span className="hidden lg:block"><PureFunctionLogo /></span>
             </div>
 
@@ -467,7 +467,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
           MAIN VIEWPORT CANVAS
          ===================================================================== */}
       {role === 'coach' ? (
-        <main className="flex-1 min-w-0 md:pl-[84px] lg:pl-60 pb-24 md:pb-12">
+        <main className="flex-1 min-w-0 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-12">
           <div className="px-4 sm:px-8 lg:px-12 py-6 sm:py-10">
             {coachTab === 'clients' && clientOpen && selectedClient ? (
               <ClientDetail
@@ -518,7 +518,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
         </main>
       ) : (
         /* CLIENT MOBILE-FIRST VIEWPORT */
-        <main className="flex-1 pb-24 pt-4 px-4">
+        <main className="flex-1 min-w-0 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-4 px-4">
           <div
             className={
               clientPreviewFrame
@@ -555,7 +555,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
           COACH MOBILE BOTTOM NAVIGATION BAR (< md)
          ===================================================================== */}
       {role === 'coach' && (
-        <nav className="no-print md:hidden fixed bottom-0 inset-x-0 bg-[#EAECEF] border-t border-gray-300/80 z-40 grid grid-cols-4 px-1 py-1.5">
+        <nav className="no-print md:hidden fixed bottom-0 inset-x-0 bg-[#EAECEF] border-t border-gray-300/80 z-40 grid grid-cols-4 px-1 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]">
           {COACH_NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive = coachTab === item.id;
@@ -563,7 +563,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
               <button
                 key={item.id}
                 onClick={() => setCoachTab(item.id)}
-                className={`flex flex-col items-center justify-center py-1 rounded-xl transition-colors cursor-pointer ${
+                className={`min-h-[44px] flex flex-col items-center justify-center py-1 rounded-xl transition-colors cursor-pointer ${
                   isActive
                     ? 'bg-[#111827] text-white font-semibold'
                     : 'text-[#1F2937] font-medium'
@@ -588,7 +588,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
           CLIENT BOTTOM NAVIGATION BAR (Today | My Progress)
          ===================================================================== */}
       {role === 'client' && (
-        <nav className="no-print fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 z-40">
+        <nav className="no-print fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 z-40 pb-[env(safe-area-inset-bottom)]">
           <div className="max-w-md mx-auto grid grid-cols-4 gap-1.5 px-3 py-2">
             {([
               { id: 'today', label: 'Today', icon: CalendarCheck },
@@ -602,7 +602,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
                 <button
                   key={t.id}
                   onClick={() => setClientTab(t.id)}
-                  className={`flex flex-col items-center justify-center gap-0.5 py-2 rounded-full text-[11px] font-semibold transition-colors cursor-pointer ${
+                  className={`min-h-[44px] flex flex-col items-center justify-center gap-0.5 py-2 rounded-full text-[11px] font-semibold transition-colors cursor-pointer ${
                     active ? 'bg-[#111827] text-white' : 'text-gray-500 hover:text-[#111827]'
                   }`}
                 >

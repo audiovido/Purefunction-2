@@ -11,8 +11,9 @@ App: coaching PWA (like TrueCoach) for a coach in the US, up to ~100 clients. Co
 
 ## Team roles
 - **ChatGPT** = planner + reviewer. Talks with Armin, writes prompts for Gemini, reads the repo after each push and checks the diff.
-- **Gemini (AI Studio)** = builder. Connected to the repo, pulls/pushes `main`. Only Gemini writes code day to day.
-- **Claude** = auditor, called at milestones. Clones the repo, runs lint/test/build, runs the responsive check (`e2e/responsive-check.cjs`), and updates this file.
+- **Gemini (AI Studio)** = builder. Connected to the repo, pulls/pushes `main`. **Paused since 2026-11-01** (Armin's choice).
+- **Claude** = lead + auditor. Clones the repo, applies ChatGPT's patch scripts on a branch, runs lint/test/build and the responsive check (`e2e/responsive-check.cjs`, must exit 0), opens the PR, and updates this file.
+- While Gemini is paused, ChatGPT delivers changes as a **patch script** (exact find/replace, fail-closed, like `purefunction_responsive_pass.py`) based on the latest `main` SHA. Claude runs and verifies it. ChatGPT cannot push.
 
 ## Rules (all AIs)
 1. One feature per Gemini prompt. Every prompt ends with: "npm run lint && npm test must pass, then push to main."
@@ -35,13 +36,13 @@ App: coaching PWA (like TrueCoach) for a coach in the US, up to ~100 clients. Co
 - Notes, Nutrition, Posture and spectrumTests live in `clients.data` JSON, so they need no migration.
 - e2e: `e2e/cloud-flow.cjs` (mock Supabase); `e2e/responsive-check.cjs` (overflow crawler)
 
-## Status (2026-11-01)
-- Done: `clientFindings` unification, Front/Side toggle on both BodyLab cards, tapping a joint selects its movement. lint, 69 tests and build all pass.
-- **In progress (Gemini prompt sent): responsive pass with no horizontal scroll.** Problems found by Claude:
-  1. BUG: BodyLab cards are ~1500px wide on phone/tablet, and the body is invisible. The client Progress page has the same bug even on desktop. Fix: `grid grid-cols-1 lg:grid-cols-2` + `min-w-0`.
-  2. Horizontal scroll in: ClientDetail tabs and sub-pills, Library "Show"/"Muscle group" chips, muscle chips in Workout builder/Programs, BodyLab movement chips, Spectrum table (use cards below 1024px), Progression "You are here" timeline, NewAssessmentView, AssessmentHistory, ProgressReport.
-  3. The tablet (768px) sidebar cuts off the logo; the sidebar should be sticky and full height.
-  4. `e2e/cloud-flow.cjs` is out of date (looks for kg instead of lb; old Assessment button).
+## Status (2026-11-01, evening)
+- Done: `clientFindings` unification, Front/Side toggle on both BodyLab cards, tapping a joint selects its movement.
+- Done (PR `fix/responsive-no-overflow`, ChatGPT patch + Claude fixes): no horizontal scroll anywhere. `node e2e/responsive-check.cjs <demo-dist>` → 0 failures, 0 unvisited views across 88 views at 375/768/1024/1440. lint, 69 tests and build pass. Spectrum table switches to cards below 1400px; at 1400px+ it uses a fixed-layout table. Sidebar is sticky; safe-area padding added.
+- Open polish (small):
+  1. On phone, Spectrum cards are long (6 pattern rows per test). Consider collapsing the pattern rows behind "Show patterns".
+  2. In Spectrum cards, the Left and Right inputs should sit side by side.
+  3. `e2e/cloud-flow.cjs` is out of date (looks for kg instead of lb; old Assessment button).
 
 ## Next ideas
 - Auto joint detection on real photos (MediaPipe on phone) + photo analysis with green/red lines.
