@@ -3,7 +3,6 @@ import { ArrowLeft } from 'lucide-react';
 import { ClientProfile, ClientSection, Exercise } from '../../types';
 import { ClientAvatar } from '../VisualAssets';
 import { WorkoutBuilderView } from './WorkoutBuilderView';
-import { ExerciseLibraryView } from './ExerciseLibraryView';
 import { NewAssessmentView } from './NewAssessmentView';
 import { MonthlyReportView } from './MonthlyReportView';
 import { ProgressView } from './ProgressView';
@@ -25,7 +24,6 @@ export const SECTIONS: { id: ClientSection; label: string }[] = [
   { id: 'nutrition', label: 'Nutrition' }
 ];
 
-type ExSub = 'program' | 'library' | 'history';
 type AsSub = 'overview' | 'new' | 'report';
 
 const Sub: React.FC<{ items: { id: string; label: string }[]; value: string; onChange: (v: string) => void }> = ({ items, value, onChange }) => (
@@ -53,7 +51,6 @@ export const ClientDetail: React.FC<{
   onUpdateClient: (c: ClientProfile) => void;
   onAddExercise: (clientId: string, date: string, exercise: Exercise) => void;
 }> = ({ client, section, onSection, onBack, onUpdateClient, onAddExercise }) => {
-  const [exSub, setExSub] = useState<ExSub>('program');
   const [asSub, setAsSub] = useState<AsSub>('overview');
   const one = [client];
   const noop = () => {};
@@ -94,18 +91,13 @@ export const ClientDetail: React.FC<{
       <div className="pf-embed">
         {section === 'exercises' && (
           <>
-            <Sub
-              items={[
-                { id: 'program', label: 'Program' },
-                { id: 'library', label: 'Exercise library' },
-                { id: 'history', label: 'History' }
-              ]}
-              value={exSub}
-              onChange={(v) => setExSub(v as ExSub)}
-            />
-            {exSub === 'program' && <WorkoutBuilderView clients={one} client={client} onSelectClientId={noop} onUpdateClient={onUpdateClient} />}
-            {exSub === 'library' && <ExerciseLibraryView clients={one} selectedClient={client} onAddExerciseToClientWorkout={onAddExercise} />}
-            {exSub === 'history' && <WorkoutHistory client={client} />}
+            <WorkoutBuilderView clients={one} client={client} onSelectClientId={noop} onUpdateClient={onUpdateClient} />
+            <details className="pf-workout-history mt-6 bg-white rounded-[28px] border border-gray-100 p-4 sm:p-6">
+              <summary className="min-h-[44px] flex items-center cursor-pointer text-base font-bold text-[#111827]">Past workouts</summary>
+              <div className="mt-4">
+                <WorkoutHistory client={client} />
+              </div>
+            </details>
           </>
         )}
 

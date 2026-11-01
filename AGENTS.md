@@ -28,7 +28,7 @@ App: coaching PWA (like TrueCoach) for a coach in the US, up to ~100 clients. Co
 - Build: `npm install --legacy-peer-deps` · `npm run lint` (tsc) · `npm test` (vitest) · `npm run build`
 - Demo mode: build without `VITE_SUPABASE_URL` → local sample clients (used for visual checks)
 - Coach sidebar: Clients · Library · Programs · Messages (`src/App.tsx`)
-- Client page `src/components/coach/ClientDetail.tsx`. Tabs: Exercises (Program / Exercise library / History) · Assessment (Overview / New assessment / Reports) · Notes · Goals · Progression · Nutrition
+- Client page `src/components/coach/ClientDetail.tsx`. Tabs: Exercises (Workout Builder + collapsed "Past workouts"; no sub-tabs) · Assessment (Overview / New assessment / Reports) · Notes · Goals · Progression · Nutrition
 - Assessment Overview: `AssessmentSummary` → `SpectrumOfPatterns` → `BodyLab` (Body map + Movements) → `AssessmentHistory`
 - Logic: `src/lib/spectrum.ts` (`clientFindings(client)` is the single source of findings: limited = below 90% of Full), `src/lib/bodyModel.ts`, figure in `src/components/BodyFigure.tsx`
 - Client app: Today · Progress (Body map) · Chat · Refer
@@ -47,6 +47,7 @@ App: coaching PWA (like TrueCoach) for a coach in the US, up to ~100 clients. Co
 - Done (Gemini, 2026-11-01): foreshortened poses in the non-natural views (hip flexion, SLR, shoulder flexion and others look right). Body map tags sit in gutters outside the body, with colored leader lines, sorted and non-overlapping (src/lib/labelLayout.ts). Gemini works in STRICT MODE: an allow-list of files, no push until Armin says "push", and Claude audits each push against a backup branch (latest: backup/before-gemini-2026-11-01).
 - T7 (PR `feat/t7-licensed-media`, ChatGPT pf_t7.py + Claude fixes): every imported catalog video (1,221; YouTube/Vimeo from TrueCoach) is `unlicensed`. Clients never load them (checked: 0 iframes, 0 requests to YouTube/Vimeo; they see "Video coming soon" + cues). Coach setting "Show unlicensed videos": OFF in cloud, ON in demo. Library has a "No video yet" filter and a counter "0 of 1,221 have their own video". Coach can record or upload a 10–15 s clip (≤ 8 MB) into `exercise-videos` (license = own).
   - Still to decide: whether the catalog text and names copied from TrueCoach also need replacing; plan for the first 100 videos (T6: the coach records them on his phone).
+- Cleanup (2026-11-01): removed duplicate controls before coach testing: the Exercises sub-tabs (the builder already has the exercise library; history is now a collapsed "Past workouts" section), and the extra "Record clip" button in the exercise editor (one picker; on phones it offers the camera or the library). Don't re-add duplicates.
 - Open:
   1. (done 2026-11-01) Pose polish: Hip flexion in Side view now sits on the stool; Ankle in Side view keeps the arms down; tags keep ≥8px padding at 375px.
   2. Unread badges were not tested with two real signed-in devices.

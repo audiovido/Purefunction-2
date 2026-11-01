@@ -55,7 +55,6 @@ export const ExerciseEditorModal: React.FC<Props> = ({ exercise, onSave, onDelet
   const [formError, setFormError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
-  const cameraInput = useRef<HTMLInputElement>(null);
 
   const clearPending = () => {
     if (pendingFile) URL.revokeObjectURL(pendingFile.previewUrl);
@@ -248,21 +247,6 @@ export const ExerciseEditorModal: React.FC<Props> = ({ exercise, onSave, onDelet
             {mode === 'upload' ? (
               <>
                 <input
-                  ref={cameraInput}
-                  type="file"
-                  accept="video/*"
-                  capture="environment"
-                  className="hidden"
-                  aria-label="Record exercise video"
-                  onChange={(e) => {
-                    void handleFile(e.target.files?.[0]);
-                    e.target.value = '';
-                  }}
-                />
-                <button type="button" onClick={() => cameraInput.current?.click()} disabled={checking} className="w-full min-h-[44px] mb-2 rounded-xl bg-[#111827] text-white text-sm font-semibold px-3 py-2 cursor-pointer">
-                  Record 10–15s clip with phone camera
-                </button>
-                <input
                   ref={fileInput}
                   type="file"
                   accept={VIDEO_ACCEPT}
@@ -288,7 +272,7 @@ export const ExerciseEditorModal: React.FC<Props> = ({ exercise, onSave, onDelet
                     <Upload className="w-6 h-6 text-gray-400" />
                   )}
                   <span className="text-sm font-semibold text-[#111827]">
-                    {checking ? 'Checking video…' : shownVideo || pendingFile ? 'Choose a different video' : 'Choose a video or drop it here'}
+                    {checking ? 'Checking video…' : shownVideo || pendingFile ? 'Record or choose a different video' : 'Record a clip or choose a video'}
                   </span>
                   <span className="text-xs text-gray-500">
                     MP4, MOV or WebM · up to {formatBytes(EXERCISE_VIDEO_MAX_BYTES)} · up to 0:15 (720p H.264 recommended)

@@ -152,8 +152,8 @@ const today = iso(new Date());
   ok(mock.log.filter((l) => l.startsWith('POST /rest/v1/workouts')).length - postsBefore <= 6, 'client sends only small, changed-row writes');
 
   // coach sees it live
-  await C.getByText('Felt strong').waitFor({ timeout: 8000 }).catch(() => {});
-  ok(await C.getByText('Felt strong').isVisible(), 'coach sees the client’s feedback live');
+  await C.getByText('Felt strong').first().waitFor({ timeout: 8000 }).catch(() => {});
+  ok(await C.getByText('Felt strong').first().isVisible(), 'coach sees the client’s feedback live');
   ok(await C.getByText(/Session RPE 7\/10/).isVisible(), 'coach sees session RPE');
 
   // no echo loop: wait and make sure the coach did not re-upload what it received
@@ -178,7 +178,7 @@ const today = iso(new Date());
   /* ---------------- coach uploads a video, client can play it ---------------- */
   await C.getByRole('button', { name: 'Library' }).first().click();
   await C.getByRole('button', { name: 'New exercise' }).click();
-  await C.locator('input[type=file][accept^="video"]:not([capture])').setInputFiles(path.join(__dirname, 'fixtures', 'demo.webm'));
+  await C.locator('input[type=file][accept^="video"]').setInputFiles(path.join(__dirname, 'fixtures', 'demo.webm'));
   await C.getByText(/checked, plays fine/).waitFor({ timeout: 15000 });
   await C.getByPlaceholder('e.g. Left AIC Split Squat').fill('Ryan Wall Drill');
   await C.getByRole('button', { name: 'Save' }).click();
