@@ -38,9 +38,9 @@ App: coaching PWA (like TrueCoach) for a coach in the US, up to ~100 clients. Co
 
 ## Status (2026-11-01, night 2)
 - Merged: responsive pass (#28), T0+T1 (#29).
-- PR `fix/t2-t5` (ChatGPT pf_t2_t5.py, applied cleanly):
+- Merged #30 (ChatGPT pf_t2_t5.py, applied cleanly):
   - T2: e2e/cloud-flow.cjs updated. 52 checks pass (ALL PASSED).
-  - T3: Program templates in Programs (save a week or 12 weeks, apply to several clients, logged days protected). Demo mode uses localStorage. **Cloud mode needs migration `supabase/migrations/20261101170000_pf2_program_templates.sql` (NEEDS ARMIN'S OK)**; until it is applied, the template card is hidden on the live site. Claude checked that `private.is_coach()` exists and that the table does not exist yet.
+  - T3: Program templates in Programs (save a week or 12 weeks, apply to several clients, logged days protected). Demo mode uses localStorage. Migration `supabase/migrations/20261101170000_pf2_program_templates.sql` was **applied on the live DB on 2026-11-01** (by Armin, with RLS and 3 policies; verified by Claude). Templates are live.
   - T4: unread badges on coach Messages and client Chat (uses the existing `coach_messages.read_at`; no migration).
   - T5: "+ Test Client" on Clients (labeled DEMO — NOT REAL; delete button; deleting it also deletes its workouts).
   - 79 tests pass; responsive-check 0/0; browser-checked templates and Test Client in demo mode.
