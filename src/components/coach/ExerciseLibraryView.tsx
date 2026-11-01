@@ -280,14 +280,14 @@ export const ExerciseLibraryView: React.FC<ExerciseLibraryViewProps> = ({
       <p className="text-[11px] text-gray-400 mb-2.5 -mt-1">Try “db press”, “rdl”, “glutes” or “single leg”.</p>
 
       {/* scope */}
-      <div className="flex gap-1.5 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0" role="tablist" aria-label="Show">
+      <div className="flex flex-wrap min-w-0 gap-1.5 pb-2" role="tablist" aria-label="Show">
         {scopes.map(([k, label]) => (
           <button
             key={k}
             role="tab"
             aria-selected={scope === k}
             onClick={() => filterChanged(setScope)(k)}
-            className={`px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap cursor-pointer ${
+            className={`min-h-[44px] px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap cursor-pointer ${
               scope === k ? 'bg-[#111827] text-white' : 'bg-white border border-gray-200 text-gray-600 hover:text-[#111827]'
             }`}
           >
@@ -298,13 +298,13 @@ export const ExerciseLibraryView: React.FC<ExerciseLibraryViewProps> = ({
       </div>
 
       {/* muscle group */}
-      <div className="flex gap-1.5 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0" role="group" aria-label="Muscle group">
+      <div className="flex flex-wrap min-w-0 gap-1.5 pb-2" role="group" aria-label="Muscle group">
         {['All', ...MUSCLE_GROUPS].map((g) => (
           <button
             key={g}
             onClick={() => filterChanged(setGroup)(g)}
             aria-pressed={group === g}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap cursor-pointer ${
+            className={`min-h-[44px] px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap cursor-pointer ${
               group === g ? 'bg-[#FFC809] text-[#111827] font-semibold' : 'bg-[#F3F4F6] text-gray-600 hover:text-[#111827]'
             }`}
           >

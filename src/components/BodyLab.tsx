@@ -18,7 +18,7 @@ import { ClientFinding, clientFindings } from '../lib/spectrum';
 import { BodyFigure, FigureArc, FigureLabel, FigureLine } from './BodyFigure';
 import { todayISO } from '../lib/workouts';
 
-const pill = 'px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap';
+const pill = 'min-h-[44px] px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap';
 const sevBg: Record<Severity, string> = {
   ok: 'bg-green-50 text-green-700',
   watch: 'bg-amber-50 text-amber-800',
@@ -461,9 +461,9 @@ export const BodyLab: React.FC<{
   };
 
   return (
-    <div className={`grid gap-6 mb-6 ${compact ? '' : 'lg:grid-cols-2'}`}>
+    <div className={`grid grid-cols-1 w-full min-w-0 gap-6 mb-6 ${compact ? '' : 'lg:grid-cols-2'}`}>
       {/* CARD A: Body map */}
-      <section className="bg-white rounded-[28px] border border-gray-100 shadow-[0_2px_14px_rgba(0,0,0,0.04)] p-4 sm:p-6 flex flex-col">
+      <section className="w-full min-w-0 bg-white rounded-[28px] border border-gray-100 shadow-[0_2px_14px_rgba(0,0,0,0.04)] p-4 sm:p-6 flex flex-col">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
           <div>
             <h2 className="text-lg font-bold text-[#111827]">Body map</h2>
@@ -485,7 +485,7 @@ export const BodyLab: React.FC<{
           </div>
         </div>
 
-        <div className="relative rounded-[24px] border border-gray-100 bg-[radial-gradient(circle_at_50%_38%,#ffffff,#F1F3F6)] overflow-hidden">
+        <div className="relative w-full min-w-0 rounded-[24px] border border-gray-100 bg-[radial-gradient(circle_at_50%_38%,#ffffff,#F1F3F6)] overflow-hidden">
           <div className="absolute left-3 top-3 z-10 flex gap-1.5">
             {(['front', 'side'] as const).map((v) => (
               <button
@@ -534,7 +534,7 @@ export const BodyLab: React.FC<{
       </section>
 
       {/* CARD B: Movements */}
-      <section className="bg-white rounded-[28px] border border-gray-100 shadow-[0_2px_14px_rgba(0,0,0,0.04)] p-4 sm:p-6 flex flex-col">
+      <section className="w-full min-w-0 bg-white rounded-[28px] border border-gray-100 shadow-[0_2px_14px_rgba(0,0,0,0.04)] p-4 sm:p-6 flex flex-col">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
           <div>
             <h2 className="text-lg font-bold text-[#111827]">Movements</h2>
@@ -544,7 +544,7 @@ export const BodyLab: React.FC<{
           </div>
         </div>
 
-        <div className="flex gap-1.5 overflow-x-auto pb-2 mb-3 -mx-1 px-1">
+        <div className="flex flex-wrap min-w-0 gap-1.5 pb-2 mb-3">
           {MOVEMENTS.map((m) => {
             const f = findingsByKey.get(m.sopKey);
             const sev = f?.severity ?? null;
@@ -571,7 +571,7 @@ export const BodyLab: React.FC<{
           })}
         </div>
 
-        <div className="relative rounded-[24px] border border-gray-100 bg-[radial-gradient(circle_at_50%_38%,#ffffff,#F1F3F6)] overflow-hidden">
+        <div className="relative w-full min-w-0 rounded-[24px] border border-gray-100 bg-[radial-gradient(circle_at_50%_38%,#ffffff,#F1F3F6)] overflow-hidden">
           {/* Front / Side toggle on Movements card */}
           <div className="absolute left-3 top-3 z-10 flex gap-1.5">
             {(['front', 'side'] as const).map((v) => {

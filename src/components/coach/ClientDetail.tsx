@@ -29,12 +29,12 @@ type ExSub = 'program' | 'library' | 'history';
 type AsSub = 'overview' | 'new' | 'report';
 
 const Sub: React.FC<{ items: { id: string; label: string }[]; value: string; onChange: (v: string) => void }> = ({ items, value, onChange }) => (
-  <div className="flex gap-2 mb-5 overflow-x-auto no-print">
+  <div className="flex flex-wrap min-w-0 gap-2 mb-5 no-print">
     {items.map((i) => (
       <button
         key={i.id}
         onClick={() => onChange(i.id)}
-        className={`px-4 py-2 rounded-full text-[13px] font-semibold border whitespace-nowrap cursor-pointer transition-colors ${
+        className={`min-h-[44px] px-4 py-2 rounded-full text-[13px] font-semibold border whitespace-nowrap cursor-pointer transition-colors ${
           value === i.id ? 'bg-[#FFC809] border-[#FFC809] text-[#111827]' : 'bg-white border-gray-200 text-gray-600 hover:text-[#111827]'
         }`}
       >
@@ -60,9 +60,9 @@ export const ClientDetail: React.FC<{
   const assessments = client.assessments ?? [];
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto w-full min-w-0">
       <div className="flex items-center gap-3 mb-5 no-print">
-        <button onClick={onBack} aria-label="All clients" className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50 cursor-pointer shrink-0">
+        <button onClick={onBack} aria-label="All clients" className="w-11 h-11 rounded-full bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50 cursor-pointer shrink-0">
           <ArrowLeft className="w-4 h-4" />
         </button>
         <ClientAvatar name={client.name} photoUrl={client.photoUrl} />
@@ -75,13 +75,13 @@ export const ClientDetail: React.FC<{
         </div>
       </div>
 
-      <div className="overflow-x-auto -mx-1 px-1 mb-5 no-print">
-        <div className="inline-flex gap-1 bg-[#E5E7EB] rounded-full p-1.5">
+      <div className="min-w-0 mb-5 no-print">
+        <div className="flex flex-wrap gap-1 bg-[#E5E7EB] rounded-2xl p-1.5">
           {SECTIONS.map((s) => (
             <button
               key={s.id}
               onClick={() => onSection(s.id)}
-              className={`px-4 sm:px-5 py-2 rounded-full text-sm font-semibold whitespace-nowrap cursor-pointer transition-colors ${
+              className={`min-h-[44px] px-4 sm:px-5 py-2 rounded-full text-sm font-semibold whitespace-nowrap cursor-pointer transition-colors ${
                 section === s.id ? 'bg-[#111827] text-white shadow-sm' : 'text-gray-600 hover:text-[#111827]'
               }`}
             >

@@ -80,8 +80,8 @@ export const AssessmentHistory: React.FC<{
       {rows.length === 0 ? (
         <p className="text-sm text-gray-500">No measurements entered in this assessment yet.</p>
       ) : (
-        <div className="overflow-x-auto -mx-4 sm:mx-0">
-          <table className="w-full min-w-[420px] text-sm">
+        <div className="w-full min-w-0">
+          <table className="pf-responsive-table pf-stack-table w-full text-sm">
             <thead>
               <tr className="text-[11px] uppercase tracking-wide text-gray-400">
                 <th className="text-left font-semibold py-2 px-4 sm:px-0">Measure</th>
@@ -105,7 +105,7 @@ export const AssessmentHistory: React.FC<{
                     const d = rawD != null && isWeightUnit(r.unit) ? roundLb(rawD) : rawD;
                     return (
                       <tr key={r.label} className="border-t border-gray-100">
-                        <td className="py-2 px-4 sm:px-0 text-gray-700">
+                        <td data-label="Measure" className="py-2 px-4 sm:px-0 text-gray-700">
                           <div className="flex items-start gap-1.5">
                             <span className="flex-1">
                               {r.label}
@@ -128,10 +128,10 @@ export const AssessmentHistory: React.FC<{
                             )}
                           </div>
                         </td>
-                        {!single && <td className="py-2 px-2 text-right tabular-nums text-gray-500">{fmt(r.before, r.unit)}</td>}
-                        <td className="py-2 px-2 text-right tabular-nums font-semibold text-[#111827]">{fmt(r.after, r.unit)}</td>
+                        {!single && <td data-label="Before" className="py-2 px-2 text-right tabular-nums text-gray-500">{fmt(r.before, r.unit)}</td>}
+                        <td data-label="After" className="py-2 px-2 text-right tabular-nums font-semibold text-[#111827]">{fmt(r.after, r.unit)}</td>
                         {!single && (
-                          <td className="py-2 pl-2 pr-4 sm:pr-0 text-right tabular-nums">
+                          <td data-label="Change" className="py-2 pl-2 pr-4 sm:pr-0 text-right tabular-nums">
                             {d == null ? (
                               <span className="text-gray-300">—</span>
                             ) : (

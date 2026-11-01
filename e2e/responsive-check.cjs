@@ -5,6 +5,7 @@ const { chromium } = require('playwright');
 const http = require('http'), fs = require('fs'), path = require('path');
 const root = process.argv[2], shots = process.argv[3];
 const PORT = 4201;
+if (shots) fs.mkdirSync(shots, { recursive: true });
 http.createServer((q, r) => {
   let f = path.join(root, decodeURIComponent(q.url.split('?')[0]));
   if (!fs.existsSync(f) || fs.statSync(f).isDirectory()) f = path.join(root, 'index.html');
@@ -37,6 +38,7 @@ async function measure(p) {
 }
 
 (async () => {
+  let failures = 0, unvisited = 0;
   const b = await chromium.launch();
   for (const [vn, vp] of Object.entries(VP)) {
     const ctx = await b.newContext({ viewport: vp, hasTouch: vn !== 'tabletL' });
@@ -47,6 +49,7 @@ async function measure(p) {
       await p.waitForTimeout(400);
       const m = await measure(p);
       const bad = m.page > 0 || m.scrollers.length || m.offRight.length;
+      if (bad) failures++;
       console.log(`${bad ? 'XX' : 'ok'} [${vn}] ${name}${m.page > 0 ? ` PAGE+${m.page}px` : ''}`);
       m.scrollers.forEach((s) => console.log('     scroll: ' + s));
       m.offRight.forEach((s) => console.log('     off:    ' + s));
@@ -58,16 +61,16 @@ async function measure(p) {
     for (const nav of ['Library', 'Programs', 'Messages', 'Clients']) {
       if (!(await click(p.getByRole('button', { name: new RegExp('^' + nav, 'i') })))) {
         await click(p.getByRole('button', { name: /menu/i }));
-        if (!(await click(p.getByRole('button', { name: new RegExp('^' + nav, 'i') })))) { console.log(`?? [${vn}] no nav ${nav}`); continue; }
+        if (!(await click(p.getByRole('button', { name: new RegExp('^' + nav, 'i') })))) { console.log(`?? [${vn}] no nav ${nav}`); unvisited++; continue; }
       }
       await report('nav-' + nav);
     }
     // open first client
     const row = p.locator('main').getByText('Alex Carter', { exact: true });
-    if (!(await click(row))) { console.log(`?? [${vn}] no client row`); }
+    if (!(await click(row))) { console.log(`?? [${vn}] no client row`); unvisited++; }
     await report('client');
     for (const tab of ['Exercises', 'Assessment', 'Notes', 'Goals', 'Progression', 'Nutrition']) {
-      if (!(await click(p.getByRole('tab', { name: tab })))) if (!(await click(p.getByRole('button', { name: new RegExp('^' + tab + '$') })))) { console.log(`?? [${vn}] no tab ${tab}`); continue; }
+      if (!(await click(p.getByRole('tab', { name: tab })))) if (!(await click(p.getByRole('button', { name: new RegExp('^' + tab + '$') })))) { console.log(`?? [${vn}] no tab ${tab}`); unvisited++; continue; }
       await report('tab-' + tab);
       const subs = { Exercises: ['Program', 'Exercise library', 'History'], Assessment: ['Overview', 'New assessment', 'Reports'] }[tab] || [];
       for (const s of subs) {
@@ -78,9 +81,11 @@ async function measure(p) {
     if (await click(p.getByRole('button', { name: /^Client$/ }))) {
       await report('clientapp-today');
       for (const t of ['Progress', 'Chat', 'Refer', 'Today']) if (await click(p.getByRole('button', { name: new RegExp(t, 'i') }))) await report('clientapp-' + t);
-    } else console.log(`?? [${vn}] no client switch`);
-    if (errs.length) console.log(`!! [${vn}] page errors: ${[...new Set(errs)].slice(0, 3).join(' | ')}`);
+    } else { console.log(`?? [${vn}] no client switch`); unvisited++; }
+    if (errs.length) { failures++; console.log(`!! [${vn}] page errors: ${[...new Set(errs)].slice(0, 3).join(' | ')}`); }
     await ctx.close();
   }
-  await b.close(); process.exit(0);
+  await b.close();
+  console.log(`Responsive check: ${failures} failures, ${unvisited} unvisited views`);
+  process.exit(failures || unvisited ? 1 : 0);
 })();

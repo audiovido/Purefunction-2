@@ -341,7 +341,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
         </div>
 
         {/* Quick step switcher pills for fast review */}
-        <div className="flex items-center gap-1.5 bg-white border border-gray-200/80 rounded-xl p-1 self-start sm:self-auto">
+        <div className="flex flex-wrap items-center gap-1.5 bg-white border border-gray-200/80 rounded-xl p-1 self-start sm:self-auto">
           <button
             onClick={() => setActiveStep(1)}
             className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer whitespace-nowrap ${
@@ -366,8 +366,8 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
       </div>
 
       {/* 6-Step Horizontal Stepper matching Mockups 1 & 3 */}
-      <div className="mb-8 overflow-x-auto pb-2">
-        <div className="min-w-[640px] flex items-center justify-between">
+      <div className="mb-8 w-full min-w-0 pb-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3">
           {STEPS.map((step, idx) => {
             const isCompleted = step.number < activeStep;
             const isCurrent = step.number === activeStep;
@@ -377,7 +377,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
               <React.Fragment key={step.number}>
                 <button
                   onClick={() => setActiveStep(step.number)}
-                  className="flex flex-col items-center group cursor-pointer focus:outline-none shrink-0"
+                  className="min-h-[64px] min-w-0 w-full flex flex-col items-center justify-center rounded-xl border border-gray-200 px-2 py-2 group cursor-pointer focus:outline-none"
                 >
                   <div className="h-6 flex items-center justify-center mb-2">
                     {isCompleted ? (
@@ -391,7 +391,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                     )}
                   </div>
                   <span
-                    className={`text-xs sm:text-[13px] whitespace-nowrap transition-colors ${
+                    className={`text-xs sm:text-[13px] text-center break-words transition-colors ${
                       isCurrent
                         ? 'font-semibold text-[#111827]'
                         : isCompleted
@@ -404,7 +404,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                 </button>
 
                 {!isLast && (
-                  <div className="flex-1 mx-2 sm:mx-3 -mt-5">
+                  <div className="hidden">
                     <div
                       className={`h-[2px] w-full transition-colors ${
                         step.number < activeStep ? 'bg-[#111827]' : 'bg-[#E5E7EB]'
@@ -732,8 +732,8 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
          ===================================================================== */}
       {activeStep === 3 && (
         <div className="bg-white rounded-2xl shadow-[0_2px_14px_rgba(0,0,0,0.04)] border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="w-full min-w-0">
+            <table className="pf-responsive-table pf-stack-table w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-gray-100 text-xs sm:text-[14px] font-semibold text-[#111827]">
                   <th className="py-4 pl-6 pr-4 w-[44%]">Movement</th>
@@ -749,7 +749,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
 
                   return (
                     <tr key={item.id} className="group hover:bg-gray-50/40 transition-colors">
-                      <td className="py-4 pl-6 pr-4 font-normal text-[#111827]">
+                      <td data-label="Movement" className="py-4 pl-6 pr-4 font-normal text-[#111827]">
                         <div className="flex items-center justify-between gap-2">
                           <span>{item.name}</span>
                           {client.rom.length > 3 && (
@@ -764,7 +764,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                         </div>
                       </td>
 
-                      <td className="py-4 px-4">
+                      <td data-label="Left (°)" className="py-4 px-4">
                         <input
                           type="number"
                           min="0"
@@ -782,7 +782,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                         />
                       </td>
 
-                      <td className="py-4 px-4">
+                      <td data-label="Right (°)" className="py-4 px-4">
                         <input
                           type="number"
                           min="0"
@@ -800,7 +800,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                         />
                       </td>
 
-                      <td className="py-4 pl-4 pr-6 text-right">
+                      <td data-label="Result" className="py-4 pl-4 pr-6 text-right">
                         <span
                           className={`inline-flex items-center justify-center min-w-[52px] px-3 py-1 rounded-full text-sm tabular-nums ${
                             isHighAsymmetry
@@ -923,8 +923,8 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="w-full min-w-0">
+            <table className="pf-responsive-table pf-stack-table w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-gray-100 text-xs sm:text-sm font-semibold text-[#111827]">
                   <th className="py-3.5 pl-6 pr-4">Indicator Lift</th>
@@ -938,10 +938,10 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                   const est1Rm = calculateEstimated1RM(row.loadKg, row.reps);
                   return (
                     <tr key={row.id}>
-                      <td className="py-4 pl-6 pr-4 font-medium text-[#111827]">
+                      <td data-label="Indicator Lift" className="py-4 pl-6 pr-4 font-medium text-[#111827]">
                         {row.exercise}
                       </td>
-                      <td className="py-4 px-4">
+                      <td data-label="Test load (lb)" className="py-4 px-4">
                         <WeightInput
                           step="2.5"
                           kg={row.loadKg}
@@ -949,7 +949,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                           className="w-24 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-medium text-[#111827] tabular-nums focus:outline-none focus:border-[#111827]"
                         />
                       </td>
-                      <td className="py-4 px-4">
+                      <td data-label="Reps completed" className="py-4 px-4">
                         <input
                           type="number"
                           step="1"
@@ -964,7 +964,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                           className="w-20 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-medium text-[#111827] tabular-nums focus:outline-none focus:border-[#111827]"
                         />
                       </td>
-                      <td className="py-4 pl-4 pr-6 text-right">
+                      <td data-label="Result" className="py-4 pl-4 pr-6 text-right">
                         <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#FEF3C7] text-[#111827] font-bold text-sm tabular-nums">
                           {est1Rm > 0 ? formatWeight(est1Rm) : '—'}
                         </span>

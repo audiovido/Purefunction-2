@@ -176,8 +176,8 @@ export const ProgressReport: React.FC<{
         {report.rows.length > 0 && (
           <section className={card}>
             <h2 className="text-sm font-bold text-[#111827] mb-1">Measurements</h2>
-            <div className="overflow-x-auto -mx-4 sm:mx-0">
-              <table className="w-full min-w-[420px] text-sm">
+            <div className="w-full min-w-0">
+              <table className="pf-responsive-table pf-stack-table w-full text-sm">
                 <thead>
                   <tr className="text-[11px] uppercase tracking-wide text-gray-400">
                     <th className="text-left font-semibold py-2 px-4 sm:px-0">Measure</th>
@@ -201,10 +201,10 @@ export const ProgressReport: React.FC<{
                         const d = rawD != null && isWeightUnit(r.unit) ? roundLb(rawD) : rawD;
                         return (
                           <tr key={r.key} className="border-t border-gray-100">
-                            <td className="py-1.5 px-4 sm:px-0 text-gray-700">{r.label}</td>
-                            <td className="py-1.5 px-2 text-right tabular-nums text-gray-500">{fmt(r.before, r.unit)}</td>
-                            <td className="py-1.5 px-2 text-right tabular-nums font-semibold text-[#111827]">{fmt(r.after, r.unit)}</td>
-                            <td className="py-1.5 pl-2 pr-4 sm:pr-0 text-right tabular-nums">
+                            <td data-label="Measure" className="py-1.5 px-4 sm:px-0 text-gray-700">{r.label}</td>
+                            <td data-label="Before" className="py-1.5 px-2 text-right tabular-nums text-gray-500">{fmt(r.before, r.unit)}</td>
+                            <td data-label="After" className="py-1.5 px-2 text-right tabular-nums font-semibold text-[#111827]">{fmt(r.after, r.unit)}</td>
+                            <td data-label="Change" className="py-1.5 pl-2 pr-4 sm:pr-0 text-right tabular-nums">
                               {d == null ? (
                                 <span className="text-gray-300">—</span>
                               ) : (
