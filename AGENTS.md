@@ -44,8 +44,9 @@ App: coaching PWA (like TrueCoach) for a coach in the US, up to ~100 clients. Co
   - T4: unread badges on coach Messages and client Chat (uses the existing `coach_messages.read_at`; no migration).
   - T5: "+ Test Client" on Clients (labeled DEMO — NOT REAL; delete button; deleting it also deletes its workouts).
   - 79 tests pass; responsive-check 0/0; browser-checked templates and Test Client in demo mode.
+- Done (Gemini, 2026-11-01): foreshortened poses in the non-natural views (hip flexion, SLR, shoulder flexion and others look right). Body map tags sit in gutters outside the body, with colored leader lines, sorted and non-overlapping (src/lib/labelLayout.ts). Gemini works in STRICT MODE: an allow-list of files, no push until Armin says "push", and Claude audits each push against a backup branch (latest: backup/before-gemini-2026-11-01).
 - Open:
-  1. Pose quality: Hip flexion in Front view looks like abduction (Gemini).
+  1. Small pose polish: Hip flexion in Side view sits with no stool; Ankle in Side view holds the arm forward. At 375px the left-column tag touches the frame edge.
   2. Unread badges were not tested with two real signed-in devices.
   3. T6: plan for replacing the exercise videos (no code yet).
 
