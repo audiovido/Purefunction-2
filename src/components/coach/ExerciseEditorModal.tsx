@@ -3,8 +3,6 @@ import { X, Upload, Link2, Check, AlertCircle, Trash2, Loader2 } from 'lucide-re
 import { BODY_PARTS, EQUIPMENT, Exercise, ExerciseVideo, PATTERNS, PHASES, PLANES } from '../../types';
 import {
   VIDEO_ACCEPT,
-  VIDEO_MAX_BYTES,
-  VIDEO_MAX_SECONDS,
   checkVideoFile,
   formatBytes,
   formatDuration,
@@ -12,7 +10,8 @@ import {
 } from '../../lib/media';
 import { saveVideoFile } from '../../lib/videoStore';
 import { isCloud } from '../../cloud/supabase';
-import { CLOUD_VIDEO_MAX_BYTES, uploadExerciseVideo } from '../../cloud/videos';
+import { EXERCISE_VIDEO_MAX_BYTES, uploadExerciseVideo } from '../../cloud/videos';
+import { videoLicense } from '../../lib/videoLicense';
 import { ExerciseVideoPlayer } from '../ExerciseMedia';
 
 interface Props {
@@ -43,6 +42,10 @@ export const ExerciseEditorModal: React.FC<Props> = ({ exercise, onSave, onDelet
 
   // Video
   const [video, setVideo] = useState<ExerciseVideo | undefined>(exercise?.video);
+  const [linkLicense, setLinkLicense] = useState<'licensed' | 'unlicensed'>(videoLicense(exercise?.video) === 'licensed' ? 'licensed' : 'unlicensed');
+  const [videoSource, setVideoSource] = useState(exercise?.video?.source ?? '');
+  const [videoOwner, setVideoOwner] = useState(exercise?.video?.owner ?? '');
+  const [licenseDate, setLicenseDate] = useState(exercise?.video?.licenseDate ?? '');
   const [mode, setMode] = useState<'upload' | 'link'>(exercise?.video && exercise.video.kind !== 'file' && exercise.video.kind !== 'storage' ? 'link' : 'upload');
   const [linkText, setLinkText] = useState('');
   const [pendingFile, setPendingFile] = useState<PendingFile | null>(null);
@@ -52,6 +55,7 @@ export const ExerciseEditorModal: React.FC<Props> = ({ exercise, onSave, onDelet
   const [formError, setFormError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  const cameraInput = useRef<HTMLInputElement>(null);
 
   const clearPending = () => {
     if (pendingFile) URL.revokeObjectURL(pendingFile.previewUrl);
@@ -63,10 +67,20 @@ export const ExerciseEditorModal: React.FC<Props> = ({ exercise, onSave, onDelet
     setVideoError(null);
     clearPending();
     setChecking(true);
-    const result = await checkVideoFile(file, isCloud ? CLOUD_VIDEO_MAX_BYTES : VIDEO_MAX_BYTES);
+    // Reject oversize files before reading media metadata or uploading anything.
+    if (file.size > EXERCISE_VIDEO_MAX_BYTES) {
+      setChecking(false);
+      setVideoError('Please choose a video 8 MB or smaller. Export in 720p H.264 if needed.');
+      return;
+    }
+    const result = await checkVideoFile(file, EXERCISE_VIDEO_MAX_BYTES);
     setChecking(false);
     if (!result.ok) {
       setVideoError(result.error);
+      return;
+    }
+    if (result.durationSec > 15) {
+      setVideoError('Keep exercise demos to 10–15 seconds. Trim this clip before uploading.');
       return;
     }
     setPendingFile({ file, durationSec: result.durationSec, previewUrl: URL.createObjectURL(file) });
@@ -80,7 +94,8 @@ export const ExerciseEditorModal: React.FC<Props> = ({ exercise, onSave, onDelet
       return;
     }
     clearPending();
-    setVideo(result.video);
+    setVideo({ ...result.video, license: 'unlicensed' });
+    setLinkLicense('unlicensed');
     setLinkText('');
   };
 
@@ -92,6 +107,19 @@ export const ExerciseEditorModal: React.FC<Props> = ({ exercise, onSave, onDelet
     }
     const id = exercise?.id ?? `ex-custom-${Date.now()}`;
     let finalVideo = video;
+    if (finalVideo && finalVideo.kind !== 'storage' && finalVideo.kind !== 'file' && !pendingFile) {
+      if (linkLicense === 'licensed' && (!videoOwner.trim() || !videoSource.trim() || !licenseDate)) {
+        setFormError('Licensed links require the rights owner, license source and verification date.');
+        return;
+      }
+      finalVideo = {
+        ...finalVideo,
+        license: linkLicense,
+        source: videoSource.trim() || undefined,
+        owner: videoOwner.trim() || undefined,
+        licenseDate: licenseDate || undefined
+      };
+    }
 
     if (pendingFile) {
       setSaving(true);
@@ -115,6 +143,10 @@ export const ExerciseEditorModal: React.FC<Props> = ({ exercise, onSave, onDelet
       finalVideo = {
         kind: isCloud ? 'storage' : 'file',
         src,
+        license: 'own',
+        owner: 'Pure Function coach',
+        source: 'Coach-recorded video',
+        licenseDate: new Date().toISOString().slice(0, 10),
         fileName: pendingFile.file.name,
         sizeBytes: pendingFile.file.size,
         durationSec: pendingFile.durationSec,
@@ -216,6 +248,21 @@ export const ExerciseEditorModal: React.FC<Props> = ({ exercise, onSave, onDelet
             {mode === 'upload' ? (
               <>
                 <input
+                  ref={cameraInput}
+                  type="file"
+                  accept="video/*"
+                  capture="environment"
+                  className="hidden"
+                  aria-label="Record exercise video"
+                  onChange={(e) => {
+                    void handleFile(e.target.files?.[0]);
+                    e.target.value = '';
+                  }}
+                />
+                <button type="button" onClick={() => cameraInput.current?.click()} disabled={checking} className="w-full min-h-[44px] mb-2 rounded-xl bg-[#111827] text-white text-sm font-semibold px-3 py-2 cursor-pointer">
+                  Record 10–15s clip with phone camera
+                </button>
+                <input
                   ref={fileInput}
                   type="file"
                   accept={VIDEO_ACCEPT}
@@ -244,7 +291,7 @@ export const ExerciseEditorModal: React.FC<Props> = ({ exercise, onSave, onDelet
                     {checking ? 'Checking video…' : shownVideo || pendingFile ? 'Choose a different video' : 'Choose a video or drop it here'}
                   </span>
                   <span className="text-xs text-gray-500">
-                    MP4, MOV or WebM · up to {formatBytes(isCloud ? CLOUD_VIDEO_MAX_BYTES : VIDEO_MAX_BYTES)} · up to {formatDuration(VIDEO_MAX_SECONDS)}
+                    MP4, MOV or WebM · up to {formatBytes(EXERCISE_VIDEO_MAX_BYTES)} · up to 0:15 (720p H.264 recommended)
                   </span>
                 </button>
               </>
@@ -267,9 +314,22 @@ export const ExerciseEditorModal: React.FC<Props> = ({ exercise, onSave, onDelet
                     Check
                   </button>
                 </div>
-                <p className="text-xs text-gray-500 mt-1.5">
-                  Tip: upload to YouTube as <b>Unlisted</b> so only people with the link can see it.
-                </p>
+                <div className="mt-3 space-y-2 rounded-xl border border-gray-100 bg-gray-50 p-3">
+                  <label className="block text-xs font-medium text-gray-700">Link rights status
+                    <select value={linkLicense} onChange={(e) => setLinkLicense(e.target.value as 'licensed' | 'unlicensed')} className={inputCls}>
+                      <option value="unlicensed">Unlicensed / not verified (hidden from clients)</option>
+                      <option value="licensed">Licensed for commercial app use (verified)</option>
+                    </select>
+                  </label>
+                  {linkLicense === 'licensed' && <>
+                    <input aria-label="Rights owner" value={videoOwner} onChange={(e) => setVideoOwner(e.target.value)} placeholder="Rights owner / provider" className={inputCls} />
+                    <input aria-label="License source" value={videoSource} onChange={(e) => setVideoSource(e.target.value)} placeholder="License or contract reference" className={inputCls} />
+                    <label className="block text-xs text-gray-600">Rights verified on
+                      <input aria-label="License verification date" type="date" value={licenseDate} onChange={(e) => setLicenseDate(e.target.value)} className={inputCls} />
+                    </label>
+                  </>}
+                  <p className="text-xs text-gray-500">Only mark licensed when you have written commercial distribution rights. Public YouTube/Vimeo links are not automatically licensed.</p>
+                </div>
               </div>
             )}
 

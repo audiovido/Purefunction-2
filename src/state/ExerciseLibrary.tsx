@@ -6,6 +6,7 @@ import { deleteVideoFile } from '../lib/videoStore';
 import { useSession } from '../cloud/Session';
 import { stableStringify, supabase } from '../cloud/supabase';
 import { deleteExerciseVideo } from '../cloud/videos';
+import { countOwnCatalogVideos, canViewExerciseVideo } from '../lib/videoLicense';
 
 /**
  * Exercise library = Pure Function core set + the imported 1,200+ catalog
@@ -22,6 +23,10 @@ interface CoachEdits {
 interface ExerciseLibraryValue {
   exercises: Exercise[];
   catalogLoaded: boolean;
+  catalogCount: number;
+  ownCatalogVideoCount: number;
+  showUnlicensedVideos: boolean;
+  setShowUnlicensedVideos: (value: boolean) => void;
   getExercise: (id: string) => Exercise | undefined;
   saveExercise: (exercise: Exercise) => void;
   deleteExercise: (id: string) => void;
@@ -49,8 +54,16 @@ function migrateV1(): CoachEdits {
 const ExerciseLibraryContext = createContext<ExerciseLibraryValue | null>(null);
 
 export const ExerciseLibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { status } = useSession();
+  const { status, profile } = useSession();
   const cloud = status !== 'local';
+  const [demoUnlicensed, setDemoUnlicensed] = usePersistentState<boolean>('pf.showUnlicensed.demo', () => true);
+  const [cloudUnlicensed, setCloudUnlicensed] = usePersistentState<boolean>('pf.showUnlicensed.cloud', () => false);
+  const showUnlicensedVideos = profile?.role === 'client' ? false : cloud ? cloudUnlicensed : demoUnlicensed;
+  const setShowUnlicensedVideos = (value: boolean) => {
+    if (profile?.role === 'client') return;
+    if (cloud) setCloudUnlicensed(value);
+    else setDemoUnlicensed(value);
+  };
   const [localEdits, setLocalEdits] = usePersistentState<CoachEdits>('pf.exercises.v2', migrateV1);
   const [cloudEdits, setCloudEdits] = useState<CoachEdits>({ edits: {} });
   const coach = cloud ? cloudEdits : localEdits;
@@ -103,7 +116,10 @@ export const ExerciseLibraryProvider: React.FC<{ children: React.ReactNode }> = 
     import('../data/exerciseCatalog.json')
       .then((m) => {
         if (!cancelled) {
-          setCatalog(m.default as unknown as Exercise[]);
+          setCatalog((m.default as unknown as Exercise[]).map((e) => ({
+            ...e,
+            video: e.video ? { ...e.video, license: 'unlicensed' as const } : undefined
+          })));
           setCatalogLoaded(true);
         }
       })
@@ -147,6 +163,17 @@ export const ExerciseLibraryProvider: React.FC<{ children: React.ReactNode }> = 
     return m;
   }, [exercises, aliases]);
 
+  const ownCatalogVideoCount = useMemo(() => countOwnCatalogVideos(catalog, (id) => byId.get(id)), [catalog, byId]);
+
+  const getExercise = (id: string): Exercise | undefined => {
+    const exercise = byId.get(id);
+    // Defense in depth: hide unlicensed metadata as well as blocking playback.
+    if (exercise && profile?.role === 'client' && !canViewExerciseVideo(exercise.video, 'client', false)) {
+      return { ...exercise, video: undefined };
+    }
+    return exercise;
+  };
+
   const saveExercise = (exercise: Exercise) => {
     const previous = byId.get(exercise.id);
     if (previous?.video && previous.video.src !== exercise.video?.src) {
@@ -177,7 +204,7 @@ export const ExerciseLibraryProvider: React.FC<{ children: React.ReactNode }> = 
 
   return (
     <ExerciseLibraryContext.Provider
-      value={{ exercises, catalogLoaded, getExercise: (id) => byId.get(id), saveExercise, deleteExercise }}
+      value={{ exercises, catalogLoaded, catalogCount: catalog.length, ownCatalogVideoCount, showUnlicensedVideos, setShowUnlicensedVideos, getExercise, saveExercise, deleteExercise }}
     >
       {children}
     </ExerciseLibraryContext.Provider>

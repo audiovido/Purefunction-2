@@ -83,6 +83,11 @@ export interface VideoAssessmentItem {
  */
 export interface ExerciseVideo {
   kind: 'youtube' | 'vimeo' | 'drive' | 'url' | 'file' | 'storage';
+  /** Provenance for commercial use. Unspecified external links are unlicensed. */
+  license?: 'own' | 'licensed' | 'unlicensed';
+  source?: string;
+  owner?: string;
+  licenseDate?: string; // YYYY-MM-DD, when rights were verified
   /** cloud bucket for kind 'storage' (default: exercise-videos) */
   bucket?: 'exercise-videos' | 'client-videos';
   src: string;

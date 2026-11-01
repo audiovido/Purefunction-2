@@ -178,7 +178,7 @@ const today = iso(new Date());
   /* ---------------- coach uploads a video, client can play it ---------------- */
   await C.getByRole('button', { name: 'Library' }).first().click();
   await C.getByRole('button', { name: 'New exercise' }).click();
-  await C.locator('input[type=file][accept^="video"]').setInputFiles(path.join(__dirname, 'fixtures', 'demo.webm'));
+  await C.locator('input[type=file][accept^="video"]:not([capture])').setInputFiles(path.join(__dirname, 'fixtures', 'demo.webm'));
   await C.getByText(/checked, plays fine/).waitFor({ timeout: 15000 });
   await C.getByPlaceholder('e.g. Left AIC Split Squat').fill('Ryan Wall Drill');
   await C.getByRole('button', { name: 'Save' }).click();
