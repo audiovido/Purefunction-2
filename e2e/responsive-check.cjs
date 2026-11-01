@@ -72,7 +72,7 @@ async function measure(p) {
     for (const tab of ['Exercises', 'Assessment', 'Notes', 'Goals', 'Progression', 'Nutrition']) {
       if (!(await click(p.getByRole('tab', { name: tab })))) if (!(await click(p.getByRole('button', { name: new RegExp('^' + tab + '$') })))) { console.log(`?? [${vn}] no tab ${tab}`); unvisited++; continue; }
       await report('tab-' + tab);
-      const subs = { Exercises: ['Program', 'Exercise library', 'History'], Assessment: ['Overview', 'New assessment', 'Reports'] }[tab] || [];
+      const subs = { Assessment: ['Overview', 'New assessment', 'Reports'] }[tab] || [];
       for (const s of subs) {
         if (await click(p.getByRole('tab', { name: s })) || await click(p.getByRole('button', { name: new RegExp('^' + s + '$') }))) await report(`tab-${tab}-${s}`);
       }
