@@ -5,6 +5,7 @@ import { EmptyProgress } from '../EmptyProgress';
 import { GoalsPanel } from '../coach/GoalsPanel';
 import { RecordsPanel } from '../RecordsPanel';
 import { ClientProgressCharts } from './ClientProgressCharts';
+import { BodyLab } from '../BodyLab';
 import { BeforeAfter } from '../BeforeAfter';
 import { WEIGHT_UNIT, formatWeight, roundLb } from '../../lib/units';
 import { getClientBodyCompAlert } from '../../lib/bodyCompAlerts';
@@ -75,6 +76,7 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
         <GoalsPanel goals={client.goals!} assessments={client.assessments ?? []} />
       )}
       <ClientProgressCharts client={client} />
+      <BodyLab client={client} compact />
       <BeforeAfter client={client} />
       <RecordsPanel client={client} onUpdateClient={onUpdateClient} by="client" />
 

@@ -1,14 +1,11 @@
 export type Role = 'coach' | 'client';
 
-export type CoachTab =
-  | 'clients'
-  | 'assessment'
-  | 'workout-builder'
-  | 'library'
-  | 'progress'
-  | 'reports';
+export type CoachTab = 'clients' | 'library' | 'programs' | 'messages';
 
-export type ClientTab = 'today' | 'progress' | 'refer';
+/** Tabs inside one client's page (coach side). */
+export type ClientSection = 'exercises' | 'assessment' | 'notes' | 'goals' | 'progression' | 'nutrition';
+
+export type ClientTab = 'today' | 'progress' | 'messages' | 'refer';
 
 export interface RomMovement {
   id: string;
@@ -388,6 +385,12 @@ export interface ClientProfile {
   workouts?: Workout[];
   /** @deprecated old Mon–Sun template; converted into `workouts` on load. */
   weeklyWorkouts?: DayWorkout[];
+  /** Standing posture in degrees, measured by the coach (photo or eye). */
+  posture?: PostureAngles;
+  /** Coach notes, newest first. */
+  coachNotes?: CoachNote[];
+  /** Nutrition targets, meal plan and the client's daily log. */
+  nutrition?: NutritionPlan;
   progressHistory: ProgressSeriesPoint[];
   monthlyReports: Record<1 | 2 | 3, MonthlyReportData>;
 }
@@ -411,4 +414,46 @@ export function calculateEstimated1RM(loadKg: number, reps: number): number {
   if (loadKg <= 0 || reps <= 0) return 0;
   if (reps === 1) return Math.round(loadKg);
   return Math.round(loadKg * (1 + reps / 30));
+}
+
+export interface CoachNote {
+  id: string;
+  date: string; // ISO yyyy-mm-dd
+  text: string;
+  /** Shown to the client when true. */
+  shared?: boolean;
+  pinned?: boolean;
+}
+
+export interface NutritionLogDay {
+  date: string; // ISO yyyy-mm-dd
+  protein?: number; // g
+  waterL?: number; // liters
+  calories?: number;
+  note?: string;
+}
+
+export interface NutritionPlan {
+  calories?: number;
+  protein?: number; // g
+  carbs?: number; // g
+  fat?: number; // g
+  waterL?: number;
+  mealPlan?: string;
+  coachNote?: string;
+  log?: NutritionLogDay[];
+}
+
+/** Posture angles in degrees. Signs: + = left side lower / toward right / inward / forward. */
+export interface PostureAngles {
+  shoulderTilt?: number;
+  pelvisTilt?: number;
+  headTilt?: number;
+  kneeValgusL?: number;
+  kneeValgusR?: number;
+  headForward?: number;
+  roundedShoulders?: number;
+  trunkLean?: number;
+  /** YYYY-MM-DD */
+  measuredOn?: string;
 }

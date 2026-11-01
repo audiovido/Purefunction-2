@@ -41,3 +41,26 @@
     break-inside: avoid;
   }
 }
+
+/* Views shown inside a client's page: the client is already chosen, so hide their client pickers. */
+.pf-embed select[aria-label='Client'],
+.pf-embed select[aria-label='Select Client'],
+.pf-embed select[aria-label='Client'] + svg,
+.pf-embed select[aria-label='Select Client'] + svg,
+.pf-embed div:has(> select[aria-label='Client']) + span,
+.pf-embed div:has(> select[aria-label='Select Client']) + span {
+  display: none;
+}
+.pf-embed h1 {
+  font-size: 1.35rem;
+  line-height: 1.75rem;
+}
+/* softer, rounder cards everywhere in the coach client page */
+.pf-embed .rounded-2xl {
+  border-radius: 26px;
+}
+.pf-embed .rounded-xl {
+  border-radius: 18px;
+}
+/* Programs page has its own title: hide the builder's */
+.pf-programs h1 { display: none; }
