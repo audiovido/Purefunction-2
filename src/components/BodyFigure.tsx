@@ -1,3 +1,8 @@
+/**
+ * The human drawing for Assessment › Body map.
+ * Safe to redesign (e.g. in AI Studio) — read docs/BODY_FIGURE.md first:
+ * keep the props, follow solve(view, pose) joints, keep the viewBox.
+ */
 import React from 'react';
 import { Joints, Pose, Pt, View, solve } from '../lib/bodyModel';
 
