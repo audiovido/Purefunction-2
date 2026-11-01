@@ -151,6 +151,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
               <select
                 value={client.id}
                 onChange={(e) => onSelectClientId(e.target.value)}
+                aria-label="Client"
                 className="appearance-none bg-transparent pr-5 font-medium text-[#111827] focus:outline-none cursor-pointer"
               >
                 {clients.map((c) => (

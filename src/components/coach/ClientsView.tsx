@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { Search, Plus, X, ArrowUpRight, ClipboardCheck, Dumbbell, LineChart, FileText, Send } from 'lucide-react';
 import { ClientInviteModal } from './ClientInviteModal';
-import { ClientProfile, CoachTab } from '../../types';
+import { ClientProfile, ClientSection } from '../../types';
 import { ClientAvatar } from '../VisualAssets';
 
 interface ClientsViewProps {
   clients: ClientProfile[];
   selectedClientId: string;
-  onSelectClient: (clientId: string, targetTab?: CoachTab) => void;
+  onSelectClient: (clientId: string, targetTab?: ClientSection) => void;
   onAddClient: (newClient: {
     name: string;
     email: string;
@@ -162,7 +162,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
             return (
               <div
                 key={client.id}
-                onClick={() => onSelectClient(client.id, 'workout-builder')}
+                onClick={() => onSelectClient(client.id, 'exercises')}
                 className={`group px-4 sm:px-6 py-4 flex flex-col @2xl:flex-row @2xl:items-center justify-between gap-4 transition-colors cursor-pointer ${
                   isSelected ? 'bg-gray-50/70' : 'hover:bg-gray-50/60'
                 }`}
@@ -251,21 +251,21 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                       <ClipboardCheck className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => onSelectClient(client.id, 'workout-builder')}
+                      onClick={() => onSelectClient(client.id, 'exercises')}
                       title="Workout Builder"
                       className="p-1.5 rounded-lg text-gray-500 hover:text-[#111827] hover:bg-gray-100 transition-colors cursor-pointer"
                     >
                       <Dumbbell className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => onSelectClient(client.id, 'progress')}
+                      onClick={() => onSelectClient(client.id, 'progression')}
                       title="Progress"
                       className="p-1.5 rounded-lg text-gray-500 hover:text-[#111827] hover:bg-gray-100 transition-colors cursor-pointer"
                     >
                       <LineChart className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => onSelectClient(client.id, 'reports')}
+                      onClick={() => onSelectClient(client.id, 'assessment')}
                       title="Monthly Report"
                       className="p-1.5 rounded-lg text-gray-500 hover:text-[#111827] hover:bg-gray-100 transition-colors cursor-pointer"
                     >

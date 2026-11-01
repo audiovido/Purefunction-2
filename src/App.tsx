@@ -13,10 +13,8 @@ import { createClientProfile } from './lib/clients';
 import {
   Users,
   BookOpen,
-  ClipboardCheck,
   Dumbbell,
-  LineChart,
-  FileText,
+  MessageCircle,
   CalendarCheck,
   Gift,
   TrendingUp,
@@ -30,6 +28,7 @@ import {
 } from 'lucide-react';
 import {
   ClientProfile,
+  ClientSection,
   ClientTab,
   CoachTab,
   Exercise,
@@ -47,12 +46,13 @@ import {
 } from './lib/workouts';
 import { ClientAvatar, PureFunctionLogo } from './components/VisualAssets';
 import { ClientsView } from './components/coach/ClientsView';
-import { NewAssessmentView } from './components/coach/NewAssessmentView';
-import { WorkoutBuilderView } from './components/coach/WorkoutBuilderView';
+import { ClientDetail } from './components/coach/ClientDetail';
+import { ProgramsView } from './components/coach/ProgramsView';
+import { CoachMessages, ClientMessages } from './components/MessagesView';
+import { NutritionTodayCard } from './components/NutritionPanel';
+import { CoachNotesCard } from './components/client/CoachNotesCard';
 import { ExerciseLibraryView } from './components/coach/ExerciseLibraryView';
 import { InstallCard } from './components/client/InstallCard';
-import { ProgressView } from './components/coach/ProgressView';
-import { MonthlyReportView } from './components/coach/MonthlyReportView';
 import { ClientTodayView } from './components/client/ClientTodayView';
 import { ClientProgressView } from './components/client/ClientProgressView';
 
@@ -63,21 +63,9 @@ const COACH_NAV_ITEMS: {
   icon: React.FC<{ className?: string }>;
 }[] = [
   { id: 'clients', label: 'Clients', shortLabel: 'Clients', icon: Users },
-  {
-    id: 'assessment',
-    label: 'Assessment',
-    shortLabel: 'Assess',
-    icon: ClipboardCheck
-  },
-  {
-    id: 'workout-builder',
-    label: 'Workouts',
-    shortLabel: 'Workouts',
-    icon: Dumbbell
-  },
   { id: 'library', label: 'Library', shortLabel: 'Library', icon: BookOpen },
-  { id: 'progress', label: 'Progress', shortLabel: 'Progress', icon: LineChart },
-  { id: 'reports', label: 'Reports', shortLabel: 'Reports', icon: FileText }
+  { id: 'programs', label: 'Programs', shortLabel: 'Programs', icon: Dumbbell },
+  { id: 'messages', label: 'Messages', shortLabel: 'Messages', icon: MessageCircle }
 ];
 
 /* ===========================================================================
@@ -188,6 +176,10 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
     return saved && clients.some((c) => c.id === saved) ? saved : clients[0]?.id ?? '';
   });
   useEffect(() => writeSaved('pf.coachTab', coachTab), [coachTab]);
+  const [clientOpen, setClientOpen] = useState<boolean>(() => readSaved('pf.clientOpen') === '1');
+  const [clientSection, setClientSection] = useState<ClientSection>(() => (readSaved('pf.clientSection') as ClientSection) || 'exercises');
+  useEffect(() => writeSaved('pf.clientOpen', clientOpen ? '1' : '0'), [clientOpen]);
+  useEffect(() => writeSaved('pf.clientSection', clientSection), [clientSection]);
   useEffect(() => writeSaved('pf.clientId', selectedClientIdState), [selectedClientIdState]);
   const selectedClientId = isClientUser ? profile!.clientId ?? '' : selectedClientIdState;
   const [clientPreviewFrame, setClientPreviewFrame] = useState<boolean>(false);
@@ -226,11 +218,11 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
     );
   };
 
-  const handleSelectClient = (clientId: string, targetTab?: CoachTab) => {
+  const handleSelectClient = (clientId: string, section: ClientSection = 'exercises') => {
     setSelectedClientId(clientId);
-    if (targetTab) {
-      setCoachTab(targetTab);
-    }
+    setClientSection(section);
+    setClientOpen(true);
+    setCoachTab('clients');
   };
 
   const handleAddClient = (newClientData: {
@@ -477,34 +469,35 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
       {role === 'coach' ? (
         <main className="flex-1 min-w-0 md:pl-[84px] lg:pl-60 pb-24 md:pb-12">
           <div className="px-4 sm:px-8 lg:px-12 py-6 sm:py-10">
-            {coachTab === 'clients' && (
-              <ClientsView
-                clients={clientsWithStats}
-                selectedClientId={selectedClientId}
-                onSelectClient={handleSelectClient}
-                onAddClient={handleAddClient}
-                onUpdateClient={handleUpdateClient}
-                joinedIds={joinedIds}
-              />
-            )}
-            {coachTab === 'clients' && supabase && <ReferralsPanel clients={clients} />}
-
-            {coachTab !== 'clients' && coachTab !== 'library' && !selectedClient && (
-              <NoClientsYet onAdd={() => setCoachTab('clients')} />
-            )}
-
-            {selectedClient && coachTab === 'assessment' && (
-              <NewAssessmentView
-                clients={clients}
+            {coachTab === 'clients' && clientOpen && selectedClient ? (
+              <ClientDetail
+                key={selectedClient.id}
                 client={selectedClient}
-                onSelectClientId={setSelectedClientId}
+                section={clientSection}
+                onSection={setClientSection}
+                onBack={() => setClientOpen(false)}
                 onUpdateClient={handleUpdateClient}
-                onFinishAssessment={() => setCoachTab('progress')}
+                onAddExercise={handleAddExerciseToClientWorkout}
               />
+            ) : (
+              coachTab === 'clients' && (
+                <>
+                  <ClientsView
+                    clients={clientsWithStats}
+                    selectedClientId={selectedClientId}
+                    onSelectClient={handleSelectClient}
+                    onAddClient={handleAddClient}
+                    onUpdateClient={handleUpdateClient}
+                    joinedIds={joinedIds}
+                  />
+                  {supabase && <ReferralsPanel clients={clients} />}
+                </>
+              )
             )}
 
-            {selectedClient && coachTab === 'workout-builder' && (
-              <WorkoutBuilderView
+            {coachTab === 'programs' && !selectedClient && <NoClientsYet onAdd={() => setCoachTab('clients')} />}
+            {coachTab === 'programs' && selectedClient && (
+              <ProgramsView
                 clients={clients}
                 client={selectedClient}
                 onSelectClientId={setSelectedClientId}
@@ -520,23 +513,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
               />
             )}
 
-            {selectedClient && coachTab === 'progress' && (
-              <ProgressView
-                clients={clients}
-                client={selectedClient}
-                onSelectClientId={setSelectedClientId}
-                onUpdateClient={handleUpdateClient}
-              />
-            )}
-
-            {selectedClient && coachTab === 'reports' && (
-              <MonthlyReportView
-                clients={clients}
-                client={selectedClient}
-                onSelectClientId={setSelectedClientId}
-                onUpdateClient={handleUpdateClient}
-              />
-            )}
+            {coachTab === 'messages' && <CoachMessages clients={clients} initialClientId={clientOpen ? selectedClient?.id : undefined} />}
           </div>
         </main>
       ) : (
@@ -555,10 +532,16 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
                 Your coach is setting up your profile. Pull to refresh in a moment.
               </div>
             ) : clientTab === 'today' ? (
+              <>
+              <CoachNotesCard client={selectedClient} />
+              <NutritionTodayCard client={selectedClient} onUpdateClient={handleUpdateClient} />
               <ClientTodayView
                 client={selectedClient}
                 onUpdateClient={handleUpdateClient}
               />
+              </>
+            ) : clientTab === 'messages' ? (
+              <ClientMessages clientId={selectedClient.id} />
             ) : clientTab === 'refer' ? (
               <ReferView firstName={selectedClient.name.split(' ')[0]} />
             ) : (
@@ -572,7 +555,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
           COACH MOBILE BOTTOM NAVIGATION BAR (< md)
          ===================================================================== */}
       {role === 'coach' && (
-        <nav className="no-print md:hidden fixed bottom-0 inset-x-0 bg-[#EAECEF] border-t border-gray-300/80 z-40 grid grid-cols-6 px-1 py-1.5">
+        <nav className="no-print md:hidden fixed bottom-0 inset-x-0 bg-[#EAECEF] border-t border-gray-300/80 z-40 grid grid-cols-4 px-1 py-1.5">
           {COACH_NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive = coachTab === item.id;
@@ -606,51 +589,28 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
          ===================================================================== */}
       {role === 'client' && (
         <nav className="no-print fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 z-40">
-          <div className="max-w-md mx-auto grid grid-cols-3 gap-2 px-4 py-2">
-            <button
-              onClick={() => setClientTab('today')}
-              className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
-                clientTab === 'today'
-                  ? 'bg-[#111827] text-white'
-                  : 'text-gray-500 hover:text-[#111827]'
-              }`}
-            >
-              <CalendarCheck className="w-4 h-4" />
-              <span>Today</span>
-              {clientTab === 'today' && (
-                <span className="w-2 h-2 rounded-full bg-[#FFC809]" />
-              )}
-            </button>
-
-            <button
-              onClick={() => setClientTab('progress')}
-              className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
-                clientTab === 'progress'
-                  ? 'bg-[#111827] text-white'
-                  : 'text-gray-500 hover:text-[#111827]'
-              }`}
-            >
-              <TrendingUp className="w-4 h-4" />
-              <span>My Progress</span>
-              {clientTab === 'progress' && (
-                <span className="w-2 h-2 rounded-full bg-[#FFC809]" />
-              )}
-            </button>
-
-            <button
-              onClick={() => setClientTab('refer')}
-              className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
-                clientTab === 'refer'
-                  ? 'bg-[#111827] text-white'
-                  : 'text-gray-500 hover:text-[#111827]'
-              }`}
-            >
-              <Gift className="w-4 h-4" />
-              <span>Refer</span>
-              {clientTab === 'refer' && (
-                <span className="w-2 h-2 rounded-full bg-[#FFC809]" />
-              )}
-            </button>
+          <div className="max-w-md mx-auto grid grid-cols-4 gap-1.5 px-3 py-2">
+            {([
+              { id: 'today', label: 'Today', icon: CalendarCheck },
+              { id: 'progress', label: 'Progress', icon: TrendingUp },
+              { id: 'messages', label: 'Chat', icon: MessageCircle },
+              { id: 'refer', label: 'Refer', icon: Gift }
+            ] as const).map((t) => {
+              const Icon = t.icon;
+              const active = clientTab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setClientTab(t.id)}
+                  className={`flex flex-col items-center justify-center gap-0.5 py-2 rounded-full text-[11px] font-semibold transition-colors cursor-pointer ${
+                    active ? 'bg-[#111827] text-white' : 'text-gray-500 hover:text-[#111827]'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{t.label}</span>
+                </button>
+              );
+            })}
           </div>
         </nav>
       )}
