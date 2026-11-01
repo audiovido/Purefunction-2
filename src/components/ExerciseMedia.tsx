@@ -98,7 +98,7 @@ export const ExerciseVideoPlayer: React.FC<{
     return <Placeholder className={className} title={title} cues={cues} label={allowed.kind === 'storage' ? "Video couldn’t be loaded" : "Video file not on this device"} />;
   if (!src) return <div className={`${className} rounded-xl bg-gray-100 animate-pulse`} />;
 
-  if (video.kind === 'file' || video.kind === 'url' || video.kind === 'storage') {
+  if (allowed.kind === 'file' || allowed.kind === 'url' || allowed.kind === 'storage') {
     return (
       <video
         key={src}

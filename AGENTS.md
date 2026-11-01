@@ -45,6 +45,8 @@ App: coaching PWA (like TrueCoach) for a coach in the US, up to ~100 clients. Co
   - T5: "+ Test Client" on Clients (labeled DEMO — NOT REAL; delete button; deleting it also deletes its workouts).
   - 79 tests pass; responsive-check 0/0; browser-checked templates and Test Client in demo mode.
 - Done (Gemini, 2026-11-01): foreshortened poses in the non-natural views (hip flexion, SLR, shoulder flexion and others look right). Body map tags sit in gutters outside the body, with colored leader lines, sorted and non-overlapping (src/lib/labelLayout.ts). Gemini works in STRICT MODE: an allow-list of files, no push until Armin says "push", and Claude audits each push against a backup branch (latest: backup/before-gemini-2026-11-01).
+- T7 (PR `feat/t7-licensed-media`, ChatGPT pf_t7.py + Claude fixes): every imported catalog video (1,221; YouTube/Vimeo from TrueCoach) is `unlicensed`. Clients never load them (checked: 0 iframes, 0 requests to YouTube/Vimeo; they see "Video coming soon" + cues). Coach setting "Show unlicensed videos": OFF in cloud, ON in demo. Library has a "No video yet" filter and a counter "0 of 1,221 have their own video". Coach can record or upload a 10–15 s clip (≤ 8 MB) into `exercise-videos` (license = own).
+  - Still to decide: whether the catalog text and names copied from TrueCoach also need replacing; plan for the first 100 videos (T6: the coach records them on his phone).
 - Open:
   1. (done 2026-11-01) Pose polish: Hip flexion in Side view now sits on the stool; Ankle in Side view keeps the arms down; tags keep ≥8px padding at 375px.
   2. Unread badges were not tested with two real signed-in devices.

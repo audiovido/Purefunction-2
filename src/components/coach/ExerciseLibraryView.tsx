@@ -388,8 +388,8 @@ export const ExerciseLibraryView: React.FC<ExerciseLibraryViewProps> = ({
                   <p className="text-xs text-gray-500 truncate mt-0.5">
                     {groupOf(exercise)} · {equipmentTypeOf(exercise)}
                     {(exercise.source === 'coach' || exercise.isCustom) && <span className="text-[#92400E] font-semibold"> · Yours</span>}
-                    {!hasApprovedVideo(exercise.video) && <span className="text-gray-400"> · Video coming soon</span>}
                   </p>
+                  {!hasApprovedVideo(exercise.video) && <p className="text-[11px] text-gray-400 mt-0.5">Video coming soon</p>}
                 </div>
                 <button
                   onClick={(e) => {
