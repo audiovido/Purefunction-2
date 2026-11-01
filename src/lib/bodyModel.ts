@@ -202,11 +202,15 @@ function solveSide(o: Pose): Joints {
 
 export interface MovementDef {
   id: string;
+  /** matching row id in SPECTRUM_ROWS / clientFindings */
+  sopKey: string;
   label: string;
   /** name of the ROM test in the assessment (matches RomMovement.name) */
   romName?: string;
   view: View;
   normal: number;
+  /** joint on the standing figure where this finding is anchored */
+  joint: 'shoulder' | 'hip' | 'ankle';
   /** the joint the angle is measured at, and the moving limb end, for the arc */
   pivot: string;
   end: string;
@@ -222,50 +226,74 @@ export interface MovementDef {
 
 export const MOVEMENTS: MovementDef[] = [
   {
-    id: 'shoulder-flexion', label: 'Shoulder flexion', romName: 'Shoulder flexion', view: 'side', normal: 180,
-    pivot: 'sh', end: 'el', zeroDown: 0, pose: (v) => ({ shFlex: v, elFlex: 4 }),
-    limited: 'When the arm can’t get fully overhead, the lower back arches and the ribs flare to make up the difference. Overhead pressing then loads the low back.',
-    tip: 'Thoracic extension, lat and pec stretches; press only within the pain-free range.'
+    id: 'shoulder-ir', sopKey: 'shoulder-ir', label: 'Shoulder internal rotation', romName: 'Shoulder internal rotation', view: 'side', normal: 90,
+    joint: 'shoulder', pivot: 'el', end: 'wr', zeroDown: 90, pose: (v) => ({ shRot: v }),
+    setup: '90/90 test: arm out to the side at 90°, elbow bent 90° pointing toward you. Forearm starts horizontal forward and rotates down.',
+    limited: 'With limited internal rotation the shoulder blade tips forward and the humeral head glides forward to compensate during pressing or reaching.',
+    tip: 'Cross-body posterior capsule stretch, low-trap/serratus work, and ribcage internal rotation (PRI).'
   },
   {
-    id: 'shoulder-ir', label: 'Shoulder internal rotation', romName: 'Shoulder internal rotation', view: 'side', normal: 70,
-    pivot: 'el', end: 'wr', zeroDown: 90, pose: (v) => ({ shRot: v }),
-    setup: 'Arm out to the side at shoulder height, elbow bent 90° (pointing at you). The forearm rotates down = internal rotation.',
-    limited: 'With little internal rotation the shoulder blade tips forward and the arm rolls in to compensate. Reaching behind the back, throwing and bench pressing can pinch the front of the shoulder.',
-    tip: 'Sleeper stretch, cross-body stretch, posterior capsule work; check ribcage position (PRI).'
+    id: 'shoulder-er', sopKey: 'shoulder-er', label: 'Shoulder external rotation', romName: 'Shoulder external rotation', view: 'side', normal: 90,
+    joint: 'shoulder', pivot: 'el', end: 'wr', zeroDown: 90, pose: (v) => ({ shRot: -v }),
+    setup: '90/90 test: arm out to the side at 90°, elbow bent 90° pointing toward you. Forearm starts horizontal forward and rotates up.',
+    limited: 'Limited external rotation restricts overhead positioning and forces the lower back to arch or the elbow to flare during presses and pulls.',
+    tip: 'Pec minor/lat release, thoracic extension, and apical chest expansion with external rotation.'
   },
   {
-    id: 'shoulder-abduction', label: 'Shoulder abduction', romName: 'Shoulder abduction', view: 'front', normal: 180,
-    pivot: 'sh', end: 'el', zeroDown: 0, pose: (v, s) => (s === 'L' ? { shAbdL: v, elFlexL: 2 } : { shAbdR: v, elFlexR: 2 }),
-    limited: 'If the arm stops early when lifted out to the side, the shoulder hikes up and the trunk leans away to finish the reach.',
-    tip: 'Wall slides, serratus work, thoracic mobility.'
+    id: 'shoulder-abd', sopKey: 'shoulder-abd', label: 'Shoulder abduction', romName: 'Shoulder abduction', view: 'front', normal: 45,
+    joint: 'shoulder', pivot: 'sh', end: 'el', zeroDown: 0, pose: (v, s) => (s === 'L' ? { shAbdL: v, elFlexL: 2 } : { shAbdR: v, elFlexR: 2 }),
+    setup: 'Pure glenohumeral abduction before the shoulder blade hikes or rotates upward (Full = 45°).',
+    limited: 'If the arm stops early when lifted out to the side, the upper trap hikes the shoulder and the trunk leans away to finish the reach.',
+    tip: 'Serratus anterior wall slides, humeral centration, and lateral ribcage expansion.'
   },
   {
-    id: 'hip-ir', label: 'Hip internal rotation', romName: 'Hip internal rotation', view: 'front', normal: 45,
-    pivot: 'kn', end: 'an', zeroDown: 0, pose: (v, s) => ({ seated: true, ...(s === 'L' ? { hipRotL: v } : { hipRotR: v }) }),
-    setup: 'Seated, knees bent 90°. The foot swings out = the hip turns in (internal rotation).',
+    id: 'shoulder-flex', sopKey: 'shoulder-flex', label: 'Shoulder flexion', romName: 'Shoulder flexion', view: 'side', normal: 140,
+    joint: 'shoulder', pivot: 'sh', end: 'el', zeroDown: 0, pose: (v) => ({ shFlex: v, elFlex: 4 }),
+    setup: 'Raising the arm forward and overhead without arching the lower back or flaring the ribs (Full = 140°).',
+    limited: 'When the arm can’t get overhead cleanly, the lower back arches and the ribs flare to make up the difference.',
+    tip: 'Thoracic extension, lat and pec stretches, exhalation rib-control drills; press within the rib-stacked range.'
+  },
+  {
+    id: 'hip-abd', sopKey: 'hip-abd', label: 'Hip abduction', romName: 'Hip abduction', view: 'front', normal: 45,
+    joint: 'hip', pivot: 'hip', end: 'kn', zeroDown: 0, pose: (v, s) => (s === 'L' ? { hipAbdL: v } : { hipAbdR: v }),
+    setup: 'Opening the leg out to the side while keeping the pelvis level and toes forward (Full = 45°).',
+    limited: 'Limited hip abduction causes the pelvis to hike or rotate during single-leg stance, lateral lunges, and wide-stance squats.',
+    tip: 'Adductor inhibition, side-lying glute medius work, and frontal-plane pelvis control.'
+  },
+  {
+    id: 'hip-flex', sopKey: 'hip-flex', label: 'Hip flexion', romName: 'Hip flexion', view: 'side', normal: 140,
+    joint: 'hip', pivot: 'hip', end: 'kn', zeroDown: 0, pose: (v) => ({ hipFlex: v, kneeFlex: Math.min(v * 0.75, 100) }),
+    setup: 'Bringing the knee toward the chest with a neutral lumbar spine (Full = 140°).',
+    limited: 'When hip flexion stops early, the pelvis tucks under (posterior tilt / butt wink) at the bottom of a squat or deadlift setup.',
+    tip: 'Posterior hip capsule mobilization, 90/90 breathing with hamstring pull, and squat depth matched to hip range.'
+  },
+  {
+    id: 'slr', sopKey: 'slr', label: 'Straight leg raise', romName: 'Straight leg raise', view: 'side', normal: 90,
+    joint: 'hip', pivot: 'hip', end: 'an', zeroDown: 0, pose: (v) => ({ hipFlex: v, kneeFlex: 0 }),
+    setup: 'Raising the straight leg with the knee locked and pelvis flat (Full = 90°).',
+    limited: 'A limited straight leg raise reflects hamstring tension or anterior pelvic tilt blocking clean hip hinging.',
+    tip: 'Core-engaged active straight leg raises, eccentric RDLs, and pelvic repositioning.'
+  },
+  {
+    id: 'hip-ir', sopKey: 'hip-ir', label: 'Hip internal rotation', romName: 'Hip internal rotation', view: 'front', normal: 40,
+    joint: 'hip', pivot: 'kn', end: 'an', zeroDown: 0, pose: (v, s) => ({ seated: true, ...(s === 'L' ? { hipRotL: v } : { hipRotR: v }) }),
+    setup: 'Seated on a stool, knees bent 90°. The foot swings out = the hip turns in (Full = 40°).',
     limited: 'Limited hip internal rotation makes the knee cave in or the foot turn out in squats and lunges. Stress moves to the knee and lower back.',
-    tip: '90/90 hip switches, hip IR lift-offs; PRI left AIC repositioning if the left side is stuck.'
+    tip: '90/90 hip switches, hip IR lift-offs; PRI left AIC repositioning when asymmetrical.'
   },
   {
-    id: 'hip-er', label: 'Hip external rotation', romName: 'Hip external rotation', view: 'front', normal: 45,
-    pivot: 'kn', end: 'an', zeroDown: 0, pose: (v, s) => ({ seated: true, ...(s === 'L' ? { hipRotL: -v } : { hipRotR: -v }) }),
-    setup: 'Seated, knees bent 90°. The foot swings in = the hip turns out (external rotation).',
+    id: 'hip-er', sopKey: 'hip-er', label: 'Hip external rotation', romName: 'Hip external rotation', view: 'front', normal: 45,
+    joint: 'hip', pivot: 'kn', end: 'an', zeroDown: 0, pose: (v, s) => ({ seated: true, ...(s === 'L' ? { hipRotL: -v } : { hipRotR: -v }) }),
+    setup: 'Seated on a stool, knees bent 90°. The foot swings in = the hip turns out (Full = 45°).',
     limited: 'With little external rotation the knee drifts inward and the pelvis rotates in single-leg work; deep squats feel blocked.',
-    tip: '90/90 stretch, figure-4 stretch, glute med strength.'
+    tip: '90/90 stretch, figure-4 stretch, glute med strength, and posterior hip expansion.'
   },
   {
-    id: 'ankle-dorsiflexion', label: 'Ankle dorsiflexion', romName: 'Ankle dorsiflexion', view: 'side', normal: 20,
-    pivot: 'an', end: 'kn', zeroDown: 180, pose: (v) => ({ grounded: true, ankleDorsi: v, kneeFlex: v * 1.4, trunkLean: v * 0.4, shFlex: 50 }),
-    setup: 'Knee-to-wall lunge: the knee travels forward over the toes with the heel down.',
+    id: 'ankle-dorsiflexion', sopKey: 'ankle-dorsiflexion', label: 'Ankle dorsiflexion', romName: 'Ankle dorsiflexion', view: 'side', normal: 20,
+    joint: 'ankle', pivot: 'an', end: 'kn', zeroDown: 180, pose: (v) => ({ grounded: true, ankleDorsi: v, kneeFlex: v * 1.4, trunkLean: v * 0.4, shFlex: 50 }),
+    setup: 'Knee-to-wall lunge: the knee travels forward over the toes with the heel down (Full = 20°).',
     limited: 'A stiff ankle stops the knee from travelling over the toes: heels lift, the knee caves in, or the torso tips forward at the bottom of a squat.',
     tip: 'Knee-to-wall drill, calf/soleus stretch; heel-elevated squats while it improves.'
-  },
-  {
-    id: 'squat', label: 'Squat (whole body)', view: 'side', normal: 110,
-    pivot: '', end: '', zeroDown: 0, pose: (v) => ({ grounded: true, kneeFlex: v, ankleDorsi: v * 0.3, trunkLean: v * 0.36, shFlex: 70 + v * 0.1 }),
-    limited: 'Depth is usually limited by the ankle, the hip or trunk control. Watch where the movement stops and what compensates.',
-    tip: 'Goblet squat to a box, tempo squats, breathing (exhale at the bottom).'
   }
 ];
 

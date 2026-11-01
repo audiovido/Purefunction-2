@@ -13,6 +13,8 @@ import { NotesPanel } from './NotesPanel';
 import { WorkoutHistory } from './WorkoutHistory';
 import { BodyLab } from '../BodyLab';
 import { NutritionPanel } from '../NutritionPanel';
+import { AssessmentSummary } from './AssessmentSummary';
+import { SpectrumOfPatterns } from './SpectrumOfPatterns';
 
 export const SECTIONS: { id: ClientSection; label: string }[] = [
   { id: 'exercises', label: 'Exercises' },
@@ -120,6 +122,8 @@ export const ClientDetail: React.FC<{
             />
             {asSub === 'overview' && (
               <>
+                <AssessmentSummary client={client} />
+                <SpectrumOfPatterns client={client} onUpdateClient={onUpdateClient} />
                 <BodyLab client={client} onUpdateClient={onUpdateClient} />
                 {assessments.length > 0 ? (
                   <AssessmentHistory key={client.id} assessments={assessments} client={client} onUpdateClient={onUpdateClient} />

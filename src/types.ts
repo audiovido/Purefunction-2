@@ -387,6 +387,8 @@ export interface ClientProfile {
   weeklyWorkouts?: DayWorkout[];
   /** Standing posture in degrees, measured by the coach (photo or eye). */
   posture?: PostureAngles;
+  /** Spectrum of Patterns (SOP) test values by row id. */
+  spectrumTests?: Record<string, { left?: number | string; right?: number | string }>;
   /** Coach notes, newest first. */
   coachNotes?: CoachNote[];
   /** Nutrition targets, meal plan and the client's daily log. */
