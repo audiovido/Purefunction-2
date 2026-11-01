@@ -3,7 +3,7 @@
 -- which earns the referrer credit. Credit spent is recorded by the coach.
 -- Additive only: no existing table or policy is changed.
 
-insert into private.settings (key, value) values ('referral_credit', '50')
+insert into private.settings (key, value) values ('referral_credit', '0')
 on conflict (key) do nothing;
 
 create table public.referral_codes (

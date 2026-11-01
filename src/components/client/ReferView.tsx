@@ -129,8 +129,8 @@ export const ReferView: React.FC<{ firstName?: string }> = ({ firstName }) => {
           </>
         )}
         <p className="text-xs text-gray-500 mt-3">
-          When someone you invite becomes a paying member, you get{' '}
-          <b>{creditPer ? formatMoney(creditPer) : 'credit'}</b> to use toward your own purchases.
+          When someone you invite becomes a paying member, you earn{' '}
+          {creditPer ? <b>{formatMoney(creditPer)}</b> : 'credit'} to use toward your own purchases.
         </p>
       </div>
 
