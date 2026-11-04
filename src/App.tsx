@@ -8,6 +8,7 @@ import { ExerciseLibraryProvider } from './state/ExerciseLibrary';
 import { ReferView } from './components/client/ReferView';
 import { ReferralLanding } from './components/ReferralLanding';
 import { ReferralsPanel } from './components/coach/ReferralsPanel';
+import { TrainersPanel } from './components/coach/TrainersPanel';
 import { refCodeFromUrl } from './cloud/referrals';
 import { createClientProfile } from './lib/clients';
 import {
@@ -52,6 +53,7 @@ import { CoachMessages, ClientMessages, useUnreadCount } from './components/Mess
 import { ProgramTemplate, applyProgramTemplate } from './lib/programTemplates';
 import { createTestClient } from './lib/testClient';
 import { NutritionTodayCard } from './components/NutritionPanel';
+import { FoodDiary } from './components/FoodDiary';
 import { CoachNotesCard } from './components/client/CoachNotesCard';
 import { ExerciseLibraryView } from './components/coach/ExerciseLibraryView';
 import { InstallCard } from './components/client/InstallCard';
@@ -519,6 +521,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
                     joinedIds={joinedIds}
                   />
                   {supabase && <ReferralsPanel clients={clients} />}
+                  {supabase && <TrainersPanel clients={clients} />}
                 </>
               )
             )}
@@ -563,7 +566,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
             ) : clientTab === 'today' ? (
               <>
               <CoachNotesCard client={selectedClient} />
-              <NutritionTodayCard client={selectedClient} onUpdateClient={handleUpdateClient} />
+              <FoodDiary clientId={selectedClient.id} mode="client" legacy={<NutritionTodayCard client={selectedClient} onUpdateClient={handleUpdateClient} />} legacyPlan={selectedClient.nutrition} />
               <ClientTodayView
                 client={selectedClient}
                 onUpdateClient={handleUpdateClient}

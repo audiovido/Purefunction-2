@@ -80,7 +80,8 @@ const resultPayload = (w: Workout) => ({
 });
 
 const clientRow = (c: ClientProfile): ClientRow => {
-  const { workouts: _w, weeklyWorkouts: _ww, coachNotes: _notes, ...doc } = c;
+  // Never transmit the coach-only posture draft in client profile JSON.
+  const { workouts: _w, weeklyWorkouts: _ww, coachNotes: _notes, postureDraft: _postureDraft, ...doc } = c;
   return { id: c.id, email: (c.email ?? '').trim().toLowerCase(), data: doc };
 };
 const workoutRow = (clientId: string, w: Workout): WorkoutRow => ({
