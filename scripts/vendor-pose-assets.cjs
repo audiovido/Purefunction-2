@@ -33,7 +33,9 @@ async function main() {
     fs.mkdirSync(path.join(stage,'models'));
     for (const n of wasmNames) fs.copyFileSync(path.join(srcDir,n),path.join(stage,'wasm',n));
     const model=path.join(stage,'models','pose_landmarker_lite.task');
-    await fetchFile(url,model);
+    const local = process.argv.indexOf('--model');
+    if (local > 0 && process.argv[local+1]) fs.copyFileSync(path.resolve(process.argv[local+1]), model);
+    else await fetchFile(url,model);
     if (fs.statSync(model).size < 1000000) throw Error('Downloaded model too small; refusing to vendor it');
     const all = [model,...wasmNames.map(n=>path.join(stage,'wasm',n))];
     const manifest = all.map(file=>({file:path.relative(stage,file).replaceAll('\\','/'),
