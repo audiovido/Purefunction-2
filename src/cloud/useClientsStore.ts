@@ -6,6 +6,7 @@ import { migrateClient } from '../lib/workouts';
 import { usePersistentState } from '../lib/storage';
 import { stableStringify, supabase } from './supabase';
 import type { Profile } from './Session';
+import { changedFields, emptyJournal, hasPending, loadJournal, mayReplay, persistJournal, PendingJournal } from './pendingWrites';
 
 export type SyncState = 'saved' | 'saving' | 'error' | 'offline';
 
@@ -48,6 +49,7 @@ interface ClientRow {
   id: string;
   email: string;
   data: Omit<ClientProfile, 'workouts' | 'weeklyWorkouts'>;
+  updated_at?: string;
 }
 interface WorkoutRow {
   id: string;
@@ -101,7 +103,15 @@ export function useCloudClientsStore(profile: Profile | null): ClientsStore {
   const current = useRef<ClientProfile[]>([]);
   // what the server has, as last sent or received (row id -> stable JSON)
   const pushedClients = useRef(new Map<string, string>());
+  const clientVersions = useRef(new Map<string, string>());
   const pushedWorkouts = useRef(new Map<string, string>());
+  const journal = useRef<PendingJournal>(loadJournal(profile?.id ?? ''));
+  const journalOwner = useRef(profile?.id ?? '');
+  const journalSafe = useRef(true);
+  const writeJournal = () => {
+    journalSafe.current = persistJournal(profile?.id ?? '', journal.current);
+    if (!journalSafe.current) setSync('error');
+  };
   const workoutVersions = useRef(new Map<string, string>());
   const pushedNotes = useRef(new Map<string, string>());
   const timer = useRef<number | null>(null);
@@ -118,7 +128,7 @@ export function useCloudClientsStore(profile: Profile | null): ClientsStore {
     (async () => {
       if (loadedFor.current !== profile.id) setLoaded(false); // first load only: later refreshes stay silent
       const [c, w, n] = await Promise.all([
-        supabase.from('clients').select('id, email, data'),
+        supabase.from('clients').select('id, email, data, updated_at'),
         supabase.from('workouts').select('id, client_id, date, data, updated_at'),
         supabase.from('coach_notes_secure').select('id, client_id, date, text, shared, pinned')
       ]);
@@ -146,15 +156,57 @@ export function useCloudClientsStore(profile: Profile | null): ClientsStore {
         byClient.set(r.client_id, [...(byClient.get(r.client_id) ?? []), wo]);
       }
       pushedClients.current.clear();
+      clientVersions.current.clear();
       const list = ((c.data ?? []) as ClientRow[])
         .map((r) => {
           const profileDoc = { ...r.data, id: r.id, email: r.email, coachNotes: byNoteClient.get(r.id) ?? [] } as ClientProfile;
           pushedClients.current.set(r.id, stableStringify(clientRow({ ...profileDoc, workouts: [] })));
+          if (r.updated_at) clientVersions.current.set(r.id, r.updated_at);
           return { ...profileDoc, workouts: sortWorkouts(byClient.get(r.id) ?? []) };
         })
         .sort((a, b) => a.name.localeCompare(b.name));
-      current.current = list;
-      setState(list);
+      // Restore only changes based on the exact server revision they were edited against.
+      if (journalOwner.current !== profile.id) {
+        journal.current = loadJournal(profile.id);
+        journalOwner.current = profile.id;
+      }
+      let needsResolution = false;
+      let restored = list;
+      for (const [id, pending] of Object.entries(journal.current.clients)) {
+        const version = clientVersions.current.get(id) ?? null;
+        if (!mayReplay(pending.expected, version)) { needsResolution = true; continue; }
+        if (pending.value) {
+          const staged = pending.value;
+          restored = restored.some((c) => c.id === id)
+            ? restored.map((c) => c.id === id ? { ...staged, workouts: c.workouts, coachNotes: c.coachNotes } : c)
+            : [...restored, { ...staged, workouts: staged.workouts ?? [] }];
+        }
+      }
+      for (const [id, pending] of Object.entries(journal.current.notes)) {
+        const c = restored.find((item) => item.id === id);
+        if (!c) continue;
+        if (stableStringify(c.coachNotes ?? []) !== pending.expected) { needsResolution = true; continue; }
+        restored = restored.map((item) => item.id === id ? { ...item, coachNotes: pending.value ?? [] } : item);
+      }
+      for (const [id, pending] of Object.entries(journal.current.workouts)) {
+        const version = workoutVersions.current.get(id) ?? null;
+        if (!mayReplay(pending.expected, version)) { needsResolution = true; continue; }
+        if (pending.value) {
+          const { clientId, workout } = pending.value;
+          restored = restored.map((c) => c.id === clientId ? {
+            ...c, workouts: sortWorkouts([...(c.workouts ?? []).filter((w) => w.id !== id && w.date !== workout.date), workout])
+          } : c);
+        } else {
+          restored = restored.map((c) => ({ ...c, workouts: (c.workouts ?? []).filter((w) => w.id !== id) }));
+        }
+      }
+      current.current = restored;
+      setState(restored);
+      if (needsResolution) {
+        conflictRef.current = true;
+        setSaveConflict('Not saved — conflict, reloaded. Another device changed the data; review before saving.');
+        setSync('error');
+      } else if (hasPending(journal.current)) setSync('saving');
       setLoadError(null);
       loadedFor.current = profile.id;
       setLoaded(true);
@@ -191,13 +243,18 @@ export function useCloudClientsStore(profile: Profile | null): ClientsStore {
         if (goneWorkouts.length) {
           const { error } = await supabase.from('workouts').delete().in('id', goneWorkouts);
           if (error) throw error;
-          goneWorkouts.forEach((id) => { pushedWorkouts.current.delete(id); workoutVersions.current.delete(id); });
+          goneWorkouts.forEach((id) => {
+            pushedWorkouts.current.delete(id); workoutVersions.current.delete(id);
+            delete journal.current.workouts[id];
+          });
+          writeJournal();
         }
         const goneClients = [...pushedClients.current.keys()].filter((id) => !liveClientIds.has(id));
         if (goneClients.length) {
           const { error } = await supabase.from('clients').delete().in('id', goneClients);
           if (error) throw error;
-          goneClients.forEach((id) => pushedClients.current.delete(id));
+          goneClients.forEach((id) => { pushedClients.current.delete(id); clientVersions.current.delete(id); delete journal.current.clients[id]; });
+          writeJournal();
         }
       }
 
@@ -208,25 +265,23 @@ export function useCloudClientsStore(profile: Profile | null): ClientsStore {
           return { row, json: stableStringify(row) };
         })
         .filter((x) => pushedClients.current.get(x.row.id) !== x.json);
-      if (changedClients.length) {
-        if (isCoach) {
-          const { error } = await supabase.from('clients').upsert(changedClients.map((x) => x.row), { onConflict: 'id' });
-          if (error) throw error;
-        } else {
-          // A client may only UPDATE their own row (inserting is coach-only), and may not touch the
-          // email column, so send just the profile data. An upsert here is rejected by the database
-          // and made the app retry forever (e.g. when changing the profile photo).
-          for (const x of changedClients) {
-            const { data: done, error } = await supabase
-              .from('clients')
-              .update({ data: x.row.data })
-              .eq('id', x.row.id)
-              .select('id');
-            if (error) throw error;
-            if (!done || done.length === 0) throw new Error('Could not save your profile.');
-          }
+      for (const x of changedClients) {
+        const version = clientVersions.current.get(x.row.id);
+        if (!isCoach && !version) throw new Error(`VERSION_CONFLICT:client:${x.row.id}`);
+        const query = version
+          ? supabase.from('clients').update(isCoach ? { email: x.row.email, data: x.row.data } : { data: x.row.data })
+            .eq('id', x.row.id).eq('updated_at', version).select('updated_at')
+          : supabase.from('clients').insert(x.row).select('updated_at');
+        const { data: done, error } = await query;
+        if (error) throw error;
+        if (!done?.length) throw new Error(`VERSION_CONFLICT:client:${x.row.id}`);
+        clientVersions.current.set(x.row.id, done[0].updated_at);
+        pushedClients.current.set(x.row.id, x.json);
+        if (journal.current.clients[x.row.id]?.value &&
+            stableStringify(clientRow(journal.current.clients[x.row.id].value!)) === x.json) {
+          delete journal.current.clients[x.row.id];
+          writeJournal();
         }
-        changedClients.forEach((x) => pushedClients.current.set(x.row.id, x.json));
       }
 
       // 3) secure coach notes: never put them in clients.data.
@@ -247,6 +302,13 @@ export function useCloudClientsStore(profile: Profile | null): ClientsStore {
           const { error } = await supabase.from('coach_notes_secure').upsert(note, { onConflict: 'id' });
           if (error) throw error;
           pushedNotes.current.set(note.id, json);
+        }
+        for (const c of list) {
+          const pending = journal.current.notes[c.id];
+          if (pending && stableStringify(pending.value ?? []) === stableStringify(c.coachNotes ?? [])) {
+            delete journal.current.notes[c.id];
+            writeJournal();
+          }
         }
       }
 
@@ -277,6 +339,12 @@ export function useCloudClientsStore(profile: Profile | null): ClientsStore {
           workoutVersions.current.set(x.row.id, data[0].updated_version);
         }
         pushedWorkouts.current.set(x.row.id, x.json);
+        if (journal.current.workouts[x.row.id]?.value &&
+            stableStringify(workoutRow(journal.current.workouts[x.row.id].value!.clientId,
+              journal.current.workouts[x.row.id].value!.workout)) === x.json) {
+          delete journal.current.workouts[x.row.id];
+          writeJournal();
+        }
       }
     } catch (e) {
       failed = true;
@@ -285,8 +353,20 @@ export function useCloudClientsStore(profile: Profile | null): ClientsStore {
         conflictRef.current = true;
         // Discard stale local workout state and refetch the authoritative server version.
         // Never retry a stale write automatically. User must re-apply their edit.
-        const id = message.split(':')[1];
-        const { data } = await supabase.from('workouts').select('id, client_id, date, data, updated_at').eq('id', id).maybeSingle();
+        const [, kindOrId, profileId] = message.split(':');
+        if (kindOrId === 'client') {
+          const id = profileId;
+          const { data: latest } = await supabase.from('clients').select('id, email, data, updated_at').eq('id', id).maybeSingle();
+          if (latest) {
+            clientVersions.current.set(id, latest.updated_at);
+            const doc = { ...latest.data, id: latest.id, email: latest.email } as ClientProfile;
+            pushedClients.current.set(id, stableStringify(clientRow(doc)));
+            current.current = current.current.map((c) => c.id === id ? { ...doc, coachNotes: c.coachNotes, workouts: c.workouts } : c);
+            setState(current.current);
+          }
+        }
+        const id = kindOrId;
+        const { data } = kindOrId === 'client' ? { data: null } : await supabase.from('workouts').select('id, client_id, date, data, updated_at').eq('id', id).maybeSingle();
         if (data) {
           const row = data as WorkoutRow;
           const fresh = { ...row.data, id: row.id, date: row.date };
@@ -297,7 +377,7 @@ export function useCloudClientsStore(profile: Profile | null): ClientsStore {
           } : c);
           setState(current.current);
         }
-        setSaveConflict('Not saved — another device changed this workout. Latest version reloaded. Please review and re-enter your change.');
+        setSaveConflict('Not saved — conflict, reloaded. Another device changed the data. Please review and re-enter your change.');
       }
       console.error('[sync]', message);
     } finally {
@@ -317,13 +397,42 @@ export function useCloudClientsStore(profile: Profile | null): ClientsStore {
     } else {
       conflictRef.current = false;
       setSaveConflict(null);
-      setSync('saved');
+      setSync(journalSafe.current && !hasPending(journal.current) ? 'saved' : 'error');
     }
   }, [isCoach]);
 
   const setClients = useCallback(
     (update: (prev: ClientProfile[]) => ClientProfile[]) => {
-      const next = update(current.current);
+      const prev = current.current;
+      const next = update(prev);
+      // Persist the write-ahead journal BEFORE updating the visible React state.
+      for (const c of next) {
+        const old = prev.find((x) => x.id === c.id);
+        const prevDoc = old && clientRow(old);
+        const newDoc = clientRow(c);
+        if (!prevDoc || changedFields(prevDoc, newDoc)) {
+          journal.current.clients[c.id] = { value: { ...c, coachNotes: undefined, workouts: [] }, expected: clientVersions.current.get(c.id) ?? null };
+        }
+        if (old && changedFields(old.coachNotes ?? [], c.coachNotes ?? [])) {
+          journal.current.notes[c.id] = { value: c.coachNotes ?? [], expected: stableStringify(old.coachNotes ?? []) };
+        }
+        for (const w of c.workouts ?? []) {
+          const oldW = old?.workouts?.find((x) => x.id === w.id);
+          if (!oldW || changedFields(oldW, w)) {
+            journal.current.workouts[w.id] = {
+              value: { clientId: c.id, workout: w }, expected: workoutVersions.current.get(w.id) ?? null
+            };
+          }
+        }
+      }
+      for (const c of prev) {
+        const newer = next.find((x) => x.id === c.id);
+        if (!newer) journal.current.clients[c.id] = { value: null, expected: clientVersions.current.get(c.id) ?? null };
+        for (const w of c.workouts ?? []) if (!newer?.workouts?.some((x) => x.id === w.id)) {
+          journal.current.workouts[w.id] = { value: null, expected: workoutVersions.current.get(w.id) ?? null };
+        }
+      }
+      writeJournal();
       setSaveConflict(null);
       conflictRef.current = false;
       current.current = next;
@@ -334,6 +443,13 @@ export function useCloudClientsStore(profile: Profile | null): ClientsStore {
     },
     [flush]
   );
+
+  // Drain a recovered journal after server state and revision hashes have loaded.
+  useEffect(() => {
+    if (!loaded || conflictRef.current || !hasPending(journal.current)) return;
+    const id = window.setTimeout(() => void flush(), 150);
+    return () => window.clearTimeout(id);
+  }, [loaded, flush]);
 
   // save before the tab closes
   useEffect(() => {
@@ -374,6 +490,7 @@ export function useCloudClientsStore(profile: Profile | null): ClientsStore {
         const wo: Workout = { ...r.data, id: r.id, date: r.date };
         const json = stableStringify(workoutRow(r.client_id, wo));
         if (pushedWorkouts.current.get(r.id) === json) return; // our own write coming back
+        if (journal.current.workouts[r.id]) return; // pending local edit retains its original version
         pushedWorkouts.current.set(r.id, json);
         if (r.updated_at) workoutVersions.current.set(r.id, r.updated_at);
         apply((list) =>
@@ -402,6 +519,8 @@ export function useCloudClientsStore(profile: Profile | null): ClientsStore {
         const doc = { ...r.data, id: r.id, email: r.email } as ClientProfile;
         const json = stableStringify(clientRow({ ...doc, workouts: [] }));
         if (pushedClients.current.get(r.id) === json) return;
+        if (journal.current.clients[r.id]) return; // do not silently lose an unsaved edit
+        if (r.updated_at) clientVersions.current.set(r.id, r.updated_at);
         pushedClients.current.set(r.id, json);
         apply((list) => {
           const existing = list.find((c) => c.id === r.id);

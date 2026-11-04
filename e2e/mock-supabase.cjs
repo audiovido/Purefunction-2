@@ -7,7 +7,7 @@
 const crypto = require('crypto');
 
 module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) {
-  const db = { users: [], profiles: [], clients: [], workouts: [], coach_notes_secure: [], assignments: [], exercises: [], files: {}, clientFiles: {}, emails: [], resetTokens: {} };
+  const db = { users: [], profiles: [], clients: [], workouts: [], coach_notes_secure: [], assignments: [], exercises: [], files: {}, clientFiles: {}, emails: [], resetTokens: {}, verificationRequests: {} };
   const log = [];
   const realtimeLog = [];
   const cors = {
@@ -118,10 +118,22 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
     if (path === '/functions/v1/sign-up') {
       const b = JSON.parse(req.postData() || '{}');
       const email = String(b.email || '').trim().toLowerCase();
-      if (String(b.password || '').length < 8) return json(route, 400, { error: 'Password must be at least 8 characters.' });
+      if (b.action !== 'resend' && String(b.password || '').length < 8) return json(route, 400, { error: 'Password must be at least 8 characters.' });
       const allowed = email === coachEmail.toLowerCase() || db.clients.some((c) => c.email && c.email.toLowerCase() === email);
-      if (!allowed) return json(route, 403, { error: 'This email isn’t on the list yet. Ask your coach to add your email first, then create your account.' });
-      if (db.users.some((u) => u.email === email)) return json(route, 409, { error: 'An account with this email already exists. Sign in instead.' });
+      const generic = () => json(route, 200, { ok: true, verificationRequired: true });
+      const existing = db.users.find((u) => u.email === email);
+      if (b.action === 'resend' || existing) {
+        if (!existing || existing.verified || !allowed) return generic();
+        const now = Date.now();
+        const last = (db.verificationRequests[email] || []).filter((t) => now - t < 3600000);
+        if (last.length >= 3) return generic();
+        db.verificationRequests[email] = [...last, now];
+        const token = 'magic-' + crypto.randomUUID();
+        db.resetTokens[token] = existing.id;
+        db.emails.push({ to: email, kind: 'verify', token, tokenType: 'magiclink' });
+        return generic();
+      }
+      if (!allowed) return generic();
       const u = { id: crypto.randomUUID(), email, password: b.password, meta: { display_name: b.name }, verified: false };
       db.users.push(u);
       const token = 'verify-' + crypto.randomUUID();
@@ -158,7 +170,7 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
       const id = db.resetTokens[b.token_hash];
       delete db.resetTokens[b.token_hash];
       const u = id && db.users.find((u) => u.id === id);
-      if (u && b.type === 'signup') { u.verified = true; linkUser(u); }
+      if (u && (b.type === 'signup' || b.type === 'magiclink')) { u.verified = true; linkUser(u); }
       return u ? json(route, 200, sessionFor(u)) : json(route, 403, { code: 'otp_expired', msg: 'Email link is invalid or has expired' });
     }
     if (path === '/auth/v1/user' && method === 'PUT') {
@@ -250,6 +262,10 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
 
     // ---------------- Results-only RPC: enforce JWT identity, ownership, fields and CAS.
     if (path === '/rest/v1/rpc/save_workout_results_secure' && method === 'POST') {
+      if (db.failNextResultSaves > 0) {
+        db.failNextResultSaves -= 1;
+        return json(route, 503, { message: 'Temporary network error' });
+      }
       const prof = profileOf(uidFrom(req));
       const x = JSON.parse(req.postData() || '{}');
       if (!prof || prof.role !== 'client' || x.p_client_id !== prof.client_id) return json(route, 403, { message: 'Not your client' });
@@ -344,7 +360,7 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
             if ('email' in patch || allowed(old) !== allowed(next) || !clientManualRecordsAllowed(old.manualRecords, next.manualRecords))
               return json(route, 403, { message: 'Coach-owned profile or assessment cannot be changed' });
           }
-          Object.assign(r, patch, { updated_at: new Date().toISOString() });
+          Object.assign(r, patch, { updated_at: new Date(Date.now() + log.length).toISOString() });
           broadcast(table, 'UPDATE', r);
         }
         if ((req.headers()['prefer'] || '').includes('return=representation')) return json(route, 200, hit);

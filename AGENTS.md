@@ -60,6 +60,11 @@ App: coaching PWA (like TrueCoach) for a coach in the US, up to ~100 clients. Co
   - Checks: lint OK, 91 tests, cloud-flow ALL PASSED, responsive 0/0, library + pwa PASSED.
   - Still open (security, T8b): private coach notes inside `clients.data` reach the client; client RLS can rewrite workouts and `clients.data`. SQL proposal not applied (needs Armin's OK).
 
+- PR #34 `feat/t8b-security` (base #33): T8b security — secure notes table, results-only RPC, client data guard (photoUrl, nutrition.log, own manualRecords), trainer assignments. SQL `supabase/pending/NEEDS_ARMIN_OK_T8b_security.sql` NOT applied.
+- PR #35 `feat/zip-a` (base #34): verify-email resend (3/hour), reliable saving (pending journal + version checks), not-measured ≠ 0, calendar slice 2 (week nav, Skipped, last editor, edit sheet, Copy to date). SQL `NEEDS_ARMIN_OK_signup_resend.sql` NOT applied (run after T8b SQL).
+- Go-live order: Armin OK → Supabase "Confirm email" ON → backup → T8b SQL → resend SQL → merge #33, #34, #35 → deploy Edge Functions sign-up + reset-password → real two-device test.
+- Next: ChatGPT ZIP B on 2329e60 (p5 trainers/Danial, p6 nutrition text diary, p7 static Posture Overview with draft rules hidden until Hamoon approves, p8 gait behind flag).
+
 ## Next ideas
 - Auto joint detection on real photos (MediaPipe on phone) + photo analysis with green/red lines.
 - Program templates for many clients; push notifications for new messages; a sample Test Client.

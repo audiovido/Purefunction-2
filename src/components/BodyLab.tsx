@@ -53,8 +53,8 @@ export function sortWorstFindings(findings: ClientFinding[]): ClientFinding[] {
     const ratioA = Math.min(...[a.left, a.right].filter((v): v is number => v !== null)) / (a.full || 90);
     const ratioB = Math.min(...[b.left, b.right].filter((v): v is number => v !== null)) / (b.full || 90);
     if (Math.abs(ratioA - ratioB) > 1e-3) return ratioA - ratioB;
-    return Math.abs((b.left ?? b.right ?? 0) - (b.right ?? b.left ?? 0))
-      - Math.abs((a.left ?? a.right ?? 0) - (a.right ?? a.left ?? 0));
+    const diff = (f: ClientFinding) => f.left === null || f.right === null ? 0 : Math.abs(f.left - f.right);
+    return diff(b) - diff(a);
   });
 }
 

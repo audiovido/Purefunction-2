@@ -1,5 +1,6 @@
 import { ClientProfile, RomMovement } from '../types';
 import { MOVEMENTS, Severity, latestRom, rateRom, romFor, sideDifference } from './bodyModel';
+import { measuredRomSide } from './measurements';
 
 export interface ClientFinding {
   key: string;
@@ -186,8 +187,8 @@ export function resolveSpectrumTests(
     const matchedRom = row.romName ? romFor(rom, row.romName) : undefined;
     // A saved blank explicitly clears that side; never refill it from ROM.
     // ROM defaults of zero mean "not entered". A saved zero is a real measurement.
-    const left = resolvedSide(s, 'left', matchedRom?.left, row.kind);
-    const right = resolvedSide(s, 'right', matchedRom?.right, row.kind);
+    const left = resolvedSide(s, 'left', measuredRomSide(matchedRom, 'left'), row.kind);
+    const right = resolvedSide(s, 'right', measuredRomSide(matchedRom, 'right'), row.kind);
     if (left !== undefined || right !== undefined) {
       out[row.id] = { left, right };
     }
@@ -195,7 +196,7 @@ export function resolveSpectrumTests(
   return out;
 }
 
-function toNum(v: number | string | undefined): number | null {
+function toNum(v: number | string | null | undefined): number | null {
   if (v === undefined || v === null || String(v).trim() === '') return null;
   const n = typeof v === 'number' ? v : Number(v);
   return Number.isFinite(n) && n >= 0 && n <= 180 ? n : null;
@@ -211,15 +212,15 @@ export function parseDegreeInput(raw: string): number | null {
 function resolvedSide(
   saved: SpectrumEntry | undefined,
   side: 'left' | 'right',
-  romValue: number | undefined,
+  romValue: number | null | undefined,
   kind: SpectrumRowKind = 'degrees'
 ): number | string | undefined {
   const hasSaved = saved != null && Object.prototype.hasOwnProperty.call(saved, side);
   const value = hasSaved ? saved![side] : romValue;
-  if (kind !== 'degrees') return value === '' ? undefined : value;
+  if (kind !== 'degrees') return value === '' || value == null ? undefined : value;
   // Negative, non-numeric and out-of-range historical values are unmeasured.
   const parsed = toNum(value);
-  if (parsed === null || (!hasSaved && parsed === 0)) return undefined;
+  if (parsed === null) return undefined; // zero is valid when explicitly measured
   return parsed;
 }
 
@@ -297,8 +298,8 @@ export function clientFindings(
     if (seenKeys.has(m.sopKey)) continue;
     const s = saved[m.sopKey];
     const matchedRom = romFor(rom, m.romName);
-    const l = toNum(resolvedSide(s, 'left', matchedRom?.left));
-    const r = toNum(resolvedSide(s, 'right', matchedRom?.right));
+    const l = toNum(resolvedSide(s, 'left', measuredRomSide(matchedRom, 'left')));
+    const r = toNum(resolvedSide(s, 'right', measuredRomSide(matchedRom, 'right')));
     if (l === null && r === null) continue;
     const full = m.normal;
     findings.push(buildDegreeFinding(m.sopKey, m.label, l, r, full));

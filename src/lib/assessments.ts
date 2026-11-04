@@ -1,5 +1,6 @@
-import { AssessmentSnapshot, ClientProfile, Goal, calculateAsymmetryPercent } from '../types';
+import { AssessmentSnapshot, ClientProfile, Goal } from '../types';
 import { WEIGHT_UNIT } from './units';
+import { measuredAsymmetry, measuredRomSide } from './measurements';
 import { estimated1RM, parseISODate, todayISO } from './workouts';
 
 /**
@@ -68,9 +69,8 @@ export function compareAssessments(a: AssessmentSnapshot, b: AssessmentSnapshot)
   for (const name of names) {
     const ra = a.rom.find((r) => r.name === name);
     const rb = b.rom.find((r) => r.name === name);
-    const asym = (r?: { left: number; right: number }) =>
-      r && (r.left > 0 || r.right > 0) ? calculateAsymmetryPercent(r.left, r.right) : null;
-    const side = (r: typeof ra, s: 'left' | 'right') => (r ? num(r[s]) : null);
+    const asym = (r?: typeof ra) => measuredAsymmetry(measuredRomSide(r, 'left'), measuredRomSide(r, 'right'));
+    const side = (r: typeof ra, s: 'left' | 'right') => measuredRomSide(r, s);
     rows.push({ key: `rom:${name}:L`, group: 'Range of motion', label: `${name} — L`, unit: '°', before: side(ra, 'left'), after: side(rb, 'left'), better: 'up' });
     rows.push({ key: `rom:${name}:R`, group: 'Range of motion', label: `${name} — R`, unit: '°', before: side(ra, 'right'), after: side(rb, 'right'), better: 'up' });
     rows.push({ key: `rom:${name}:asym`, group: 'Range of motion', label: `${name} — asymmetry`, unit: '%', before: asym(ra), after: asym(rb), better: 'down' });

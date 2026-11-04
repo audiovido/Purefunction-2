@@ -402,3 +402,31 @@ describe('progress report', () => {
     expect(r.newRecords[0].previous?.kg).toBe(80);
   });
 });
+
+
+describe('calendar copy safety', () => {
+  it('copied sessions have no logged results or feedback', () => {
+    const from = wo('2026-11-04', {
+      status: 'completed', clientFeedback: 'felt strong', sessionRpe: 9,
+      blocks: [wo('2026-11-04').blocks[0]]
+    });
+    from.blocks[0].loggedSets[0] = { setNumber: 1, kg: 50, reps: 8, completed: true };
+    const copy = copyWeek({ ...baseClient, workouts: [from] }, '2026-11-02', '2026-11-09');
+    const next = copy.client.workouts?.find((w) => w.date === '2026-11-11');
+    expect(next?.status).toBe('planned');
+    expect(next?.clientFeedback).toBeUndefined();
+    expect(next?.blocks[0].loggedSets[0].completed).toBe(false);
+    expect(from.blocks[0].loggedSets[0].completed).toBe(true);
+  });
+});
+
+
+describe('copy safety for feedback-only history', () => {
+  it('refuses to replace a day containing client feedback even if no set was checked', () => {
+    const next = wo('2026-11-11', { clientFeedback: 'Sore after work', status: 'planned' });
+    const from = wo('2026-11-04');
+    const result = copyWeek({ ...baseClient, workouts: [from, next] }, '2026-11-02', '2026-11-09');
+    expect(result.skipped).toBe(1);
+    expect(result.client.workouts?.find((w) => w.date === '2026-11-11')?.clientFeedback).toBe('Sore after work');
+  });
+});

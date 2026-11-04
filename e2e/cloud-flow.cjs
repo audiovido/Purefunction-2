@@ -72,10 +72,32 @@ const today = iso(new Date());
   await S.getByRole('tab', { name: 'I’m the coach' }).click();
   ok(await S.getByRole('heading', { name: 'Coach sign in' }).isVisible(), 'separate coach sign-in');
   await signUp(S, 'Eve', 'eve@example.com', 'password123');
-  await S.getByText(/isn’t on your coach’s list/).waitFor({ timeout: 8000 }).catch(() => {});
-  ok(await S.getByText(/isn’t on your coach’s list/).isVisible(), 'unknown email cannot create an account');
+  await S.getByText('Check your email for the verification link').waitFor();
+  ok(!mock.db.users.some((u) => u.email === 'eve@example.com'), 'unknown email cannot create an account');
+  ok(mock.db.emails.every((e) => e.to !== 'eve@example.com'), 'signup does not disclose or email unknown addresses');
   await shot(S, 'cloud-signup-blocked');
 
+  /* ---------------- verification resend / enumeration / throttle ---------------- */
+  const resend = async (email) => S.evaluate(async (email) => {
+    const r = await fetch('https://mock.supabase.co/functions/v1/sign-up', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'resend', email })
+    });
+    return { status: r.status, body: await r.json() };
+  }, email);
+  const strangerResend = await resend('eve@example.com');
+  const coachBefore = mock.db.emails.filter((m) => m.to === 'coach@example.com').length;
+  // Registered but not verified: repeated requests may send at most three links per hour.
+  mock.db.users.push({ id: 'pending-test', email: 'pending@example.com', verified: false, password: 'pendingpass', meta: {} });
+  mock.db.clients.push({ id: 'pending-client', email: 'pending@example.com', data: { name: 'Pending' } });
+  for (let i = 0; i < 5; i++) ok((await resend('pending@example.com')).status === 200, 'resend returns generic success');
+  ok(mock.db.emails.filter((m) => m.to === 'pending@example.com' && m.kind === 'verify').length === 3, 'three verification links per hour maximum');
+  ok(JSON.stringify(strangerResend.body) === JSON.stringify((await resend('pending@example.com')).body), 'resend does not reveal account existence');
+  ok(mock.db.emails.filter((m) => m.to === 'coach@example.com').length === coachBefore, 'resend does not change unrelated addresses');
+  const resent = mock.db.emails.find((m) => m.to === 'pending@example.com' && m.tokenType === 'magiclink');
+  ok(!!resent, 'lost verification email can be replaced with a magic link');
+  mock.db.clients = mock.db.clients.filter((c) => c.id !== 'pending-client');
+  mock.db.users = mock.db.users.filter((u) => u.id !== 'pending-test');
   /* ---------------- coach ---------------- */
   const C = await open({ width: 1440, height: 900 });
   await signUp(C, 'Armin', 'Coach@Example.com', 'coachpass1', 'coach');
@@ -301,6 +323,54 @@ const today = iso(new Date());
   await F.goto(`http://localhost:${PORT}/?reset=${mail.token}`);
   await F.getByText('reset link has expired').waitFor({ timeout: 8000 }).catch(() => {});
   ok(await F.getByText('reset link has expired').isVisible() || (await F.getByText('Workout completed').isVisible()), 'used reset link is not accepted twice');
+
+  /* ---------------- durable pending save + cross-device CAS ---------------- */
+  const latestRow = mock.db.workouts.find((row) => row.client_id === ryanRow.id && row.date === today);
+  const pendingData = JSON.parse(JSON.stringify(latestRow.data));
+  pendingData.clientFeedback = 'Restored after reload';
+  const ryanUid = mock.db.profiles.find((p) => p.role === 'client' && p.client_id === ryanRow.id).id;
+  await R.evaluate(({ key, id, clientId, version, workout }) => {
+    localStorage.setItem(key, JSON.stringify({ clients: {}, workouts: {
+      [id]: { expected: version, value: { clientId, workout } }
+    }}));
+  }, { key: 'pf.pending.v1.' + ryanUid, id: latestRow.id, clientId: ryanRow.id,
+       version: latestRow.updated_at, workout: pendingData });
+  mock.db.failNextResultSaves = 1;
+  await R.reload();
+  await R.getByText('Workout completed').waitFor({ timeout: 10000 });
+  await R.getByText(/Not saved/i).first().waitFor({ timeout: 4500 });
+  ok(mock.db.workouts.find((row) => row.id === latestRow.id)?.data.clientFeedback !== 'Restored after reload',
+    'failed request keeps prior server data; retry is queued');
+  await R.waitForTimeout(6000);
+  ok(mock.db.workouts.find((row) => row.id === latestRow.id)?.data.clientFeedback === 'Restored after reload', 'pending result survives reload and is saved exactly once');
+  ok(await R.evaluate((k) => localStorage.getItem(k) === null, 'pf.pending.v1.' + ryanUid), 'successful replay clears pending journal');
+  const beforeRace = mock.db.workouts.find((row) => row.id === latestRow.id);
+  const expectedVersion = beforeRace.updated_at;
+  const updatedPrescription = { ...beforeRace.data, coachNotes: 'Coach edition wins the version race' };
+  const coachUid = mock.db.profiles.find((p) => p.role === 'coach').id;
+  const coachSave = await C.evaluate(async ({ id, version, data, uid }) => {
+    const response = await fetch('https://mock.supabase.co/rest/v1/workouts?id=eq.' + id + '&updated_at=eq.' + encodeURIComponent(version), {
+      method: 'PATCH', headers: { Authorization: 'Bearer tok-' + uid, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      body: JSON.stringify({ data })
+    });
+    return response.status;
+  }, { id: latestRow.id, version: expectedVersion, data: updatedPrescription, uid: coachUid });
+  ok(coachSave === 200, 'coach edits prescribed workout from separate browser context');
+  const staleSave = await R.evaluate(async ({ id, clientId, version, uid, workout }) => {
+    const response = await fetch('https://mock.supabase.co/rest/v1/rpc/save_workout_results_secure', {
+      method: 'POST', headers: { Authorization: 'Bearer tok-' + uid, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_workout_id: id, p_client_id: clientId, p_expected_version: version, p_results: {
+        status: workout.status, completedAt: workout.completedAt ?? null,
+        sessionRpe: workout.sessionRpe ?? null, clientFeedback: 'stale edit must not overwrite',
+        blocks: workout.blocks.map((b) => ({ id: b.id, loggedSets: b.loggedSets,
+          rpe: b.rpe ?? null, pain: !!b.pain, clientNote: b.clientNote ?? null }))
+      } })
+    });
+    return response.status;
+  }, { id: latestRow.id, clientId: ryanRow.id, version: expectedVersion, uid: ryanUid, workout: pendingData });
+  ok(staleSave === 409, 'client stale result rejected after coach revision (two browser contexts)');
+  ok(mock.db.workouts.find((row) => row.id === latestRow.id)?.data.coachNotes === updatedPrescription.coachNotes,
+    'version conflict does not erase coach prescription');
 
   // layout
   for (const [n, p] of [['client', R], ['stranger', S], ['reset', F]]) {

@@ -25,7 +25,8 @@ Deno.serve(async (req) => {
         url: link
       })
     );
-    if (!r.ok && r.status === 503) return json(503, { error: r.error });
+    // Never reveal whether a recipient exists or a mail provider accepted the message.
+    void r;
   }
   return json(200, { ok: true });
 });

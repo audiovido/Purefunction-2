@@ -26,3 +26,11 @@ describe('weekly calendar, read-only status presentation', () => {
     expect(Array.from({ length: 7 }, (_, i) => tabletDayStart(i))).toEqual([0, 0, 1, 2, 3, 4, 4]);
   });
 });
+
+
+describe('skipped vs missed status', () => {
+  it('keeps explicitly skipped separate from failed and planned future', () => {
+    expect(calendarStatus(workout('skipped'), '2026-11-06').label).toBe('Skipped');
+    expect(calendarStatus(workout('planned'), '2026-11-04').label).toBe('Planned');
+  });
+});
