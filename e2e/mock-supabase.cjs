@@ -89,10 +89,12 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
       const allowed = email === coachEmail.toLowerCase() || db.clients.some((c) => c.email && c.email.toLowerCase() === email);
       if (!allowed) return json(route, 403, { error: 'This email isn’t on the list yet. Ask your coach to add your email first, then create your account.' });
       if (db.users.some((u) => u.email === email)) return json(route, 409, { error: 'An account with this email already exists. Sign in instead.' });
-      const u = { id: crypto.randomUUID(), email, password: b.password, meta: { display_name: b.name } };
+      const u = { id: crypto.randomUUID(), email, password: b.password, meta: { display_name: b.name }, verified: false };
       db.users.push(u);
-      linkUser(u);
-      return json(route, 200, { ok: true });
+      const token = 'verify-' + crypto.randomUUID();
+      db.resetTokens[token] = u.id;
+      db.emails.push({ to: email, kind: 'verify', token });
+      return json(route, 200, { ok: true, verificationRequired: true });
     }
 
     // ---------------- Edge Functions: email ----------------
@@ -123,6 +125,7 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
       const id = db.resetTokens[b.token_hash];
       delete db.resetTokens[b.token_hash];
       const u = id && db.users.find((u) => u.id === id);
+      if (u && b.type === 'signup') { u.verified = true; linkUser(u); }
       return u ? json(route, 200, sessionFor(u)) : json(route, 403, { code: 'otp_expired', msg: 'Email link is invalid or has expired' });
     }
     if (path === '/auth/v1/user' && method === 'PUT') {
@@ -137,6 +140,7 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
       if (url.searchParams.get('grant_type') === 'password') {
         const u = db.users.find((u) => u.email === String(b.email).toLowerCase() && u.password === b.password);
         if (!u) return json(route, 400, { error: 'invalid_grant', error_description: 'Invalid login credentials', msg: 'Invalid login credentials', code: 'invalid_credentials' });
+        if (!u.verified) return json(route, 400, { error: 'invalid_grant', error_description: 'Email not confirmed', msg: 'Email not confirmed' });
         return json(route, 200, sessionFor(u));
       }
       if (url.searchParams.get('grant_type') === 'refresh_token') {
