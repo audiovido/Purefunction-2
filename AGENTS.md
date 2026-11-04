@@ -63,7 +63,12 @@ App: coaching PWA (like TrueCoach) for a coach in the US, up to ~100 clients. Co
 - PR #34 `feat/t8b-security` (base #33): T8b security — secure notes table, results-only RPC, client data guard (photoUrl, nutrition.log, own manualRecords), trainer assignments. SQL `supabase/pending/NEEDS_ARMIN_OK_T8b_security.sql` NOT applied.
 - PR #35 `feat/zip-a` (base #34): verify-email resend (3/hour), reliable saving (pending journal + version checks), not-measured ≠ 0, calendar slice 2 (week nav, Skipped, last editor, edit sheet, Copy to date). SQL `NEEDS_ARMIN_OK_signup_resend.sql` NOT applied (run after T8b SQL).
 - Go-live order: Armin OK → Supabase "Confirm email" ON → backup → T8b SQL → resend SQL → merge #33, #34, #35 → deploy Edge Functions sign-up + reset-password → real two-device test.
-- Next: ChatGPT ZIP B on 2329e60 (p5 trainers/Danial, p6 nutrition text diary, p7 static Posture Overview with draft rules hidden until Hamoon approves, p8 gait behind flag).
+- PR #36 `feat/zip-b` (base #35, 2026-11-04): ChatGPT ZIP B applied on 2329e60 + AGENTS.md merge.
+  - p5 trainers (head coach = `private.settings.coach_email`; allowlist + per-client assign; Edge `invite-trainer`). p6 food text diary (USDA + server AI in Edge `food-parse`; photo disabled; coach 7-day summary). p7 static Posture Overview (draft pattern rules hidden from clients until Hamoon + a reviewer approve; coach-only secure reviews vs published frozen reports). p8 gait compare behind `VITE_ENABLE_GAIT_COMPARE` (OFF).
+  - New features stay hidden until their SQL exists. SQL NOT applied: `NEEDS_ARMIN_OK_p5_trainers.sql` → `p6_food_diary` → `p7_posture` (each after T8b + resend SQL; rollbacks included).
+  - Claude fixes: script git-status parsing bug; posture test (measured zero needs `measuredSides`); cloud-flow email locator.
+  - Checks: tsc OK, 110 vitest, security-rest, cloud-flow, responsive 0/0, library, pwa all PASSED.
+  - Before go-live: Edge secrets `OPENAI_API_KEY`, `OPENAI_FOOD_MODEL` (verify the model name), `USDA_API_KEY`; deploy `invite-trainer` + `food-parse` after their SQL.
 
 ## Next ideas
 - Auto joint detection on real photos (MediaPipe on phone) + photo analysis with green/red lines.
