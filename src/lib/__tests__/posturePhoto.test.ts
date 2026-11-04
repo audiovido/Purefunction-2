@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   POSE_LANDMARKS, createSavedPhotoReview, landmarkLabel, lineAngle,
-  photoLines, pointsFromDetection, thresholdColor, type PhotoPoint
+  photoLines, pointsFromDetection, manualLandmarkPoints, thresholdColor, type PhotoPoint
 } from '../posturePhoto';
 
 const points = () => pointsFromDetection(Array.from({length:33},(_,i)=>({x:i/50,y:i/40,visibility:0.98,presence:0.99})))
@@ -10,6 +10,31 @@ const setPoint = (list:PhotoPoint[],key:PhotoPoint['key'],x:number,y:number): Ph
   list.map(p=>p.key===key?{...p,x,y}:p);
 
 describe('coach-only photo observations — draft geometry',()=>{
+  it('places view-specific manual landmarks without inventing measurements or confirmations',()=>{
+    const front=manualLandmarkPoints('front','L',false);
+    const rear=manualLandmarkPoints('rear','L',false);
+    const mirrored=manualLandmarkPoints('front','L',true);
+    const side=manualLandmarkPoints('side','R',false);
+    expect(front).toHaveLength(POSE_LANDMARKS.length);
+    expect(new Set(front.map(p=>p.key)).size).toBe(POSE_LANDMARKS.length);
+    for (const group of [front,rear,mirrored,side]) {
+      expect(group.every(p=>!p.confirmed && !p.adjusted && p.confidence===0)).toBe(true);
+      expect(group.every(p=>p.x>=0 && p.x<=1 && p.y>=0 && p.y<=1)).toBe(true);
+      expect(photoLines(group,'front','L',false)).toHaveLength(0);
+    }
+    const by=(list:PhotoPoint[],key:PhotoPoint['key'])=>list.find(p=>p.key===key)!;
+    expect(by(front,'left_shoulder').x).toBeGreaterThan(by(front,'right_shoulder').x);
+    expect(by(rear,'left_shoulder').x).toBeLessThan(by(rear,'right_shoulder').x);
+    expect(by(mirrored,'left_shoulder').x).toBeLessThan(by(mirrored,'right_shoulder').x);
+    expect(by(rear,'nose').visible).toBe(false);
+    expect(by(side,'left_shoulder').visible).toBe(false);
+    expect(by(side,'right_shoulder').visible).toBe(true);
+    const coachReviewed=front.map(p=>p.key==='left_shoulder'||p.key==='right_shoulder'?{...p,confirmed:true}:p);
+    expect(photoLines(coachReviewed,'front','L',false).map(l=>l.id)).toEqual(['shoulder']);
+    expect(createSavedPhotoReview({id:'manual',view:'front',side:'L',mirrored:false,
+      recordedAt:'2026-11-04T00:00:00Z',landmarks:front},1).lines).toHaveLength(0);
+  });
+
   it('measures level and plumb angles using image aspect',()=>{
     expect(lineAngle({x:0.2,y:0.4},{x:0.8,y:0.4},'level',1.5)).toBe(0);
     expect(lineAngle({x:0.3,y:0.1},{x:0.3,y:0.8},'plumb',1)).toBe(0);

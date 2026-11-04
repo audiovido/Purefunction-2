@@ -45,6 +45,49 @@ export const POSE_LANDMARKS = [
   'right_heel', 'left_foot_index', 'right_foot_index'
 ] as const;
 
+/**
+ * Coach-only manual starting points, NOT measured/detected landmarks.
+ * Standard positions are illustrative and every point starts unconfirmed.
+ * Anatomical L/R is mapped through the same mirrored-key convention as photoLines().
+ */
+export function manualLandmarkPoints(view: PhotoView, side: 'L' | 'R', mirrored: boolean): PhotoPoint[] {
+  const front: Record<LandmarkKey, readonly [number, number]> = {
+    nose:[.5,.090], left_eye_inner:[.524,.077], left_eye:[.542,.077], left_eye_outer:[.560,.078],
+    right_eye_inner:[.476,.077], right_eye:[.458,.077], right_eye_outer:[.440,.078],
+    left_ear:[.590,.108], right_ear:[.410,.108], mouth_left:[.530,.141], mouth_right:[.470,.141],
+    left_shoulder:[.655,.225], right_shoulder:[.345,.225],
+    left_elbow:[.705,.335], right_elbow:[.295,.335],
+    left_wrist:[.735,.455], right_wrist:[.265,.455],
+    left_pinky:[.755,.490], right_pinky:[.245,.490],
+    left_index:[.738,.502], right_index:[.262,.502],
+    left_thumb:[.712,.488], right_thumb:[.288,.488],
+    left_hip:[.595,.535], right_hip:[.405,.535],
+    left_knee:[.600,.710], right_knee:[.400,.710],
+    left_ankle:[.600,.886], right_ankle:[.400,.886],
+    left_heel:[.585,.912], right_heel:[.415,.912],
+    left_foot_index:[.635,.928], right_foot_index:[.365,.928]
+  };
+  const sideX: Record<string, number> = {
+    nose:.548, eye_inner:.544, eye:.542, eye_outer:.540, ear:.458, mouth_left:.561, mouth_right:.561,
+    shoulder:.512, elbow:.501, wrist:.492, pinky:.489, index:.492, thumb:.504,
+    hip:.505, knee:.512, ankle:.502, heel:.481, foot_index:.565
+  };
+  return POSE_LANDMARKS.map(key => {
+    // A mirrored selfie changes which detector-indexed key is anatomical left/right.
+    const anatomical: LandmarkKey = mirrored && key === 'mouth_left' ? 'mouth_right'
+      : mirrored && key === 'mouth_right' ? 'mouth_left' : anatomicalKey(key, mirrored);
+    const [frontX, y] = front[anatomical];
+    const namedSide = anatomical.startsWith('left_') ? 'L' : anatomical.startsWith('right_') ? 'R' : null;
+    const part = namedSide ? anatomical.slice(namedSide === 'L' ? 5 : 6) : anatomical;
+    const x = view === 'front' ? frontX : view === 'rear' ? 1 - frontX
+      : (sideX[part] ?? .5) + (namedSide && namedSide !== side ? .025 : 0);
+    // Rear photos cannot confirm facial landmarks; a side photo cannot confirm the hidden far side.
+    const rearFace = /^(nose|left_eye|right_eye|mouth_)/.test(anatomical);
+    const visible = view === 'rear' ? !rearFace : view === 'side' ? (namedSide === null || namedSide === side) : true;
+    return {key, x:clamp(x), y:clamp(y), confidence:0, confirmed:false, visible, adjusted:false};
+  });
+}
+
 export type RawPosePoint = { x: number; y: number; visibility?: number; presence?: number };
 const clamp = (v: number) => Math.max(0, Math.min(1, Number.isFinite(v) ? v : 0));
 export function pointsFromDetection(detected: readonly RawPosePoint[]): PhotoPoint[] {

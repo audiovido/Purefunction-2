@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { detectPosturePhoto } from '../../lib/poseOnDevice';
 import {
   DRAFT_LEVEL_THRESHOLD_DEGREES, MIN_CONFIDENCE, POSE_LANDMARKS, PHOTO_RULE_VERSION,
-  createSavedPhotoReview, landmarkLabel, photoLines,
+  createSavedPhotoReview, landmarkLabel, manualLandmarkPoints, photoLines,
   type LandmarkKey, type PhotoPoint, type PhotoReviewRecord, type PhotoView
 } from '../../lib/posturePhoto';
 
@@ -58,8 +58,16 @@ const PosturePhotoReview: React.FC<Props> = ({ records, onSave }) => {
       setMessage('All detected points need coach review. Low-confidence points are not included automatically.');
       setSaveState('idle');
     } catch (error) {
-      setMessage(`Detection unavailable: ${error instanceof Error ? error.message : 'check local model assets'}. You can retry with another photo.`);
+      const reason = (error instanceof Error ? error.message : 'check local model assets').replace(/[.!?\s]+$/, '');
+      setMessage(`Detection unavailable: ${reason}. Use Place points manually to continue.`);
     } finally { setAnalyzing(false); }
+  };
+  const placePointsManually = () => {
+    if (!photoUrl) return;
+    setPoints(manualLandmarkPoints(view, side, mirrored));
+    setSelected(side === 'R' ? 'right_shoulder' : 'left_shoulder');
+    setMessage('Illustrative starting points placed. Drag and confirm each visible point. No automatic findings.');
+    setSaveState('idle');
   };
   const patchPoint = (key: LandmarkKey, patch: Partial<PhotoPoint>) => {
     setPoints(current => current.map(p => p.key === key ? { ...p, ...patch } : p));
@@ -119,6 +127,8 @@ const PosturePhotoReview: React.FC<Props> = ({ records, onSave }) => {
             onChange={choosePhoto}/></label>
         <button type="button" className={button} onClick={()=>void run()} disabled={!photoUrl||analyzing||saving}>
           {analyzing?'Detecting…':'Detect joints'}</button>
+        <button type="button" className={button} aria-label="Place points manually"
+          onClick={placePointsManually} disabled={!photoUrl||analyzing||saving}>Place points manually</button>
         {points.length>0 && <button type="button" className={button} onClick={confirmHighConfidence}>Confirm high-confidence points</button>}
       </div>
       {photoUrl && <div className="mx-auto w-full max-w-[640px] min-w-0">
