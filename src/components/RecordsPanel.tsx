@@ -46,8 +46,10 @@ export const RecordsPanel: React.FC<{
     setError(null);
   };
 
-  const remove = (id: string) =>
+  const remove = (id: string) => {
+    if (by === 'client' && !(client.manualRecords ?? []).some((m) => m.id === id && m.addedBy === 'client')) return;
     onUpdateClient?.({ ...client, manualRecords: (client.manualRecords ?? []).filter((m) => m.id !== id) });
+  };
 
   const field =
     'w-full border border-gray-200 rounded-xl px-3 py-2.5 text-base sm:text-sm text-[#111827] focus:outline-none focus:border-[#111827]';
@@ -125,7 +127,7 @@ export const RecordsPanel: React.FC<{
                   </div>
                   <div className="text-[11px] text-gray-500 tabular-nums">est. 1RM {formatWeight(r.best1RM)}</div>
                 </div>
-                {onUpdateClient && r.manualId && (
+                {onUpdateClient && r.manualId && (by === 'coach' || (client.manualRecords ?? []).some((m) => m.id === r.manualId && m.addedBy === 'client')) && (
                   <button onClick={() => remove(r.manualId!)} aria-label={`Remove record ${r.name}`} className="p-1.5 text-gray-300 hover:text-red-600 cursor-pointer">
                     <Trash2 className="w-4 h-4" />
                   </button>

@@ -66,6 +66,32 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
     return false;
   };
 
+  // Mirrors private.guard_client_data: coach records are immutable in a client PATCH.
+  function clientManualRecordsAllowed(before, after) {
+    const from = Array.isArray(before) ? before : [];
+    if (after !== undefined && !Array.isArray(after)) return false;
+    const to = Array.isArray(after) ? after : [];
+    if (to.length > 500) return false;
+    const oldCoach = from.filter((r) => r && r.addedBy !== 'client').sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    const newCoach = to.filter((r) => r && r.addedBy !== 'client').sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    if (JSON.stringify(oldCoach) !== JSON.stringify(newCoach)) return false;
+    const ids = new Set();
+    for (const rec of to) {
+      if (!rec || typeof rec !== 'object' || Array.isArray(rec) ||
+          typeof rec.id !== 'string' || !rec.id || rec.id.length > 120 || ids.has(rec.id)) return false;
+      ids.add(rec.id);
+      if (rec.addedBy !== 'client') continue;
+      if (Object.keys(rec).some((k) => !['id','exerciseId','name','kg','reps','date','note','addedBy'].includes(k)) ||
+          typeof rec.name !== 'string' || !rec.name.trim() || rec.name.length > 200 ||
+          typeof rec.kg !== 'number' || !Number.isFinite(rec.kg) || rec.kg < 0 || rec.kg > 10000 ||
+          !Number.isInteger(rec.reps) || rec.reps < 1 || rec.reps > 100 ||
+          (rec.date !== undefined && (typeof rec.date !== 'string' || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(rec.date))) ||
+          (rec.note !== undefined && (typeof rec.note !== 'string' || rec.note.length > 2000)) ||
+          (rec.exerciseId !== undefined && (typeof rec.exerciseId !== 'string' || rec.exerciseId.length > 200))) return false;
+    }
+    return true;
+  }
+
   function matches(row, params) {
     for (const [k, v] of params) {
       if (['select', 'order', 'on_conflict', 'limit', 'columns'].includes(k)) continue;
@@ -311,11 +337,11 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
             const old = r.data || {};
             const next = patch.data || old;
             const allowed = (obj) => {
-              const { photoUrl, nutrition, ...rest } = obj;
+              const { photoUrl, nutrition, manualRecords, ...rest } = obj;
               const { log, ...nutRest } = nutrition || {};
               return JSON.stringify({rest,nutRest});
             };
-            if ('email' in patch || allowed(old) !== allowed(next))
+            if ('email' in patch || allowed(old) !== allowed(next) || !clientManualRecordsAllowed(old.manualRecords, next.manualRecords))
               return json(route, 403, { message: 'Coach-owned profile or assessment cannot be changed' });
           }
           Object.assign(r, patch, { updated_at: new Date().toISOString() });

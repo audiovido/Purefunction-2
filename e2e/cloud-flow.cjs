@@ -193,6 +193,31 @@ const today = iso(new Date());
   await R.getByText('Workout completed').waitFor({ timeout: 10000 }).catch(() => {});
   ok(await R.getByText('Workout completed').isVisible(), 'after reload the client is still signed in and sees saved results');
 
+  // Client manual PR: the real client UI must persist it under the restricted JSON guard.
+  await R.getByRole('button', { name: 'Progress', exact: true }).click();
+  await R.getByRole('button', { name: 'Add record' }).click();
+  await R.getByPlaceholder('Exercise (e.g. Biceps Curl)').fill('Test Biceps Curl');
+  await R.getByLabel('Weight in lb').fill('90');
+  await R.getByLabel('Reps', { exact: true }).fill('5');
+  await R.getByRole('button', { name: 'Save record' }).click();
+  await R.waitForTimeout(1200);
+  const manual = mock.db.clients.find((c) => c.id === ryanRow.id)?.data.manualRecords ?? [];
+  ok(manual.some((m) => m.name === 'Test Biceps Curl' && m.addedBy === 'client'), 'client manual record saved in cloud');
+  const token = 'tok-' + mock.db.users.find((u) => u.email === 'ryan@example.com').id;
+  const forbidden = await R.evaluate(async ({ token, id, current }) => {
+    const response = await fetch(`https://mock.supabase.co/rest/v1/clients?id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      body: JSON.stringify({ data: { ...current, assessments: [{ id: 'FORGED-ASSESSMENT' }] } })
+    });
+    return response.status;
+  }, { token, id: ryanRow.id, current: mock.db.clients.find((c) => c.id === ryanRow.id).data });
+  ok(forbidden === 403, 'client direct REST assessment edit rejected');
+  await R.reload();
+  await R.getByRole('button', { name: 'Progress', exact: true }).click();
+  await R.getByText('Test Biceps Curl').first().waitFor({ timeout: 10000 });
+  ok(await R.getByText('Test Biceps Curl').first().isVisible(), 'manual record survives refresh');
+  await R.getByRole('button', { name: 'Today', exact: true }).click();
+
   /* ---------------- coach uploads a video, client can play it ---------------- */
   await C.getByRole('button', { name: 'Library' }).first().click();
   await C.getByRole('button', { name: 'New exercise' }).click();
