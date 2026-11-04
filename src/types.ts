@@ -10,8 +10,10 @@ export type ClientTab = 'today' | 'progress' | 'messages' | 'refer';
 export interface RomMovement {
   id: string;
   name: string;
-  left: number;
-  right: number;
+  left: number | null;
+  right: number | null;
+  /** Explicit zero is measured only when marked true; old zero means not tested. */
+  measuredSides?: { left?: boolean; right?: boolean };
   normalMax?: number;
 }
 
@@ -208,7 +210,7 @@ export interface DayWorkout {
  * Workouts on real calendar dates (current model)
  * ------------------------------------------------------------------------- */
 
-export type WorkoutStatus = 'planned' | 'completed' | 'missed';
+export type WorkoutStatus = 'planned' | 'completed' | 'missed' | 'skipped';
 
 export interface SetLog {
   setNumber: number;
@@ -255,6 +257,9 @@ export interface Workout {
   /** whole-session effort 1–10 */
   sessionRpe?: number;
   clientFeedback?: string;
+  /** Coach-side edit provenance (not a substitute for a server audit log). */
+  lastEditedBy?: string;
+  lastEditedAt?: string;
 }
 
 export interface ProgressSeriesPoint {
@@ -408,12 +413,11 @@ export interface ClientProfile {
  * Asymmetry formula specified by user:
  * asymmetry % = |L - R| / max(L, R) * 100
  */
-export function calculateAsymmetryPercent(left: number, right: number): number {
-  const l = Math.max(0, Number(left) || 0);
-  const r = Math.max(0, Number(right) || 0);
-  const maxVal = Math.max(l, r);
-  if (maxVal === 0) return 0;
-  return Math.round((Math.abs(l - r) / maxVal) * 100);
+export function calculateAsymmetryPercent(left: number | null, right: number | null): number | null {
+  if (left == null || right == null || !Number.isFinite(left) || !Number.isFinite(right) || left < 0 || right < 0) return null;
+  const maxVal = Math.max(left, right);
+  if (maxVal === 0) return 0; // two explicitly measured zeros are symmetrical
+  return Math.round((Math.abs(left - right) / maxVal) * 100);
 }
 
 /**

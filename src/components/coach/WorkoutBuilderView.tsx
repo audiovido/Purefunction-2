@@ -21,6 +21,7 @@ import { MUSCLE_GROUPS, equipmentTypeOf, groupOf } from '../../lib/exerciseSearc
 import { WEIGHT_UNIT, roundLb } from '../../lib/units';
 import { ExerciseThumb } from '../ExerciseMedia';
 import { WeeklyWorkoutCalendar } from './WeeklyWorkoutCalendar';
+import { useSession } from '../../cloud/Session';
 import { WeightInput } from '../WeightInput';
 import {
   addDays,
@@ -59,7 +60,8 @@ const LIST_LIMIT = 40;
 const STATUS_STYLE: Record<Workout['status'], { dot: string; label: string; pill: string }> = {
   planned: { dot: 'bg-gray-300', label: 'Planned', pill: 'bg-gray-100 text-gray-700' },
   completed: { dot: 'bg-[#16A34A]', label: 'Completed', pill: 'bg-[#DCFCE7] text-[#166534]' },
-  missed: { dot: 'bg-[#DC2626]', label: 'Missed', pill: 'bg-[#FEE2E2] text-[#991B1B]' }
+  missed: { dot: 'bg-[#DC2626]', label: 'Missed', pill: 'bg-[#FEE2E2] text-[#991B1B]' },
+  skipped: { dot: 'bg-gray-400', label: 'Skipped', pill: 'bg-gray-200 text-gray-700' }
 };
 
 export const WorkoutBuilderView: React.FC<WorkoutBuilderViewProps> = ({
@@ -69,6 +71,9 @@ export const WorkoutBuilderView: React.FC<WorkoutBuilderViewProps> = ({
   onUpdateClient
 }) => {
   const today = todayISO();
+  const { profile } = useSession();
+  const trainerName = profile?.displayName || 'Coach';
+  const [editorOpen, setEditorOpen] = useState(false);
   const { exercises, getExercise } = useExerciseLibrary();
   const [weekStart, setWeekStart] = useState(startOfWeek(today));
   const [selectedDate, setSelectedDate] = useState(today);
@@ -115,7 +120,9 @@ export const WorkoutBuilderView: React.FC<WorkoutBuilderViewProps> = ({
 
   /* ---------------- workout edits (saved immediately) ---------------- */
 
-  const saveWorkout = (w: Workout) => onUpdateClient(upsertWorkout(client, w));
+  const saveWorkout = (w: Workout) => onUpdateClient(upsertWorkout(client, {
+    ...w, lastEditedBy: trainerName, lastEditedAt: new Date().toISOString()
+  }));
 
   const patchWorkout = (patch: Partial<Workout>) => {
     if (workout) saveWorkout({ ...workout, ...patch });
@@ -171,6 +178,13 @@ export const WorkoutBuilderView: React.FC<WorkoutBuilderViewProps> = ({
     saveWorkout({ ...workout, blocks });
   };
 
+  const stampCopied = (updated: ClientProfile): ClientProfile => {
+    const existingIds = new Set((client.workouts ?? []).map((w) => w.id));
+    return { ...updated, workouts: updated.workouts?.map((w) => existingIds.has(w.id) ? w : {
+      ...w, lastEditedBy: trainerName, lastEditedAt: new Date().toISOString()
+    }) };
+  };
+
   const handleCopyWeek = () => {
     const target = addDays(weekStart, 7);
     const r = copyWeek(client, weekStart, target);
@@ -178,7 +192,7 @@ export const WorkoutBuilderView: React.FC<WorkoutBuilderViewProps> = ({
       flash('Nothing to copy — this week has no workouts.', true);
       return;
     }
-    onUpdateClient(r.client);
+    onUpdateClient(stampCopied(r.client));
     flash(
       `Copied ${r.copied} workout${r.copied === 1 ? '' : 's'} to ${formatWeekRange(target)}` +
         (r.skipped ? ` · ${r.skipped} skipped (already logged)` : ''),
@@ -193,7 +207,7 @@ export const WorkoutBuilderView: React.FC<WorkoutBuilderViewProps> = ({
       flash(`${formatDate(copyTo, { weekday: true })} already has logged results — not overwritten.`, true);
       return;
     }
-    onUpdateClient(r.client);
+    onUpdateClient(stampCopied(r.client));
     flash(`Copied to ${formatDate(copyTo, { weekday: true })}`);
     setCopyTo(null);
   };
@@ -241,36 +255,19 @@ export const WorkoutBuilderView: React.FC<WorkoutBuilderViewProps> = ({
         </button>
       </div>
 
-      {/* Week navigation */}
-      <div className="flex items-center justify-between gap-3 mb-3">
-        <div className="flex items-center gap-1">
-          <button onClick={() => goWeek(-1)} aria-label="Previous week" className="p-2 rounded-lg hover:bg-gray-100 cursor-pointer">
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <span className="text-sm sm:text-base font-semibold text-[#111827] tabular-nums min-w-[120px] text-center">
-            {formatWeekRange(weekStart)}
-          </span>
-          <button onClick={() => goWeek(1)} aria-label="Next week" className="p-2 rounded-lg hover:bg-gray-100 cursor-pointer">
-            <ChevronRight className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="hidden sm:inline text-xs text-gray-400">Changes save automatically</span>
-          {weekStart !== startOfWeek(today) && (
-            <button onClick={goToday} className="text-xs font-semibold text-[#111827] underline cursor-pointer">
-              This week
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Weekly overview; existing full workout editor remains below. */}
+      {/* Calendar owns the single week navigator; no duplicated date strip. */}
+      {/* Weekly overview; the selected-day editor remains below or opens as a panel. */}
       <WeeklyWorkoutCalendar
         client={client}
         selectedDate={selectedDate}
         weekStart={weekStart}
         onSelectDate={selectCalendarDate}
         onUpdateClient={onUpdateClient}
+        onPreviousWeek={() => goWeek(-1)}
+        onNextWeek={() => goWeek(1)}
+        onToday={goToday}
+        onOpenEditor={() => setEditorOpen(true)}
+        trainerName={trainerName}
       />
 
       {toast && (
@@ -285,7 +282,12 @@ export const WorkoutBuilderView: React.FC<WorkoutBuilderViewProps> = ({
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+      {editorOpen && <div className="fixed inset-0 bg-black/30 z-[65]" onClick={() => setEditorOpen(false)} aria-hidden="true" />}
+      <div className={`${editorOpen
+        ? 'fixed inset-x-0 bottom-0 z-[70] h-[88dvh] overflow-y-auto rounded-t-2xl bg-[#F7F8FA] p-3 shadow-2xl md:inset-y-0 md:left-auto md:right-0 md:h-dvh md:w-[min(600px,52vw)] md:rounded-none md:p-5'
+        : ''} grid grid-cols-1 lg:grid-cols-12 gap-5 items-start min-w-0`}>
+        {editorOpen && <button type="button" onClick={() => setEditorOpen(false)} aria-label="Close workout editor"
+          className="min-h-11 w-full md:col-span-12 rounded-xl border border-gray-200 bg-white text-sm font-semibold">Close editor</button>}
         {/* ------------------------- Day editor ------------------------- */}
         <div
           className={`lg:col-span-7 lg:order-2 ${card} p-4 sm:p-6 ${isDragOver ? 'ring-2 ring-[#FFC809]' : ''}`}
@@ -524,6 +526,10 @@ export const WorkoutBuilderView: React.FC<WorkoutBuilderViewProps> = ({
                     Mark missed
                   </button>
                 )}
+                {workout.status !== 'skipped' && (
+                  <button onClick={() => patchWorkout({ status: 'skipped', completedAt: undefined })}
+                    className="min-h-11 px-3 py-2 rounded-lg text-xs font-semibold bg-gray-200 text-gray-700">Mark skipped</button>
+                )}
                 {workout.status !== 'planned' && (
                   <button
                     onClick={() => patchWorkout({ status: 'planned', completedAt: undefined })}
@@ -536,9 +542,9 @@ export const WorkoutBuilderView: React.FC<WorkoutBuilderViewProps> = ({
                 {copyTo === null ? (
                   <button
                     onClick={() => setCopyTo(addDays(selectedDate, 7))}
-                    className="px-3 py-2 rounded-lg text-xs font-semibold bg-white border border-gray-200 text-[#111827] cursor-pointer inline-flex items-center gap-1.5"
+                    className="min-h-11 px-3 py-2 rounded-lg text-xs font-semibold bg-white border border-gray-200 text-[#111827] cursor-pointer inline-flex items-center gap-1.5"
                   >
-                    <Copy className="w-3.5 h-3.5" /> Copy to…
+                    <Copy className="w-3.5 h-3.5" /> Copy to date…
                   </button>
                 ) : (
                   <span className="inline-flex items-center gap-1.5">

@@ -35,7 +35,7 @@ function initialWho(): { who: Who; joinEmail: string } {
 
 /** Separate coach and client sign-in, like TrueCoach. Invite links (?join=email) open client set-up. */
 export const AuthScreen: React.FC = () => {
-  const { signIn, signUp, forgotPassword, notice } = useSession();
+  const { signIn, signUp, resendVerification, forgotPassword, notice } = useSession();
   const start = initialWho();
   const [who, setWho] = useState<Who>(start.who);
   const [mode, setMode] = useState<'sign-in' | 'sign-up' | 'forgot'>(start.joinEmail ? 'sign-up' : 'sign-in');
@@ -185,6 +185,17 @@ export const AuthScreen: React.FC = () => {
             <CheckCircle2 className="w-4 h-4 shrink-0 mt-px" />
             <span>Check your email for the verification link before signing in.</span>
           </div>
+        )}
+        {sent && mode === 'sign-in' && (
+          <button type="button" onClick={async () => {
+            setBusy(true);
+            const error = await resendVerification(email);
+            setBusy(false);
+            setError(error);
+          }} disabled={busy}
+            className="min-h-[44px] w-full rounded-xl border border-gray-200 text-sm font-semibold text-[#111827]">
+            Resend verification email
+          </button>
         )}
         {sent && mode === 'forgot' && (
           <div className="flex items-start gap-2 text-sm text-[#166534] bg-green-50 border border-green-100 rounded-xl px-3 py-2.5" role="status">

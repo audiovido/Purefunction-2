@@ -24,6 +24,7 @@ interface SessionValue {
   email: string | null;
   signIn: (email: string, password: string) => Promise<string | null>;
   signUp: (email: string, password: string, name: string) => Promise<string | null>;
+  resendVerification: (email: string) => Promise<string | null>;
   signOut: () => Promise<void>;
   /** One-time message for the sign-in screen (e.g. expired reset link). */
   notice: string | null;
@@ -163,6 +164,17 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return 'verification-email-sent';
   };
 
+  const resendVerification = async (email: string) => {
+    if (!supabase) return 'Cloud is not configured.';
+    try {
+      const response = await fetch(`${supabaseUrl}/functions/v1/sign-up`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'resend', email: email.trim() })
+      });
+      return response.ok ? null : 'Could not request a new link. Try again later.';
+    } catch { return 'No connection. Check your internet and try again.'; }
+  };
+
   const forgotPassword = async (email: string) => {
     if (!supabase) return 'Cloud is not configured.';
     try {
@@ -205,6 +217,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         email: session?.user.email ?? null,
         signIn,
         signUp,
+        resendVerification,
         signOut,
         notice,
         forgotPassword,

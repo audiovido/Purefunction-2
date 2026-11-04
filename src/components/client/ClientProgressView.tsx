@@ -1,6 +1,7 @@
 import React from 'react';
-import { Check, ArrowRight } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { ClientProfile, calculateAsymmetryPercent } from '../../types';
+import { measuredRomSide } from '../../lib/measurements';
 import { EmptyProgress } from '../EmptyProgress';
 import { GoalsPanel } from '../coach/GoalsPanel';
 import { RecordsPanel } from '../RecordsPanel';
@@ -244,16 +245,14 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
               Clinical target: ≤ 10% asymmetry
             </p>
           </div>
-          <span className="bg-[#FFC809] text-[#111827] text-xs font-semibold px-2.5 py-0.5 rounded-full tabular-nums">
-            Hip IR: 17% → 8%
+          <span className="bg-gray-100 text-gray-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+            Dated measurements only
           </span>
         </div>
 
         <div className="space-y-2.5">
-          {client.rom.slice(0, 4).map((item) => {
-            const baselineAsym = calculateAsymmetryPercent(item.left, item.right);
-            // Show current improved symmetry vs baseline
-            const currentImproved = Math.max(4, baselineAsym - 7);
+          {(client.assessments?.at(-1)?.rom ?? client.rom).slice(0, 4).map((item) => {
+            const baselineAsym = calculateAsymmetryPercent(measuredRomSide(item, 'left'), measuredRomSide(item, 'right'));
             return (
               <div
                 key={item.id}
@@ -261,12 +260,8 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
               >
                 <span className="text-[#111827] font-medium">{item.name}</span>
                 <div className="flex items-center gap-2 tabular-nums">
-                  <span className="text-gray-400 line-through">
-                    {baselineAsym}%
-                  </span>
-                  <ArrowRight className="w-3 h-3 text-gray-400" />
                   <span className="bg-[#E5E7EB] text-[#111827] font-semibold px-2 py-0.5 rounded-full">
-                    {currentImproved}%
+                    {baselineAsym === null ? 'Not measured' : `${baselineAsym}%`}
                   </span>
                 </div>
               </div>

@@ -5,7 +5,7 @@ import { useExerciseLibrary } from '../../state/ExerciseLibrary';
 import { ExerciseVideoPlayer } from '../ExerciseMedia';
 import { formatWeight } from '../../lib/units';
 import {
-  addDays, blankWorkout, dayShort, effectiveStatus, formatDate, orderLabels,
+  addDays, blankWorkout, dayShort, effectiveStatus, formatDate, formatWeekRange, orderLabels,
   parseISODate, todayISO, upsertWorkout, weekDates, workoutOn
 } from '../../lib/workouts';
 
@@ -17,11 +17,17 @@ export interface WeeklyWorkoutCalendarProps {
   weekStart: string;
   onSelectDate: (date: string) => void;
   onUpdateClient: (next: ClientProfile) => void;
+  onPreviousWeek?: () => void;
+  onNextWeek?: () => void;
+  onToday?: () => void;
+  onOpenEditor?: () => void;
+  trainerName?: string;
 }
 
 export function calendarStatus(w: Workout, today: string): { label: string; classes: string } {
   if (w.status === 'completed') return { label: 'Completed', classes: 'bg-green-100 text-green-800' };
   if (w.status === 'missed') return { label: 'Missed', classes: 'bg-red-100 text-red-800' };
+  if (w.status === 'skipped') return { label: 'Skipped', classes: 'bg-gray-200 text-gray-600' };
   const completed = w.blocks.reduce((sum, b) => sum + b.loggedSets.filter(s => s.completed).length, 0);
   if (completed > 0) return { label: 'Partially completed', classes: 'bg-amber-100 text-amber-900' };
   if (effectiveStatus(w, today) === 'missed') return { label: 'Missed', classes: 'bg-red-100 text-red-800' };
@@ -36,7 +42,8 @@ export function tabletDayStart(dayIndex: number): number {
 const card = 'min-w-0 rounded-xl border border-gray-200 bg-white p-2.5 flex flex-col gap-2';
 
 export const WeeklyWorkoutCalendar: React.FC<WeeklyWorkoutCalendarProps> = ({
-  client, selectedDate, weekStart, onSelectDate, onUpdateClient
+  client, selectedDate, weekStart, onSelectDate, onUpdateClient,
+  onPreviousWeek, onNextWeek, onToday, onOpenEditor, trainerName
 }) => {
   const { getExercise } = useExerciseLibrary();
   const [videoId, setVideoId] = useState<string | null>(null);
@@ -49,21 +56,23 @@ export const WeeklyWorkoutCalendar: React.FC<WeeklyWorkoutCalendarProps> = ({
   const create = (date: string) => {
     // Never replace a scheduled or logged session.
     if (workoutOn(client, date)) { onSelectDate(date); return; }
-    onUpdateClient(upsertWorkout(client, blankWorkout(date)));
+    onUpdateClient(upsertWorkout(client, { ...blankWorkout(date), lastEditedBy: trainerName ?? 'Coach', lastEditedAt: new Date().toISOString() }));
     onSelectDate(date);
+    onOpenEditor?.();
   };
 
   return (
     <section aria-label="Weekly workout calendar" className="mb-5 min-w-0">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="text-sm text-gray-600">Select a day to edit its program below. Results are read-only here.</div>
+        <div className="min-w-0"><span className="block text-sm font-semibold text-[#111827]">{formatWeekRange(weekStart)}</span>
+          <span className="text-xs text-gray-600">Select a day to edit; results are read-only in the calendar.</span></div>
         <div className="flex items-center gap-1">
-          <button type="button" onClick={() => onSelectDate(addDays(selectedDate, -1))}
-            aria-label="Previous day" className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-xl bg-white border border-gray-200"><ChevronLeft className="h-4 w-4" /></button>
-          <button type="button" onClick={() => onSelectDate(today)}
+          <button type="button" onClick={onPreviousWeek}
+            aria-label="Previous week" className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-xl bg-white border border-gray-200"><ChevronLeft className="h-4 w-4" /></button>
+          <button type="button" onClick={onToday}
             className="min-h-11 px-3 rounded-xl border border-gray-200 text-sm font-semibold">Today</button>
-          <button type="button" onClick={() => onSelectDate(addDays(selectedDate, 1))}
-            aria-label="Next day" className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-xl bg-white border border-gray-200"><ChevronRight className="h-4 w-4" /></button>
+          <button type="button" onClick={onNextWeek}
+            aria-label="Next week" className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-xl bg-white border border-gray-200"><ChevronRight className="h-4 w-4" /></button>
         </div>
       </div>
       <div className="grid min-w-0 grid-cols-1 gap-2 md:grid-cols-3 xl:grid-cols-7 items-stretch">
@@ -75,7 +84,7 @@ export const WeeklyWorkoutCalendar: React.FC<WeeklyWorkoutCalendarProps> = ({
           const visibleOnTablet = index >= tabletStart && index < tabletStart + 3;
           return (
             <article key={date} className={`${card} ${selected ? 'ring-2 ring-[#FFC809]' : ''} ${selected ? '' : 'hidden'} ${visibleOnTablet ? 'md:flex' : 'md:hidden'} xl:flex`}>
-              <button type="button" onClick={() => onSelectDate(date)} aria-pressed={selected}
+              <button type="button" onClick={() => { onSelectDate(date); onOpenEditor?.(); }} aria-pressed={selected}
                 className="sticky top-0 z-[1] min-h-11 rounded-lg bg-[#111827] text-white px-2 py-2 text-left text-xs font-semibold">
                 <span className="block">{dayShort(date)} {parseISODate(date).getDate()}</span>
                 <span className="block text-[10px] text-gray-300 font-normal">{formatDate(date)}{date === today ? ' · Today' : ''}</span>
@@ -90,11 +99,12 @@ export const WeeklyWorkoutCalendar: React.FC<WeeklyWorkoutCalendarProps> = ({
                 </div>
               ) : (
                 <>
-                  <button type="button" onClick={() => onSelectDate(date)}
+                  <button type="button" onClick={() => { onSelectDate(date); onOpenEditor?.(); }}
                     className="min-h-11 text-left min-w-0 text-sm font-semibold text-[#111827] break-words">
                     {workout.title}
                   </button>
                   {status && <span className={`self-start rounded-full px-2 py-1 text-[10px] font-semibold ${status.classes}`}>{status.label}</span>}
+                  {workout.lastEditedBy && <span className="text-[11px] text-gray-500">Last edited by {workout.lastEditedBy}</span>}
                   <div className="space-y-2 flex-1">
                     {workout.blocks.map((b, i) => {
                       const done = b.loggedSets.filter(s => s.completed);
@@ -122,7 +132,7 @@ export const WeeklyWorkoutCalendar: React.FC<WeeklyWorkoutCalendarProps> = ({
                   </div>
                   {workout.coachNotes && <details className="border-t border-gray-100 pt-2 text-[11px]"><summary className="font-medium cursor-pointer">Session notes</summary><p className="mt-1 whitespace-pre-wrap">{workout.coachNotes}</p></details>}
                   {(workout.sessionRpe != null || workout.clientFeedback) && <div className="border-t border-gray-100 pt-2 text-[11px] min-w-0"><span className="font-semibold">Client feedback: </span><span className="break-words">{workout.sessionRpe != null ? `RPE ${workout.sessionRpe}/10` : ''}{workout.sessionRpe != null && workout.clientFeedback ? ' · ' : ''}{workout.clientFeedback ?? ''}</span></div>}
-                  <button type="button" onClick={() => onSelectDate(date)} className="min-h-11 rounded-lg bg-gray-100 text-xs font-semibold text-[#111827]">Edit this day</button>
+                  <button type="button" onClick={() => { onSelectDate(date); onOpenEditor?.(); }} className="min-h-11 rounded-lg bg-gray-100 text-xs font-semibold text-[#111827]">Edit this day</button>
                 </>
               )}
             </article>

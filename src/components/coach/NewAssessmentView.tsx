@@ -19,11 +19,11 @@ import {
   PriTestItem,
   GaitPostureItem,
   StrengthTestItem,
-  calculateAsymmetryPercent,
   calculateEstimated1RM
 } from '../../types';
 import { WEIGHT_UNIT, formatWeight } from '../../lib/units';
 import { parseDegreeInput } from '../../lib/spectrum';
+import { measuredAsymmetry, measuredRomSide } from '../../lib/measurements';
 import { InBodyPrintoutThumbnail, InBodySegmentSilhouette } from '../VisualAssets';
 import { WeightInput } from '../WeightInput';
 import { isCloud } from '../../cloud/supabase';
@@ -181,11 +181,11 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
 
   // Handlers for Step 3: Range of Motion
   const updateRomValue = (id: string, side: 'left' | 'right', raw: string) => {
-    // ROM rows store numeric values; empty input means unmeasured (0 in legacy schema).
-    const value = raw === '' ? 0 : parseDegreeInput(raw);
-    if (value === null) return;
+    const value = raw.trim() === '' ? null : parseDegreeInput(raw);
+    if (raw.trim() !== '' && value === null) return;
     const updatedRom = client.rom.map((item) =>
-      item.id === id ? { ...item, [side]: value } : item
+      item.id === id ? { ...item, [side]: value,
+        measuredSides: { ...item.measuredSides, [side]: value !== null } } : item
     );
     onUpdateClient({
       ...client,
@@ -199,8 +199,8 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
     const newItem: RomMovement = {
       id: `rom-${Date.now()}`,
       name: newMovementName.trim(),
-      left: 40,
-      right: 45
+      left: null,
+      right: null
     };
     onUpdateClient({
       ...client,
@@ -748,8 +748,8 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
               </thead>
               <tbody className="divide-y divide-gray-100 text-sm sm:text-[16px]">
                 {client.rom.map((item) => {
-                  const asymPercent = calculateAsymmetryPercent(item.left, item.right);
-                  const isHighAsymmetry = asymPercent > 10;
+                  const asymPercent = measuredAsymmetry(measuredRomSide(item, 'left'), measuredRomSide(item, 'right'));
+                  const isHighAsymmetry = asymPercent !== null && asymPercent > 10;
 
                   return (
                     <tr key={item.id} className="group hover:bg-gray-50/40 transition-colors">
@@ -774,7 +774,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                           min="0"
                           max="180"
                           step="1"
-                          value={item.left}
+                          value={measuredRomSide(item, 'left') ?? ''}
                           onChange={(e) => updateRomValue(item.id, 'left', e.target.value)}
                           aria-label={`${item.name} Left degrees`}
                           className="w-20 border border-gray-200 rounded-lg px-3 py-2 text-[15px] text-[#111827] tabular-nums focus:outline-none focus:border-[#111827] transition-colors"
@@ -787,7 +787,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                           min="0"
                           max="180"
                           step="1"
-                          value={item.right}
+                          value={measuredRomSide(item, 'right') ?? ''}
                           onChange={(e) => updateRomValue(item.id, 'right', e.target.value)}
                           aria-label={`${item.name} Right degrees`}
                           className="w-20 border border-gray-200 rounded-lg px-3 py-2 text-[15px] text-[#111827] tabular-nums focus:outline-none focus:border-[#111827] transition-colors"
@@ -802,7 +802,7 @@ export const NewAssessmentView: React.FC<NewAssessmentViewProps> = ({
                               : 'bg-[#E5E7EB] text-[#374151] font-medium'
                           }`}
                         >
-                          {asymPercent}%
+                          {asymPercent === null ? 'Not measured' : `${asymPercent}%`}
                         </span>
                       </td>
                     </tr>

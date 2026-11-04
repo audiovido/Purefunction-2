@@ -4,6 +4,7 @@
  * All angles are in degrees. "Left"/"right" are the client's own sides.
  */
 import { ClientProfile, PostureAngles, RomMovement } from '../types';
+import { measuredRomSide } from './measurements';
 
 export type View = 'front' | 'side';
 export type Pt = [number, number];
@@ -441,7 +442,7 @@ export function latestRom(c: ClientProfile): RomMovement[] {
   const a = c.assessments ?? [];
   const last = a[a.length - 1];
   const rom = last?.rom?.length ? last.rom : c.rom ?? [];
-  return rom.filter((r) => r.left > 0 || r.right > 0);
+  return rom.filter((r) => measuredRomSide(r, 'left') !== null || measuredRomSide(r, 'right') !== null);
 }
 
 export function rateRom(value: number, normal: number): Severity {
