@@ -1,9 +1,9 @@
 // Pure Function 2 sign-up (deployed as Edge Function "sign-up", verify_jwt = false).
-// Only the coach's email, or an email the coach already added to a client,
-// can create an account. Accounts are created already confirmed, so no
-// confirmation email is needed (Supabase's built-in mailer only reaches
-// team members). The app signs in right after with the same password.
+// Only the coach's email or an invited client's email may sign up.
+// A one-time verification link is sent via Resend before any login is possible.
+// Never auto-confirm a new user's email.
 import { createClient } from 'npm:@supabase/supabase-js@2.49.4';
+import { APP_URL, layout, sendEmail } from '../_shared/email.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -47,17 +47,34 @@ Deno.serve(async (req) => {
     });
   }
 
-  const { error } = await admin.auth.admin.createUser({
+  const { data, error } = await admin.auth.admin.generateLink({
+    type: 'signup',
     email,
     password,
-    email_confirm: true,
-    user_metadata: { display_name: name }
+    options: { data: { display_name: name } }
   });
   if (error) {
     if (/already|registered|exists/i.test(error.message)) {
       return json(409, { error: 'An account with this email already exists. Sign in instead.' });
     }
-    return json(400, { error: error.message });
+    return json(400, { error: 'Could not start verification. Try again.' });
   }
-  return json(200, { ok: true, role });
+  const token = data.properties?.hashed_token;
+  const userId = data.user?.id;
+  if (!token || !userId) return json(503, { error: 'Verification could not be prepared.' });
+  const link = new URL(APP_URL);
+  link.searchParams.set('verify', token);
+  const sent = await sendEmail(
+    email,
+    'Verify your Pure Function email',
+    layout('Verify your email', ['Please verify that you own this email before signing in.'], {
+      text: 'Verify email', url: link.toString()
+    })
+  );
+  if (!sent.ok) {
+    // Roll back this unconfirmed registration so the person can retry.
+    await admin.auth.admin.deleteUser(userId);
+    return json(sent.status, { error: sent.error });
+  }
+  return json(200, { ok: true, verificationRequired: true, role });
 });

@@ -48,6 +48,20 @@ const today = iso(new Date());
     await p.getByLabel('Email').fill(email);
     await p.getByLabel('Password').fill(pw);
     await p.locator('form button[type=submit]').click();
+    if (email !== 'eve@example.com') {
+      await p.getByText('Check your email for the verification link').waitFor();
+      const mail = mock.db.emails.find((e) => e.to === email.toLowerCase() && e.kind === 'verify');
+      ok(!!mail, 'signup sends email ownership verification');
+      const early = await p.evaluate(async ({ email, pw }) => {
+        const res = await fetch('https://mock.supabase.co/auth/v1/token?grant_type=password', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password: pw })
+        });
+        return res.status;
+      }, { email, pw });
+      ok(early !== 200, 'unverified email cannot sign in');
+      await p.goto(`http://localhost:${PORT}/?verify=${mail.token}`);
+    }
   };
   const shot = (p, n) => shots && p.screenshot({ path: `${shots}/${n}.png` });
 
@@ -123,6 +137,10 @@ const today = iso(new Date());
   await R.getByLabel('Your name').fill('Ryan');
   await R.getByLabel('Password').fill('ryanpass1');
   await R.locator('form button[type=submit]').click();
+  await R.getByText('Check your email for the verification link').waitFor();
+  const verifyRyan = mock.db.emails.find((e) => e.to === 'ryan@example.com' && e.kind === 'verify');
+  ok(!!verifyRyan, 'client receives verification email');
+  await R.goto(`http://localhost:${PORT}/?verify=${verifyRyan.token}`);
   await R.getByRole('heading', { name: /Goblet Squat/ }).first().waitFor({ timeout: 10000 });
   ok(true, 'client signs up with the email the coach added and sees today’s workout');
   ok((await R.getByRole('button', { name: 'Coach' }).count()) === 0, 'client has no coach switch');

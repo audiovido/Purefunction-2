@@ -74,6 +74,12 @@ export const AuthScreen: React.FC = () => {
     }
     const err = mode === 'sign-in' ? await signIn(email, password) : await signUp(email, password, name);
     setBusy(false);
+    if (err === 'verification-email-sent') {
+      setMode('sign-in');
+      setPassword('');
+      setSent(true);
+      return;
+    }
     if (err) {
       setError(
         who === 'client' && /isn’t on the list/.test(err)
@@ -174,6 +180,12 @@ export const AuthScreen: React.FC = () => {
           </div>
         )}
 
+        {sent && mode === 'sign-in' && (
+          <div role="status" className="flex items-start gap-2 text-sm text-[#166534] bg-green-50 border border-green-100 rounded-xl px-3 py-2.5">
+            <CheckCircle2 className="w-4 h-4 shrink-0 mt-px" />
+            <span>Check your email for the verification link before signing in.</span>
+          </div>
+        )}
         {sent && mode === 'forgot' && (
           <div className="flex items-start gap-2 text-sm text-[#166534] bg-green-50 border border-green-100 rounded-xl px-3 py-2.5" role="status">
             <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />

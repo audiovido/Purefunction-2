@@ -20,6 +20,7 @@ import { searchExercises, useExerciseLibrary } from '../../state/ExerciseLibrary
 import { MUSCLE_GROUPS, equipmentTypeOf, groupOf } from '../../lib/exerciseSearch';
 import { WEIGHT_UNIT, roundLb } from '../../lib/units';
 import { ExerciseThumb } from '../ExerciseMedia';
+import { WeeklyWorkoutCalendar } from './WeeklyWorkoutCalendar';
 import { WeightInput } from '../WeightInput';
 import {
   addDays,
@@ -40,7 +41,6 @@ import {
   startOfWeek,
   todayISO,
   upsertWorkout,
-  weekDates,
   workoutOn
 } from '../../lib/workouts';
 
@@ -80,7 +80,6 @@ export const WorkoutBuilderView: React.FC<WorkoutBuilderViewProps> = ({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const libraryRef = useRef<HTMLDivElement>(null);
 
-  const days = weekDates(weekStart);
   const workout = workoutOn(client, selectedDate);
 
   const results = useMemo(
@@ -98,6 +97,13 @@ export const WorkoutBuilderView: React.FC<WorkoutBuilderViewProps> = ({
     setWeekStart(ws);
     const dow = (parseISODate(selectedDate).getDay() + 6) % 7;
     setSelectedDate(addDays(ws, dow));
+    setConfirmDelete(false);
+    setCopyTo(null);
+  };
+
+  const selectCalendarDate = (date: string) => {
+    setSelectedDate(date);
+    setWeekStart(startOfWeek(date));
     setConfirmDelete(false);
     setCopyTo(null);
   };
@@ -258,42 +264,14 @@ export const WorkoutBuilderView: React.FC<WorkoutBuilderViewProps> = ({
         </div>
       </div>
 
-      {/* Day strip */}
-      <div className="grid grid-cols-7 gap-1.5 sm:gap-2 mb-5">
-        {days.map((d) => {
-          const w = workoutOn(client, d);
-          const st = w ? effectiveStatus(w, today) : null;
-          const selected = d === selectedDate;
-          return (
-            <button
-              key={d}
-              onClick={() => {
-                setSelectedDate(d);
-                setConfirmDelete(false);
-                setCopyTo(null);
-              }}
-              aria-label={formatDate(d, { weekday: true })}
-              aria-pressed={selected}
-              className={`px-1.5 py-2 sm:p-3 rounded-xl sm:rounded-2xl border text-left cursor-pointer min-w-0 ${
-                selected
-                  ? 'bg-[#111827] text-white border-[#111827] shadow-sm'
-                  : 'bg-white text-[#111827] border-gray-100 hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-[11px] sm:text-xs font-bold">{dayShort(d)}</span>
-                {st && <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_STYLE[st].dot}`} />}
-              </div>
-              <div className={`text-base sm:text-lg font-semibold tabular-nums leading-tight ${d === today && !selected ? 'text-[#B45309]' : ''}`}>
-                {parseISODate(d).getDate()}
-              </div>
-              <div className={`hidden sm:block text-[11px] truncate ${selected ? 'text-gray-300' : 'text-gray-500'}`}>
-                {w ? `${w.blocks.length} exercise${w.blocks.length === 1 ? '' : 's'}` : 'Rest'}
-              </div>
-            </button>
-          );
-        })}
-      </div>
+      {/* Weekly overview; existing full workout editor remains below. */}
+      <WeeklyWorkoutCalendar
+        client={client}
+        selectedDate={selectedDate}
+        weekStart={weekStart}
+        onSelectDate={selectCalendarDate}
+        onUpdateClient={onUpdateClient}
+      />
 
       {toast && (
         <div

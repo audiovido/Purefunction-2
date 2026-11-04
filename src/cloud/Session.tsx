@@ -94,8 +94,19 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     if (!supabase) return;
     let active = true;
-    const resetToken = new URLSearchParams(window.location.search).get('reset');
+    const params = new URLSearchParams(window.location.search);
+    const resetToken = params.get('reset');
+    const verifyToken = params.get('verify');
     const start = async () => {
+      if (verifyToken && !resetToken) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('verify');
+        window.history.replaceState(null, '', url.toString());
+        const { error } = await supabase!.auth.verifyOtp({ type: 'signup', token_hash: verifyToken });
+        if (!active) return;
+        if (error) setNotice('Verification link expired or invalid. Contact your coach for a new invitation.');
+        else setNotice('Email verified. Your account is ready.');
+      }
       if (resetToken) {
         const url = new URL(window.location.href);
         url.searchParams.delete('reset');
@@ -148,7 +159,8 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } catch {
       return 'No connection. Check your internet and try again.';
     }
-    return signIn(email, password);
+    // Signing in before email ownership is verified is intentionally forbidden.
+    return 'verification-email-sent';
   };
 
   const forgotPassword = async (email: string) => {

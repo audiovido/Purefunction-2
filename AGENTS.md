@@ -53,6 +53,13 @@ App: coaching PWA (like TrueCoach) for a coach in the US, up to ~100 clients. Co
   2. Unread badges were not tested with two real signed-in devices.
   3. T6: plan for replacing the exercise videos (no code yet).
 
+- PR `feat/t8a-weekly-calendar` (2026-11-04, ChatGPT pf_t8a_calendar_integrated.py + Claude fixes), NOT merged:
+  - T8a: sign-up no longer auto-confirms; the Edge Function emails a one-time verify link (Resend), the app verifies `?verify=` before login. Needs: deploy `sign-up` Edge Function together with the site, Supabase Auth "Confirm email" ON, real-inbox test.
+  - Weekly calendar in Exercises (7 cols desktop / 3 iPad / 1 phone), editor stays below. Not yet: skipped status, last-edited-by, side-panel editor.
+  - Assessment tab label "Overview" → "Posture Overview" (label only).
+  - Checks: lint OK, 91 tests, cloud-flow ALL PASSED, responsive 0/0, library + pwa PASSED.
+  - Still open (security, T8b): private coach notes inside `clients.data` reach the client; client RLS can rewrite workouts and `clients.data`. SQL proposal not applied (needs Armin's OK).
+
 ## Next ideas
 - Auto joint detection on real photos (MediaPipe on phone) + photo analysis with green/red lines.
 - Program templates for many clients; push notifications for new messages; a sample Test Client.

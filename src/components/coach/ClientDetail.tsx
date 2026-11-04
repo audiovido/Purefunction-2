@@ -105,7 +105,7 @@ export const ClientDetail: React.FC<{
           <>
             <Sub
               items={[
-                { id: 'overview', label: 'Overview' },
+                { id: 'overview', label: 'Posture Overview' },
                 { id: 'new', label: assessments.length ? 'New assessment' : 'Start assessment' },
                 { id: 'report', label: 'Reports' }
               ]}
@@ -143,7 +143,7 @@ export const ClientDetail: React.FC<{
             goals={client.goals ?? []}
             assessments={assessments}
             onDelete={(id) => onUpdateClient({ ...client, goals: (client.goals ?? []).filter((g) => g.id !== id) })}
-            emptyText="No goals yet. Open Assessment › Overview and tap the note icon next to any measure to set a goal."
+            emptyText="No goals yet. Open Assessment › Posture Overview and tap the note icon next to any measure to set a goal."
           />
         )}
 
