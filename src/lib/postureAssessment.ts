@@ -1,4 +1,5 @@
 import type { RomMovement } from '../types';
+import type { PhotoReviewRecord } from './posturePhoto';
 import { measuredRomSide } from './measurements';
 import { PATTERN_RULE_VERSION } from './patternRules/v1';
 export type PostureSource = 'measured' | 'observed' | 'illustrative';
@@ -27,6 +28,8 @@ export interface PostureAssessment {
   observations: PostureObservation[];
   interpretation: PatternInterpretation;
   summary: string; summaryApprovedByCoach: boolean;
+  /** Coach-only observations; never published to posture_public_reports. */
+  photoReviews?: PhotoReviewRecord[];
   visualSettings: { view: 'front' | 'side' | 'rear'; scale: number; gaitPhase: number; slow: boolean };
 }
 export const OBSERVATION_OPTIONS: { id: ObservationId; label: string; region: Region }[] = [
