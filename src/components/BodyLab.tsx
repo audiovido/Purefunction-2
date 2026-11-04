@@ -126,7 +126,8 @@ export const BodyLab: React.FC<{
   const move = MOVEMENTS.find((m) => m.id === moveId) ?? MOVEMENTS[0];
   const finding = findingsByKey.get(move.sopKey);
 
-  const posture = client.posture ?? {};
+  // Legacy numeric posture remains stored in dated history but no longer drives a current posture claim.
+  const posture = {} as PostureAngles;
   const hasPosture = POSTURE.some((d) => posture[d.key] != null);
 
   // Separate Front / Side toggles for Body map and Movements
@@ -155,12 +156,6 @@ export const BodyLab: React.FC<{
     setSideSel(preferredSide ?? null);
     setMoveViewPref(m.view);
     setPlaying(true);
-  };
-
-  const setPosture = (key: keyof PostureAngles, raw: string) => {
-    if (!onUpdateClient) return;
-    const v = raw === '' ? undefined : Number(raw);
-    onUpdateClient({ ...client, posture: { ...posture, [key]: v, measuredOn: todayISO() } });
   };
 
   // ---------------- Body map figure (posture lines + joint dots/tags from limited clientFindings)
@@ -370,20 +365,7 @@ export const BodyLab: React.FC<{
                 {sevText[sev]}
               </span>
             )}
-            {onUpdateClient && (
-              <label className="flex items-center border border-gray-200 rounded-full pl-3 pr-2 py-1 bg-white">
-                <input
-                  type="number"
-                  step="0.5"
-                  inputMode="decimal"
-                  value={v ?? ''}
-                  onChange={(e) => setPosture(d.key, e.target.value)}
-                  aria-label={`${d.label} in degrees`}
-                  className="w-12 text-sm font-semibold text-right focus:outline-none bg-transparent"
-                />
-                <span className="text-xs text-gray-400 ml-0.5">°</span>
-              </label>
-            )}
+            <span className="text-xs text-gray-400">Needs observation</span>
           </div>
         </div>
         {sev && sev !== 'ok' && (
@@ -531,7 +513,7 @@ export const BodyLab: React.FC<{
           {!hasPosture && (
             <p className="text-xs text-gray-500 mt-2">
               {onUpdateClient
-                ? 'Type standing posture angles in degrees. The figure updates immediately.'
+                ? 'Use the Posture Overview checklist below to confirm observed findings.'
                 : 'Your coach hasn’t measured standing posture angles yet.'}
             </p>
           )}

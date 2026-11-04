@@ -7,7 +7,7 @@
 const crypto = require('crypto');
 
 module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) {
-  const db = { users: [], profiles: [], clients: [], workouts: [], coach_notes_secure: [], assignments: [], exercises: [], files: {}, clientFiles: {}, emails: [], resetTokens: {}, verificationRequests: {} };
+  const db = { users: [], profiles: [], clients: [], workouts: [], coach_notes_secure: [], assignments: [], exercises: [], files: {}, clientFiles: {}, emails: [], resetTokens: {}, verificationRequests: {}, trainerAllowlist: new Set([coachEmail.toLowerCase()]), food_entries: [], food_items: [], favorite_meals: [] };
   const log = [];
   const realtimeLog = [];
   const cors = {
@@ -47,6 +47,7 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
     if (prof.role === 'coach') {
       if (table === 'clients' || table === 'coach_notes_secure') return db.assignments.some((a) => a.coach_id === prof.id && a.client_id === (row.client_id || row.id));
       if (table === 'workouts') return db.assignments.some((a) => a.coach_id === prof.id && a.client_id === row.client_id);
+      if (['food_entries','food_items','favorite_meals'].includes(table)) return db.assignments.some(a=>a.coach_id===prof.id && a.client_id===row.client_id);
       if (table === 'profiles') return row.id === prof.id || db.assignments.some((a) => a.coach_id === prof.id && a.client_id === row.client_id);
       return true;
     }
@@ -54,15 +55,19 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
     if (table === 'clients') return row.id === prof.client_id;
     if (table === 'workouts') return row.client_id === prof.client_id;
     if (table === 'coach_notes_secure') return row.client_id === prof.client_id && row.shared === true;
+    if (['food_entries','food_items','favorite_meals'].includes(table)) return row.client_id===prof.client_id;
     if (table === 'exercises') return true;
     return false;
   };
   const canWrite = (prof, table, row) => {
     if (!prof) return false;
+    if (prof.role === 'coach' && ['food_entries','food_items','favorite_meals'].includes(table)) return false;
     if (prof.role === 'coach') return table !== 'profiles' && (table === 'exercises' || (table === 'clients' && !db.clients.some((c) => c.id === row.id)) || db.assignments.some((a) => a.coach_id === prof.id && a.client_id === (row.client_id || row.id)));
     if (table === 'clients') return row.id === prof.client_id;
     if (table === 'workouts') return false;
     if (table === 'coach_notes_secure') return false;
+    if (table === 'favorite_meals') return row.client_id===prof.client_id;
+    if (table === 'food_entries' || table === 'food_items') return false;
     return false;
   };
 
@@ -288,6 +293,55 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
       return json(route, 200, [{ updated_version: w.updated_at }]);
     }
 
+    // ---------------- p5 head-coach trainer administration (JWT enforced) ----------------
+    if (['pf_head_coach','pf_trainer_is_allowed','pf_list_trainers','pf_manage_trainer'].some(x => path === '/rest/v1/rpc/' + x) && method === 'POST') {
+      const uid = uidFrom(req);
+      const prof = profileOf(uid);
+      const user = db.users.find(u => u.id === uid);
+      const head = !!prof && prof.role === 'coach' && user?.verified !== false && user?.email?.toLowerCase() === coachEmail.toLowerCase();
+      const b = JSON.parse(req.postData() || '{}');
+      if (path.endsWith('/pf_head_coach')) return json(route, 200, head);
+      if (!head) return json(route, 403, {message:'Head coach only'});
+      if (path.endsWith('/pf_trainer_is_allowed')) return json(route, 200, db.trainerAllowlist.has(String(b.p_email||'').toLowerCase()));
+      if (path.endsWith('/pf_list_trainers')) return json(route, 200, [...db.trainerAllowlist].map(email => {
+        const u = db.users.find(x => x.email.toLowerCase() === email);
+        const p = u && profileOf(u.id);
+        return {email,coach_id:p?.role==='coach'?p.id:null,display_name:p?.display_name||'',verified:!!u && u.verified!==false};
+      }));
+      if (path.endsWith('/pf_manage_trainer')) {
+        const email = String(b.p_email||'').trim().toLowerCase();
+        if (!email.includes('@')) return json(route, 400, {message:'Bad email'});
+        if (b.p_action === 'invite') {db.trainerAllowlist.add(email);return json(route,200,true);}
+        const u = db.users.find(x => x.email.toLowerCase()===email);
+        const p = u && profileOf(u.id);
+        if (!p || p.role !== 'coach' || u.verified === false || !db.clients.some(c=>c.id===b.p_client_id)) return json(route,403,{message:'Not verified trainer/client'});
+        db.assignments = db.assignments.filter(a=>!(a.coach_id===p.id && a.client_id===b.p_client_id));
+        if (b.p_action === 'assign') db.assignments.push({coach_id:p.id,client_id:b.p_client_id});
+        else if (b.p_action!=='unassign') return json(route,400,{message:'Unknown action'});
+        return json(route,200,true);
+      }
+    }
+    // ---------------- p6 food diary: authenticated parse + transactional, idempotent mock ----------------
+    if (path === '/functions/v1/food-parse' && method === 'POST') {
+      if (!profileOf(uidFrom(req))) return json(route, 401, {error:'Sign in required'});
+      const desc = String(JSON.parse(req.postData()||'{}').description||'');
+      if (!desc) return json(route,400,{error:'Missing meal description'});
+      return json(route,200,{items:[{id:crypto.randomUUID(),name:'Generic food (verify)',quantity:1,unit:'serving',grams:null,state:'unknown',kcal:null,protein:null,source:'generic',sourceId:null,assumptions:'Unknown portion; please edit',version:'food-v1',kcalPerGram:null,proteinPerGram:null}],questions:['Check serving size and cooking oil.']});
+    }
+    if (path === '/rest/v1/rpc/pf_save_food_entry' && method === 'POST') {
+      const prof=profileOf(uidFrom(req));
+      const q=JSON.parse(req.postData()||'{}');
+      if (!prof || prof.role!=='client' || prof.client_id!==q.p_client_id) return json(route,403,{message:'Own food records only'});
+      if (!Array.isArray(q.p_items) || q.p_items.length<1 || q.p_items.some(i=>!i.name||!(i.quantity>0))) return json(route,400,{message:'Invalid food items'});
+      const old=db.food_entries.find(e=>e.client_id===q.p_client_id && (e.id===q.p_existing_id || e.idempotency_key===q.p_key));
+      if (q.p_existing_id && !old) return json(route,403,{message:'Unknown or foreign entry'});
+      const id=old?.id||crypto.randomUUID();
+      const row={id,client_id:q.p_client_id,date:q.p_date,description:q.p_description,idempotency_key:old?.idempotency_key||q.p_key,status:q.p_status};
+      if(old) Object.assign(old,row);else db.food_entries.push(row);
+      db.food_items=db.food_items.filter(i=>i.entry_id!==id);
+      for(const i of q.p_items) db.food_items.push({...i,id:crypto.randomUUID(),client_id:q.p_client_id,entry_id:id});
+      return json(route,200,id);
+    }
     // ---------------- REST ----------------
     m = path.match(/^\/rest\/v1\/(\w+)$/);
     if (m) {
@@ -309,6 +363,7 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
         const body = JSON.parse(req.postData() || '[]');
         const arr = Array.isArray(body) ? body : [body];
         for (const r of arr) {
+          if (table === 'food_entries' || table === 'food_items') return json(route,403,{message:'Use secure food RPC'});
           if (table === 'clients' && r.data && 'coachNotes' in r.data)
             return json(route, 403, { message: 'Use coach_notes_secure; inline notes are forbidden' });
           if (!canWrite(prof, table, r)) return json(route, 403, { code: '42501', message: `new row violates row-level security policy for table "${table}"` });
@@ -367,11 +422,12 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
         return route.fulfill({ status: 204, headers: cors });
       }
       if (method === 'DELETE') {
-        if (!prof || prof.role !== 'coach') return route.fulfill({ status: 204, headers: cors }); // RLS: silently nothing
+        if (!prof || (prof.role !== 'coach' && !['food_entries','favorite_meals'].includes(table)) || (prof.role === 'coach' && ['food_entries','food_items','favorite_meals'].includes(table))) return route.fulfill({ status: 204, headers: cors }); // RLS: silently nothing
         for (let i = rows.length - 1; i >= 0; i--) {
-          if (matches(rows[i], url.searchParams)) {
+          if (matches(rows[i], url.searchParams) && (prof.role === 'coach' || rows[i].client_id === prof.client_id)) {
             const [gone] = rows.splice(i, 1);
             if (table === 'clients') db.workouts = db.workouts.filter((w) => w.client_id !== gone.id);
+            if (table === 'food_entries') db.food_items=db.food_items.filter(f=>f.entry_id!==gone.id);
             broadcast(table, 'DELETE', { id: gone.id }, gone);
           }
         }

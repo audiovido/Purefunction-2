@@ -1,3 +1,5 @@
+import type { PostureAssessment } from './lib/postureAssessment';
+
 export type Role = 'coach' | 'client';
 
 export type CoachTab = 'clients' | 'library' | 'programs' | 'messages';
@@ -399,6 +401,8 @@ export interface ClientProfile {
   weeklyWorkouts?: DayWorkout[];
   /** Standing posture in degrees, measured by the coach (photo or eye). */
   posture?: PostureAngles;
+  /** Coach-only working notes until saved in the next dated assessment. */
+  postureDraft?: PostureAssessment;
   /** Spectrum of Patterns (SOP) test values by row id. */
   spectrumTests?: Record<string, { left?: number | string; right?: number | string }>;
   /** Coach notes, newest first. */

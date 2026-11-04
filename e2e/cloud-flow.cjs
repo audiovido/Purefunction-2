@@ -117,7 +117,7 @@ const today = iso(new Date());
   await C.waitForTimeout(800);
   await C.getByRole('button', { name: /Not joined · Invite/ }).click();
   ok(await C.getByText('Not joined yet — send them the invite below.').isVisible(), 'coach sees the client has not joined');
-  const emailBox = C.locator('input[type=email]');
+  const emailBox = C.locator('input[type=email]:not([aria-label="Trainer email"])');
   await emailBox.fill('Ryan@Example.com');
   await C.getByRole('button', { name: 'Save', exact: true }).click();
   await C.waitForTimeout(1500);

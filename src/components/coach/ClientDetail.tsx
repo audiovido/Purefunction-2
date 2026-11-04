@@ -11,7 +11,9 @@ import { GoalsPanel } from './GoalsPanel';
 import { NotesPanel } from './NotesPanel';
 import { WorkoutHistory } from './WorkoutHistory';
 import { BodyLab } from '../BodyLab';
+import { PostureOverview } from './PostureOverview';
 import { NutritionPanel } from '../NutritionPanel';
+import { FoodDiary } from '../FoodDiary';
 import { AssessmentSummary } from './AssessmentSummary';
 import { SpectrumOfPatterns } from './SpectrumOfPatterns';
 
@@ -117,6 +119,7 @@ export const ClientDetail: React.FC<{
                 <AssessmentSummary client={client} />
                 <SpectrumOfPatterns client={client} onUpdateClient={onUpdateClient} />
                 <BodyLab client={client} onUpdateClient={onUpdateClient} />
+                <PostureOverview client={client} onUpdateClient={onUpdateClient} coach />
                 {assessments.length > 0 ? (
                   <AssessmentHistory key={client.id} assessments={assessments} client={client} onUpdateClient={onUpdateClient} />
                 ) : (
@@ -149,7 +152,7 @@ export const ClientDetail: React.FC<{
 
         {section === 'progression' && <ProgressView clients={one} client={client} onSelectClientId={noop} onUpdateClient={onUpdateClient} />}
 
-        {section === 'nutrition' && <NutritionPanel client={client} onUpdateClient={onUpdateClient} />}
+        {section === 'nutrition' && <FoodDiary clientId={client.id} mode="coach" legacy={<NutritionPanel client={client} onUpdateClient={onUpdateClient} />} legacyPlan={client.nutrition} />}
       </div>
     </div>
   );
