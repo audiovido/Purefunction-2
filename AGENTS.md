@@ -70,6 +70,12 @@ App: coaching PWA (like TrueCoach) for a coach in the US, up to ~100 clients. Co
   - Checks: tsc OK, 110 vitest, security-rest, cloud-flow, responsive 0/0, library, pwa all PASSED.
   - Before go-live: Edge secrets `OPENAI_API_KEY`, `OPENAI_FOOD_MODEL` (verify the model name), `USDA_API_KEY`; deploy `invite-trainer` + `food-parse` after their SQL.
 
+## LIVE (2026-11-04 evening)
+- Merged to main (`d9f22a7`): #33 T8a, #34 T8b security, #35 ZIP A, #36 ZIP B. Pages deploy OK.
+- Live DB: Armin ran T8b → signup_resend → p5_trainers → p6_food_diary → p7_posture (all Success; dry-run + rollbacks tested first). Backup CSVs (clients/workouts/profiles) kept by Armin.
+- Edge Functions deployed: sign-up, reset-password, invite-trainer, food-parse. Coach login + all clients checked by Armin.
+- Still open: Edge secrets OPENAI_API_KEY / USDA_API_KEY / OPENAI_FOOD_MODEL (food diary is manual-only until set); client phone test with a real inbox; gait stays OFF; draft posture rules hidden until Hamoon + reviewer approve.
+
 ## Next ideas
 - Auto joint detection on real photos (MediaPipe on phone) + photo analysis with green/red lines.
 - Program templates for many clients; push notifications for new messages; a sample Test Client.
