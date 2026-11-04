@@ -7,7 +7,7 @@
 const crypto = require('crypto');
 
 module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) {
-  const db = { users: [], profiles: [], clients: [], workouts: [], exercises: [], files: {}, clientFiles: {}, emails: [], resetTokens: {} };
+  const db = { users: [], profiles: [], clients: [], workouts: [], coach_notes_secure: [], assignments: [], exercises: [], files: {}, clientFiles: {}, emails: [], resetTokens: {} };
   const log = [];
   const realtimeLog = [];
   const cors = {
@@ -44,18 +44,25 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
 
   const canRead = (prof, table, row) => {
     if (!prof) return false;
-    if (prof.role === 'coach') return true;
+    if (prof.role === 'coach') {
+      if (table === 'clients' || table === 'coach_notes_secure') return db.assignments.some((a) => a.coach_id === prof.id && a.client_id === (row.client_id || row.id));
+      if (table === 'workouts') return db.assignments.some((a) => a.coach_id === prof.id && a.client_id === row.client_id);
+      if (table === 'profiles') return row.id === prof.id || db.assignments.some((a) => a.coach_id === prof.id && a.client_id === row.client_id);
+      return true;
+    }
     if (table === 'profiles') return row.id === prof.id;
     if (table === 'clients') return row.id === prof.client_id;
     if (table === 'workouts') return row.client_id === prof.client_id;
+    if (table === 'coach_notes_secure') return row.client_id === prof.client_id && row.shared === true;
     if (table === 'exercises') return true;
     return false;
   };
   const canWrite = (prof, table, row) => {
     if (!prof) return false;
-    if (prof.role === 'coach') return table !== 'profiles';
+    if (prof.role === 'coach') return table !== 'profiles' && (table === 'exercises' || (table === 'clients' && !db.clients.some((c) => c.id === row.id)) || db.assignments.some((a) => a.coach_id === prof.id && a.client_id === (row.client_id || row.id)));
     if (table === 'clients') return row.id === prof.client_id;
-    if (table === 'workouts') return row.client_id === prof.client_id;
+    if (table === 'workouts') return false;
+    if (table === 'coach_notes_secure') return false;
     return false;
   };
 
@@ -215,6 +222,30 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
       return json(route, 200, []);
     }
 
+    // ---------------- Results-only RPC: enforce JWT identity, ownership, fields and CAS.
+    if (path === '/rest/v1/rpc/save_workout_results_secure' && method === 'POST') {
+      const prof = profileOf(uidFrom(req));
+      const x = JSON.parse(req.postData() || '{}');
+      if (!prof || prof.role !== 'client' || x.p_client_id !== prof.client_id) return json(route, 403, { message: 'Not your client' });
+      const w = db.workouts.find((w) => w.id === x.p_workout_id && w.client_id === x.p_client_id);
+      if (!w) return json(route, 403, { message: 'Workout not found' });
+      if (w.updated_at !== x.p_expected_version) return json(route, 409, { message: 'VERSION_CONFLICT' });
+      const data = x.p_results;
+      if (!data || typeof data !== 'object' || Array.isArray(data) || Object.keys(data).some((k) => !['status','completedAt','sessionRpe','clientFeedback','blocks'].includes(k)))
+        return json(route, 403, { message: 'Invalid result fields' });
+      if (!Array.isArray(data.blocks) || data.blocks.length !== w.data.blocks.length ||
+          data.blocks.some((b,i) => b.id !== w.data.blocks[i].id || Object.keys(b).some((k) => !['id','loggedSets','rpe','pain','clientNote'].includes(k)) ||
+            !Array.isArray(b.loggedSets) || b.loggedSets.length !== w.data.blocks[i].loggedSets.length ||
+            b.loggedSets.some((s,j) => s.setNumber !== w.data.blocks[i].loggedSets[j].setNumber || Object.keys(s).some((k) => !['setNumber','kg','reps','completed'].includes(k)))))
+        return json(route, 403, { message: 'Prescription modification rejected' });
+      w.data = { ...w.data, status: data.status, completedAt: data.completedAt,
+        sessionRpe: data.sessionRpe, clientFeedback: data.clientFeedback,
+        blocks: w.data.blocks.map((b,i) => ({ ...b, ...data.blocks[i] })) };
+      w.updated_at = new Date(Date.now() + 1).toISOString();
+      broadcast('workouts','UPDATE',w);
+      return json(route, 200, [{ updated_version: w.updated_at }]);
+    }
+
     // ---------------- REST ----------------
     m = path.match(/^\/rest\/v1\/(\w+)$/);
     if (m) {
@@ -236,6 +267,8 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
         const body = JSON.parse(req.postData() || '[]');
         const arr = Array.isArray(body) ? body : [body];
         for (const r of arr) {
+          if (table === 'clients' && r.data && 'coachNotes' in r.data)
+            return json(route, 403, { message: 'Use coach_notes_secure; inline notes are forbidden' });
           if (!canWrite(prof, table, r)) return json(route, 403, { code: '42501', message: `new row violates row-level security policy for table "${table}"` });
           if (table === 'clients' && prof.role !== 'coach') {
             // Real database: INSERT ... ON CONFLICT also checks the INSERT policy (coach only), so a client can never POST here.
@@ -254,9 +287,17 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
           if (i >= 0) rows[i] = row;
           else rows.push(row);
           if (table === 'clients' && row.email) {
+            if (prof.role === 'coach' && !db.assignments.some((a) => a.coach_id === prof.id && a.client_id === row.id))
+              db.assignments.push({ coach_id: prof.id, client_id: row.id });
             db.users.filter((u) => u.email === row.email.toLowerCase()).forEach(linkUser);
           }
           broadcast(table, i >= 0 ? 'UPDATE' : 'INSERT', row);
+        }
+        if ((req.headers()['prefer'] || '').includes('return=representation')) {
+          const added = arr.map((r) => rows.find((x) => x.id === r.id));
+          if ((req.headers()['accept'] || '').includes('vnd.pgrst.object'))
+            return json(route, 201, added[0]);
+          return json(route, 201, added);
         }
         return route.fulfill({ status: 201, headers: cors, body: '' });
       }
@@ -264,8 +305,18 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
         const patch = JSON.parse(req.postData() || '{}');
         const hit = rows.filter((r) => matches(r, url.searchParams) && canRead(prof, table, r) && (prof.role === 'coach' ? table !== 'profiles' : canWrite(prof, table, r)));
         for (const r of hit) {
-          if (table === 'clients' && prof.role !== 'coach' && 'email' in patch && (patch.email || '') !== (r.email || '')) {
-            return json(route, 400, { message: "Only the coach can change a client's email" });
+          if (table === 'clients' && patch.data && 'coachNotes' in patch.data)
+            return json(route, 403, { message: 'Use coach_notes_secure; inline notes are forbidden' });
+          if (table === 'clients' && prof.role !== 'coach') {
+            const old = r.data || {};
+            const next = patch.data || old;
+            const allowed = (obj) => {
+              const { photoUrl, nutrition, ...rest } = obj;
+              const { log, ...nutRest } = nutrition || {};
+              return JSON.stringify({rest,nutRest});
+            };
+            if ('email' in patch || allowed(old) !== allowed(next))
+              return json(route, 403, { message: 'Coach-owned profile or assessment cannot be changed' });
           }
           Object.assign(r, patch, { updated_at: new Date().toISOString() });
           broadcast(table, 'UPDATE', r);

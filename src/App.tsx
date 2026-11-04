@@ -111,11 +111,11 @@ function CloudApp({ profile }: { profile: Profile }) {
   );
 }
 
-const SyncBadge: React.FC<{ sync: SyncState; railOnTablet?: boolean }> = ({ sync, railOnTablet = false }) => {
+const SyncBadge: React.FC<{ sync: SyncState; railOnTablet?: boolean; conflict?: string | null }> = ({ sync, railOnTablet = false, conflict }) => {
   const map = {
     saved: { icon: <Cloud className="w-3.5 h-3.5" />, text: 'Saved', cls: 'text-gray-400' },
     saving: { icon: <Loader2 className="w-3.5 h-3.5 animate-spin" />, text: 'Saving…', cls: 'text-gray-500' },
-    error: { icon: <CloudOff className="w-3.5 h-3.5" />, text: 'Not saved — retrying', cls: 'text-red-600' },
+    error: { icon: <CloudOff className="w-3.5 h-3.5" />, text: conflict ? 'Not saved — conflict' : 'Not saved — retrying', cls: 'text-red-600' },
     offline: { icon: <CloudOff className="w-3.5 h-3.5" />, text: 'Offline — will save', cls: 'text-[#B45309]' }
   }[sync];
   return (
@@ -123,7 +123,7 @@ const SyncBadge: React.FC<{ sync: SyncState; railOnTablet?: boolean }> = ({ sync
       className={`inline-flex items-center gap-1 text-[11px] font-medium ${map.cls}`}
       role="status"
       aria-live="polite"
-      title={map.text}
+      title={conflict ?? map.text}
     >
       {map.icon}
       <span className={railOnTablet ? 'hidden lg:inline' : ''}>{map.text}</span>
@@ -164,7 +164,7 @@ function writeSaved(key: string, value: string): void {
 
 function Workspace({ store, profile }: { store: ClientsStore; profile: Profile | null }) {
   const { signOut } = useSession();
-  const { clients, setClients, sync } = store;
+  const { clients, setClients, sync, saveConflict } = store;
   const isClientUser = profile?.role === 'client';
   const [roleState, setRole] = useState<Role>(isClientUser ? 'client' : 'coach');
   const role: Role = isClientUser ? 'client' : roleState;
@@ -386,7 +386,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
                   <div className="hidden lg:block text-xs font-semibold text-[#111827] truncate" title={profile.email}>
                     {profile.displayName || profile.email}
                   </div>
-                  <SyncBadge sync={sync} railOnTablet />
+                  <SyncBadge sync={sync} conflict={saveConflict} railOnTablet />
                 </div>
                 <button
                   onClick={() => void signOut()}
@@ -441,7 +441,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
             </button>
           )}
 
-          {profile && <SyncBadge sync={sync} />}
+          {profile && <SyncBadge sync={sync} conflict={saveConflict} />}
 
           {role === 'client' && selectedClient && (
             <ProfilePhotoButton client={selectedClient} onUpdateClient={handleUpdateClient} />

@@ -156,7 +156,7 @@ const today = iso(new Date());
   ok(await R.getByRole('heading', { name: 'Romanian Deadlift' }).isVisible(), 'coach change appears live on the client’s phone');
 
   // client logs and finishes
-  const postsBefore = mock.log.filter((l) => l.startsWith('POST /rest/v1/workouts')).length;
+  const postsBefore = mock.log.filter((l) => l.startsWith('POST /rest/v1/rpc/save_workout_results_secure')).length;
   await R.locator('[aria-label="Complete set 1"]').first().click();
   await R.getByRole('button', { name: 'Skip' }).click().catch(() => {});
   await R.getByRole('button', { name: '8', exact: true }).first().click();
@@ -167,7 +167,7 @@ const today = iso(new Date());
   await R.waitForTimeout(1500);
   const wAfter = mock.db.workouts.find((x) => x.client_id === ryanRow.id && x.date === today);
   ok(wAfter.data.status === 'completed' && wAfter.data.sessionRpe === 7, 'client results saved to the cloud');
-  ok(mock.log.filter((l) => l.startsWith('POST /rest/v1/workouts')).length - postsBefore <= 6, 'client sends only small, changed-row writes');
+  ok(mock.log.filter((l) => l.startsWith('POST /rest/v1/rpc/save_workout_results_secure')).length - postsBefore <= 6, 'client writes only through results-only RPC');
 
   // coach sees it live
   await C.getByText('Felt strong').first().waitFor({ timeout: 8000 }).catch(() => {});
