@@ -7,7 +7,7 @@
 const crypto = require('crypto');
 
 module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) {
-  const db = { users: [], profiles: [], clients: [], workouts: [], coach_notes_secure: [], assignments: [], exercises: [], files: {}, clientFiles: {}, emails: [], resetTokens: {}, verificationRequests: {}, trainerAllowlist: new Set([coachEmail.toLowerCase()]), food_entries: [], food_items: [], favorite_meals: [] };
+  const db = { users: [], profiles: [], clients: [], workouts: [], coach_notes_secure: [], coach_messages: [], assignments: [], exercises: [], files: {}, clientFiles: {}, emails: [], resetTokens: {}, verificationRequests: {}, trainerAllowlist: new Set([coachEmail.toLowerCase()]), food_entries: [], food_items: [], favorite_meals: [] };
   const log = [];
   const realtimeLog = [];
   const cors = {
@@ -34,7 +34,7 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
 
   function linkUser(u) {
     if (profileOf(u.id)) return;
-    if (u.email.toLowerCase() === coachEmail.toLowerCase()) {
+    if (db.trainerAllowlist.has(u.email.toLowerCase())) {
       db.profiles.push({ id: u.id, role: 'coach', display_name: (u.meta && u.meta.display_name) || u.email.split('@')[0], client_id: null });
       return;
     }
@@ -42,19 +42,23 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
     if (c) db.profiles.push({ id: u.id, role: 'client', display_name: c.data.name, client_id: c.id });
   }
 
+  const allowedCoach = prof => !!prof && prof.role === 'coach' && db.users.some(u => u.id === prof.id && u.verified !== false && db.trainerAllowlist.has(u.email.toLowerCase()));
+  const owns = (prof, clientId) => allowedCoach(prof) && db.clients.some(c => c.id === clientId && c.coach_id === prof.id);
   const canRead = (prof, table, row) => {
     if (!prof) return false;
     if (prof.role === 'coach') {
-      if (table === 'clients' || table === 'coach_notes_secure') return db.assignments.some((a) => a.coach_id === prof.id && a.client_id === (row.client_id || row.id));
-      if (table === 'workouts') return db.assignments.some((a) => a.coach_id === prof.id && a.client_id === row.client_id);
-      if (['food_entries','food_items','favorite_meals'].includes(table)) return db.assignments.some(a=>a.coach_id===prof.id && a.client_id===row.client_id);
-      if (table === 'profiles') return row.id === prof.id || db.assignments.some((a) => a.coach_id === prof.id && a.client_id === row.client_id);
+      if (table === 'clients') return allowedCoach(prof) && row.coach_id === prof.id;
+      if (table === 'coach_notes_secure' || table === 'coach_messages') return owns(prof, row.client_id);
+      if (table === 'workouts') return owns(prof, row.client_id);
+      if (['food_entries','food_items','favorite_meals'].includes(table)) return owns(prof, row.client_id);
+      if (table === 'profiles') return row.id === prof.id || owns(prof, row.client_id);
       return true;
     }
     if (table === 'profiles') return row.id === prof.id;
     if (table === 'clients') return row.id === prof.client_id;
     if (table === 'workouts') return row.client_id === prof.client_id;
     if (table === 'coach_notes_secure') return row.client_id === prof.client_id && row.shared === true;
+    if (table === 'coach_messages') return row.client_id === prof.client_id;
     if (['food_entries','food_items','favorite_meals'].includes(table)) return row.client_id===prof.client_id;
     if (table === 'exercises') return true;
     return false;
@@ -62,10 +66,17 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
   const canWrite = (prof, table, row) => {
     if (!prof) return false;
     if (prof.role === 'coach' && ['food_entries','food_items','favorite_meals'].includes(table)) return false;
-    if (prof.role === 'coach') return table !== 'profiles' && (table === 'exercises' || (table === 'clients' && !db.clients.some((c) => c.id === row.id)) || db.assignments.some((a) => a.coach_id === prof.id && a.client_id === (row.client_id || row.id)));
+    if (prof.role === 'coach') {
+      if (table === 'exercises') return allowedCoach(prof);
+      if (table === 'clients') return db.clients.some(c => c.id === row.id) ? owns(prof,row.id) : (allowedCoach(prof) && (!row.coach_id || row.coach_id === prof.id));
+      if (table === 'coach_messages') return owns(prof,row.client_id) && row.from_coach === true;
+      if (table === 'profiles') return false;
+      return owns(prof,row.client_id);
+    }
     if (table === 'clients') return row.id === prof.client_id;
     if (table === 'workouts') return false;
     if (table === 'coach_notes_secure') return false;
+    if (table === 'coach_messages') return row.client_id === prof.client_id && row.from_coach === false;
     if (table === 'favorite_meals') return row.client_id===prof.client_id;
     if (table === 'food_entries' || table === 'food_items') return false;
     return false;
@@ -124,7 +135,7 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
       const b = JSON.parse(req.postData() || '{}');
       const email = String(b.email || '').trim().toLowerCase();
       if (b.action !== 'resend' && String(b.password || '').length < 8) return json(route, 400, { error: 'Password must be at least 8 characters.' });
-      const allowed = email === coachEmail.toLowerCase() || db.clients.some((c) => c.email && c.email.toLowerCase() === email);
+      const allowed = db.trainerAllowlist.has(email) || db.clients.some((c) => c.email && c.email.toLowerCase() === email);
       const generic = () => json(route, 200, { ok: true, verificationRequired: true });
       const existing = db.users.find((u) => u.email === email);
       if (b.action === 'resend' || existing) {
@@ -150,12 +161,23 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
     // ---------------- Edge Functions: email ----------------
     if (path === '/functions/v1/send-invite') {
       const prof = profileOf(uidFrom(req));
-      if (!prof || prof.role !== 'coach') return json(route, 403, { error: 'Only the coach can send invites.' });
+      if (!allowedCoach(prof)) return json(route, 403, { error: 'Only a verified, allowlisted coach can send invites.' });
       const b = JSON.parse(req.postData() || '{}');
       const c = db.clients.find((c) => c.id === b.clientId);
-      if (!c || !c.email) return json(route, 400, { error: 'This client has no email yet.' });
+      if (!c || c.coach_id !== prof.id) return json(route, 403, { error: 'Not your client' });
+      if (!c.email) return json(route, 400, { error: 'This client has no email yet.' });
       db.emails.push({ to: c.email, kind: 'invite' });
       return json(route, 200, { ok: true });
+    }
+    if (path === '/functions/v1/invite-trainer') {
+      const prof = profileOf(uidFrom(req));
+      const user = db.users.find(u => u.id === prof?.id);
+      if (!prof || prof.role !== 'coach' || user?.email?.toLowerCase() !== coachEmail.toLowerCase())
+        return json(route, 403, { error: 'Head coach only' });
+      const b = JSON.parse(req.postData() || '{}');
+      const email = String(b.email || '').trim().toLowerCase();
+      if (!db.trainerAllowlist.has(email)) return json(route, 403, { error: 'Not allowlisted' });
+      db.emails.push({to:email,kind:'trainer-invite'}); return json(route, 200, {ok:true});
     }
     if (path === '/functions/v1/reset-password') {
       const b = JSON.parse(req.postData() || '{}');
@@ -212,7 +234,7 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
     if (cm) {
       const key = decodeURIComponent(cm[2]);
       const prof = profileOf(uidFrom(req));
-      const folderOk = prof && (prof.role === 'coach' || key.split('/')[0] === prof.client_id);
+      const folderOk = prof && (owns(prof,key.split('/')[0]) || key.split('/')[0] === prof.client_id);
       if (cm[1] && method === 'POST') {
         if (!folderOk || !db.clientFiles[key]) return json(route, 400, { message: 'Object not found' });
         return json(route, 200, { signedURL: `/object/sign/client-videos/${cm[2]}?token=t` });
@@ -222,7 +244,7 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
         return f ? route.fulfill({ status: 200, headers: { ...cors, 'content-type': f.type }, body: f.body }) : route.fulfill({ status: 404, headers: cors, body: '' });
       }
       if (!cm[1] && method === 'POST') {
-        if (!prof || prof.role !== 'coach') return json(route, 403, { message: 'new row violates row-level security policy' });
+        if (!owns(prof,key.split('/')[0])) return json(route, 403, { message: 'new row violates row-level security policy' });
         db.clientFiles[key] = { type: 'video/webm', body: Buffer.alloc(0) };
         return json(route, 200, { Key: 'client-videos/' + cm[2] });
       }
@@ -312,13 +334,7 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
         const email = String(b.p_email||'').trim().toLowerCase();
         if (!email.includes('@')) return json(route, 400, {message:'Bad email'});
         if (b.p_action === 'invite') {db.trainerAllowlist.add(email);return json(route,200,true);}
-        const u = db.users.find(x => x.email.toLowerCase()===email);
-        const p = u && profileOf(u.id);
-        if (!p || p.role !== 'coach' || u.verified === false || !db.clients.some(c=>c.id===b.p_client_id)) return json(route,403,{message:'Not verified trainer/client'});
-        db.assignments = db.assignments.filter(a=>!(a.coach_id===p.id && a.client_id===b.p_client_id));
-        if (b.p_action === 'assign') db.assignments.push({coach_id:p.id,client_id:b.p_client_id});
-        else if (b.p_action!=='unassign') return json(route,400,{message:'Unknown action'});
-        return json(route,200,true);
+        return json(route,403,{message:'Client ownership is immutable; only allowlisting is permitted'});
       }
     }
     // ---------------- p6 food diary: authenticated parse + transactional, idempotent mock ----------------
@@ -364,6 +380,7 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
         const arr = Array.isArray(body) ? body : [body];
         for (const r of arr) {
           if (table === 'food_entries' || table === 'food_items') return json(route,403,{message:'Use secure food RPC'});
+          if (table === 'clients' && db.clients.some(c => c.email && c.email === r.email && c.id !== r.id)) return json(route,409,{message:'Client email already belongs to another record'});
           if (table === 'clients' && r.data && 'coachNotes' in r.data)
             return json(route, 403, { message: 'Use coach_notes_secure; inline notes are forbidden' });
           if (!canWrite(prof, table, r)) return json(route, 403, { code: '42501', message: `new row violates row-level security policy for table "${table}"` });
@@ -380,7 +397,7 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
         }
         for (const r of arr) {
           const i = rows.findIndex((x) => x.id === r.id);
-          const row = { ...(i >= 0 ? rows[i] : {}), ...r, updated_at: new Date().toISOString() };
+          const row = { ...(i >= 0 ? rows[i] : {}), ...r, ...(table === 'clients' ? {coach_id:i >= 0 ? rows[i].coach_id : prof.id} : {}), updated_at: new Date().toISOString() };
           if (i >= 0) rows[i] = row;
           else rows.push(row);
           if (table === 'clients' && row.email) {
@@ -400,7 +417,9 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
       }
       if (method === 'PATCH') {
         const patch = JSON.parse(req.postData() || '{}');
-        const hit = rows.filter((r) => matches(r, url.searchParams) && canRead(prof, table, r) && (prof.role === 'coach' ? table !== 'profiles' : canWrite(prof, table, r)));
+        const hit = rows.filter((r) => matches(r, url.searchParams) && canRead(prof, table, r) && (table === 'coach_messages' ? (prof?.role === 'coach' ? owns(prof,r.client_id) && r.from_coach === false : r.client_id === prof?.client_id && r.from_coach === true) : canWrite(prof, table, r)));
+        if (table === 'clients' && 'coach_id' in patch && hit.some(r=>r.coach_id!==patch.coach_id)) return json(route,403,{message:'Client owner is immutable'});
+        if (table === 'clients' && patch.email && db.clients.some(c=>c.email===patch.email && !hit.some(r=>r.id===c.id))) return json(route,409,{message:'Client email already belongs to another record'});
         for (const r of hit) {
           if (table === 'clients' && patch.data && 'coachNotes' in patch.data)
             return json(route, 403, { message: 'Use coach_notes_secure; inline notes are forbidden' });
@@ -424,7 +443,10 @@ module.exports = function createMock({ coachEmail = 'coach@example.com' } = {}) 
       if (method === 'DELETE') {
         if (!prof || (prof.role !== 'coach' && !['food_entries','favorite_meals'].includes(table)) || (prof.role === 'coach' && ['food_entries','food_items','favorite_meals'].includes(table))) return route.fulfill({ status: 204, headers: cors }); // RLS: silently nothing
         for (let i = rows.length - 1; i >= 0; i--) {
-          if (matches(rows[i], url.searchParams) && (prof.role === 'coach' || rows[i].client_id === prof.client_id)) {
+          const canDelete = table === 'food_entries'
+            ? prof?.role === 'client' && rows[i].client_id === prof.client_id
+            : table !== 'coach_messages' && table !== 'profiles' && (prof?.role === 'coach' || table === 'favorite_meals') && canWrite(prof,table,rows[i]);
+          if (matches(rows[i], url.searchParams) && canDelete) {
             const [gone] = rows.splice(i, 1);
             if (table === 'clients') db.workouts = db.workouts.filter((w) => w.client_id !== gone.id);
             if (table === 'food_entries') db.food_items=db.food_items.filter(f=>f.entry_id!==gone.id);

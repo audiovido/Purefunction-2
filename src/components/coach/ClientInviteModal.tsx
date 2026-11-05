@@ -70,7 +70,7 @@ export const ClientInviteModal: React.FC<{
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-[#111827]">Client & invite</h2>
-          <button onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg text-gray-400 hover:text-[#111827] cursor-pointer">
+          <button onClick={onClose} aria-label="Close" className="min-h-11 min-w-11 inline-flex items-center justify-center p-1.5 rounded-lg text-gray-400 hover:text-[#111827] cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -129,14 +129,14 @@ export const ClientInviteModal: React.FC<{
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => void copy('link')}
-              className="inline-flex items-center justify-center gap-1.5 bg-white border border-gray-200 text-sm font-semibold py-2.5 rounded-xl cursor-pointer"
+              className="inline-flex items-center justify-center gap-1.5 bg-white border border-gray-200 text-sm font-semibold min-h-11 py-2.5 rounded-xl cursor-pointer"
             >
               {copied === 'link' ? <Check className="w-4 h-4 text-[#16A34A]" /> : <Copy className="w-4 h-4" />}
               {copied === 'link' ? 'Copied' : 'Copy link'}
             </button>
             <button
               onClick={() => void copy('message')}
-              className="inline-flex items-center justify-center gap-1.5 bg-white border border-gray-200 text-sm font-semibold py-2.5 rounded-xl cursor-pointer"
+              className="inline-flex items-center justify-center gap-1.5 bg-white border border-gray-200 text-sm font-semibold min-h-11 py-2.5 rounded-xl cursor-pointer"
             >
               {copied === 'message' ? <Check className="w-4 h-4 text-[#16A34A]" /> : <Copy className="w-4 h-4" />}
               {copied === 'message' ? 'Copied' : 'Copy message'}
@@ -153,10 +153,10 @@ export const ClientInviteModal: React.FC<{
         )}
 
         <div className="flex justify-end gap-2 mt-5">
-          <button onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-gray-500 cursor-pointer">
+          <button onClick={onClose} className="min-h-11 px-4 py-2.5 text-sm font-medium text-gray-500 cursor-pointer">
             Cancel
           </button>
-          <button onClick={save} className="bg-[#111827] text-white text-sm font-semibold px-5 py-2.5 rounded-xl cursor-pointer">
+          <button onClick={save} className="min-h-11 bg-[#111827] text-white text-sm font-semibold px-5 py-2.5 rounded-xl cursor-pointer">
             Save
           </button>
         </div>

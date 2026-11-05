@@ -58,7 +58,7 @@ async function measure(p) {
     const click = async (loc) => { try { await loc.first().click({ timeout: 2500 }); return true; } catch { return false; } };
     await report('home');
     // open the nav (mobile may hide it behind a menu button)
-    for (const nav of ['Library', 'Programs', 'Messages', 'Clients']) {
+    for (const nav of (process.env.PF_FULL_FEATURES === 'true' ? ['Library', 'Programs', 'Messages', 'Clients'] : ['Library', 'Messages', 'Clients'])) {
       if (!(await click(p.getByRole('button', { name: new RegExp('^' + nav, 'i') })))) {
         await click(p.getByRole('button', { name: /menu/i }));
         if (!(await click(p.getByRole('button', { name: new RegExp('^' + nav, 'i') })))) { console.log(`?? [${vn}] no nav ${nav}`); unvisited++; continue; }
@@ -69,18 +69,19 @@ async function measure(p) {
     const row = p.locator('main').getByText('Alex Carter', { exact: true });
     if (!(await click(row))) { console.log(`?? [${vn}] no client row`); unvisited++; }
     await report('client');
-    for (const tab of ['Exercises', 'Assessment', 'Notes', 'Goals', 'Progression', 'Nutrition']) {
+    for (const tab of (process.env.PF_FULL_FEATURES === 'true' ? ['Exercises', 'Assessment', 'Notes', 'Goals', 'Progression', 'Nutrition'] : ['Exercises', 'Notes'])) {
       if (!(await click(p.getByRole('tab', { name: tab })))) if (!(await click(p.getByRole('button', { name: new RegExp('^' + tab + '$') })))) { console.log(`?? [${vn}] no tab ${tab}`); unvisited++; continue; }
       await report('tab-' + tab);
-      const subs = { Assessment: ['Overview', 'New assessment', 'Reports'] }[tab] || [];
+      const subs = { Assessment: ['Posture Overview', '(?:New|Start) assessment', 'Reports'] }[tab] || [];
       for (const s of subs) {
-        if (await click(p.getByRole('tab', { name: s })) || await click(p.getByRole('button', { name: new RegExp('^' + s + '$') }))) await report(`tab-${tab}-${s}`);
+        if (await click(p.getByRole('button', { name: new RegExp('^' + s + '$') }))) await report(`tab-${tab}-${s}`);
+        else { console.log(`?? [${vn}] no assessment subview ${s}`); unvisited++; }
       }
-      if (tab === 'Assessment') await click(p.getByRole('button', { name: /^Overview$/ }));
+      if (tab === 'Assessment') await click(p.getByRole('button', { name: /^Posture Overview$/ }));
     }
     if (await click(p.getByRole('button', { name: /^Client$/ }))) {
       await report('clientapp-today');
-      for (const t of ['Progress', 'Chat', 'Refer', 'Today']) if (await click(p.getByRole('button', { name: new RegExp(t, 'i') }))) await report('clientapp-' + t);
+      for (const t of (process.env.PF_FULL_FEATURES === 'true' ? ['Progress', 'Chat', 'Refer', 'Today'] : ['Chat', 'Today'])) if (await click(p.getByRole('button', { name: new RegExp(t, 'i') }))) await report('clientapp-' + t);
     } else { console.log(`?? [${vn}] no client switch`); unvisited++; }
     if (errs.length) { failures++; console.log(`!! [${vn}] page errors: ${[...new Set(errs)].slice(0, 3).join(' | ')}`); }
     await ctx.close();

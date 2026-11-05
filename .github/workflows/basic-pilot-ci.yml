@@ -1,0 +1,72 @@
+# PR-only gates for the Basic Pilot. Never deploys and never touches Supabase.
+name: Basic Pilot - typecheck, isolation and browser tests
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: basic-pilot-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install app dependencies
+        run: npm install --legacy-peer-deps
+      - name: TypeScript strict check
+        run: npx tsc --noEmit
+      - name: Vitest
+        run: npm test
+      - name: Production build (Basic default)
+        run: npm run build
+      - name: Install pinned Playwright Chromium for Node e2e scripts
+        run: |
+          npm install --no-save --no-package-lock --legacy-peer-deps playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: REST authorization tests (existing + independent coaches)
+        run: |
+          node e2e/security-rest.cjs
+          node e2e/basic-security-rest.cjs
+      - name: Build Basic cloud mock
+        run: npx vite build --outDir /tmp/pf-basic-cloud --base /
+        env:
+          VITE_FULL_FEATURES: 'false'
+          VITE_SUPABASE_URL: https://mock.supabase.co
+          VITE_SUPABASE_ANON_KEY: anon
+      - name: Two-coach browser test and client workout logging
+        run: node e2e/basic-cloud-flow.cjs /tmp/pf-basic-cloud
+      - name: Build Basic local demo
+        run: npx vite build --outDir /tmp/pf-basic-demo --base /
+        env:
+          VITE_FULL_FEATURES: 'false'
+      - name: Basic responsive, Library and PWA browser tests
+        run: |
+          node e2e/responsive-check.cjs /tmp/pf-basic-demo
+          node e2e/library.cjs /tmp/pf-basic-demo
+          node e2e/pwa.cjs /tmp/pf-basic-demo /
+      - name: Build and test legacy full-feature cloud mode
+        run: |
+          npx vite build --outDir /tmp/pf-full-cloud --base /
+          node e2e/cloud-flow.cjs /tmp/pf-full-cloud
+        env:
+          VITE_FULL_FEATURES: 'true'
+          VITE_SUPABASE_URL: https://mock.supabase.co
+          VITE_SUPABASE_ANON_KEY: anon
+      - name: Full-feature responsive regression
+        run: |
+          npx vite build --outDir /tmp/pf-full-demo --base /
+          PF_FULL_FEATURES=true node e2e/responsive-check.cjs /tmp/pf-full-demo
+        env:
+          VITE_FULL_FEATURES: 'true'

@@ -84,3 +84,12 @@ App: coaching PWA (like TrueCoach) for a coach in the US, up to ~100 clients. Co
 - Exercise library videos belong to TrueCoach; replace them before commercial use.
 - Coach and client editing the same workout day at the same time: the last save wins.
 - The Spectrum of Patterns table is from Applied Integration Academy (credited under the table).
+
+## Basic Pilot branch (2026-11-05; NOT released)
+- Implemented the supplied CI-audited v3 package from exact `main` base `f8018ad` on `feat/basic-pilot-independent-coaches`. PR #37 is excluded.
+- Basic is the default: coach Clients / Library / Messages, head-only Coaches; client Today / Chat; client detail Exercises / Notes. `VITE_FULL_FEATURES=true` keeps the heavy screens available.
+- Added independent immutable client ownership SQL and rollback under `supabase/pending`. **Neither SQL file has been executed. Armin's explicit approval is required before SQL execution or merging.**
+- Cloud client loading and pending-write replay mount only after the owner-column probe succeeds. Failure shows an unavailable-workspace message. `send-invite` uses caller RLS and checks the immutable owner.
+- Corrected ZIP regressions: mock own-food deletion, responsive Assessment subview coverage; added missing-schema and revoked/unverified-coach cases and tests of the actual invite handler.
+- Local validation and release requirements are recorded in `docs/BASIC_PILOT.md`. PR CI never deploys or executes SQL. Real staging SQL/JWT isolation remains unverified.
+- GitHub write access verified with owner account `audiovido`; feature branch created from the exact base. Submit as a draft PR and keep merging/SQL behind Armin's explicit approval.

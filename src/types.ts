@@ -2,7 +2,7 @@ import type { PostureAssessment } from './lib/postureAssessment';
 
 export type Role = 'coach' | 'client';
 
-export type CoachTab = 'clients' | 'library' | 'programs' | 'messages';
+export type CoachTab = 'clients' | 'library' | 'programs' | 'messages' | 'coaches';
 
 /** Tabs inside one client's page (coach side). */
 export type ClientSection = 'exercises' | 'assessment' | 'notes' | 'goals' | 'progression' | 'nutrition';
