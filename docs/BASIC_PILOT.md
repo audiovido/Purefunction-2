@@ -33,6 +33,8 @@ The invitation Edge Function looks up clients using the caller's JWT (not the se
 
 **Do not merge, deploy or execute SQL automatically. No SQL has been executed by this implementation.**
 
+Database source audit and the exact scope of the first read-only approval are in `docs/BASIC_PILOT_DB_REVIEW.md`. Proposed SQL now checks verified/allowlisted existing owners and the head coach, uses the returned client's owner column directly in SELECT RLS for INSERT RETURNING, and rejects NULL coach-management actions. All three proposed SQL files passed PostgreSQL grammar parsing; none was executed. The source-audit fix still requires approved staging verification with real PostgreSQL roles/JWTs.
+
 1. Review `supabase/pending/NEEDS_ARMIN_OK_basic_independent_coaches.sql` and its rollback. Requires existing T8b and p5 schema, verified coach profiles and the head coach on `private.coach_allowlist`.
 2. Back up relevant client, assignment, workout, profile and auth data securely. On staging, review every existing client's ownership. The migration aborts if a client has zero or multiple coach assignments, or duplicate nonempty emails. Never infer an ambiguous owner.
 3. Obtain Armin's explicit approval before executing any SQL, including staging SQL. Verify the SQL and grants with real JWTs for the head coach, coach B, their clients and a stranger. Mock tests do not prove live RLS correctness.

@@ -92,4 +92,5 @@ App: coaching PWA (like TrueCoach) for a coach in the US, up to ~100 clients. Co
 - Cloud client loading and pending-write replay mount only after the owner-column probe succeeds. Failure shows an unavailable-workspace message. `send-invite` uses caller RLS and checks the immutable owner.
 - Corrected ZIP regressions: mock own-food deletion, responsive Assessment subview coverage; added missing-schema and revoked/unverified-coach cases and tests of the actual invite handler.
 - Local validation and release requirements are recorded in `docs/BASIC_PILOT.md`. PR CI never deploys or executes SQL. Real staging SQL/JWT isolation remains unverified.
+- Database source audit: corrected clients SELECT RLS for INSERT RETURNING, added existing-owner/head-coach eligibility preflight, and rejected NULL administration actions. SQL grammar parsed without execution. `docs/BASIC_PILOT_DB_REVIEW.md` defines a separate read-only preflight approval; no SQL execution or merge is authorized yet.
 - GitHub write access verified with owner account `audiovido`; feature branch created from the exact base. Submit as a draft PR and keep merging/SQL behind Armin's explicit approval.

@@ -66,6 +66,7 @@ const createMock = require('./mock-supabase.cjs');
   ok((await api('/rest/v1/rpc/pf_manage_trainer','B','POST',{p_action:'invite',p_email:'new@example.com'})).status===403,'coach B cannot add new coaches');
   ok((await api('/rest/v1/rpc/pf_manage_trainer','A','POST',{p_action:'invite',p_email:'new@example.com'})).status===200,'head coach allowlists new coach');
   ok((await api('/rest/v1/rpc/pf_manage_trainer','A','POST',{p_action:'assign',p_email:'coach-b@example.com',p_client_id:'a'})).status===403,'head cannot reassign client');
+  ok((await api('/rest/v1/rpc/pf_manage_trainer','A','POST',{p_action:null,p_email:'null-action@example.com'})).status===403 && !mock.db.trainerAllowlist.has('null-action@example.com'),'null management action cannot allowlist a coach');
   const current = mock.db.workouts.find(w=>w.id==='wa');
   const result={p_workout_id:'wa',p_client_id:'a',p_expected_version:current.updated_at,p_results:{status:'completed',completedAt:'2026-11-04T00:00:00Z',sessionRpe:7,clientFeedback:'Good',blocks:[{id:'block',loggedSets:[{setNumber:1,kg:18,reps:8,completed:true}],rpe:7,pain:false,clientNote:''}]}};
   ok((await api('/rest/v1/rpc/save_workout_results_secure','CB','POST',result)).status===403,'client B cannot log A workout');

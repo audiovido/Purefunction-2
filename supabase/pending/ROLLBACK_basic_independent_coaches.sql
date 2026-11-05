@@ -7,6 +7,10 @@ DROP FUNCTION IF EXISTS private.basic_set_client_owner();
 DROP FUNCTION IF EXISTS private.basic_owner_immutable();
 DROP POLICY IF EXISTS "clients coach insert" ON public.clients;
 CREATE POLICY "clients coach insert" ON public.clients FOR INSERT TO authenticated WITH CHECK(private.is_coach());
+-- Restore the exact T8b SELECT policy before removing the owner column/helper.
+DROP POLICY IF EXISTS "clients scoped read" ON public.clients;
+CREATE POLICY "clients scoped read" ON public.clients FOR SELECT TO authenticated
+USING (private.can_manage_client(id) OR id=private.my_client_id());
 CREATE POLICY "head assignment overview" ON public.coach_client_assignments FOR SELECT TO authenticated USING(public.pf_head_coach());
 CREATE OR REPLACE FUNCTION private.can_manage_client(p_client_id text) RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$

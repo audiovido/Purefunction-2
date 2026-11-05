@@ -9,9 +9,19 @@ DO $$ BEGIN
     GROUP BY c.id HAVING count(a.coach_id) <> 1
   ) THEN RAISE EXCEPTION 'BASIC OWNER PREFLIGHT: each existing client needs exactly one assignment. Resolve ambiguous/ownerless clients manually, then retry.'; END IF;
   IF EXISTS (
-    SELECT 1 FROM public.coach_client_assignments a JOIN public.profiles p ON p.id=a.coach_id
-    WHERE p.role <> 'coach'
-  ) THEN RAISE EXCEPTION 'BASIC OWNER PREFLIGHT: assignment references a non-coach profile'; END IF;
+    SELECT 1 FROM public.coach_client_assignments a
+    LEFT JOIN public.profiles p ON p.id=a.coach_id
+    LEFT JOIN auth.users u ON u.id=p.id
+    LEFT JOIN private.coach_allowlist l ON l.email=lower(u.email)
+    WHERE p.role IS DISTINCT FROM 'coach' OR u.email_confirmed_at IS NULL OR l.email IS NULL
+  ) THEN RAISE EXCEPTION 'BASIC OWNER PREFLIGHT: every owner must be a verified, allowlisted coach. Resolve access before migration.'; END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM private.settings s
+    JOIN auth.users u ON lower(u.email)=lower(s.value)
+    JOIN public.profiles p ON p.id=u.id AND p.role='coach'
+    JOIN private.coach_allowlist l ON l.email=lower(u.email)
+    WHERE s.key='coach_email' AND u.email_confirmed_at IS NOT NULL
+  ) THEN RAISE EXCEPTION 'BASIC OWNER PREFLIGHT: head coach must be configured, verified and allowlisted'; END IF;
   IF EXISTS (
     SELECT 1 FROM public.clients c WHERE c.email <> ''
     GROUP BY lower(c.email) HAVING count(*)>1
@@ -82,7 +92,13 @@ BEGIN
     VALUES(new.coach_id,new.id);
   RETURN new;
 END;$$;
--- All existing SELECT/UPDATE/DELETE, workout, notes, message, storage and food policies
+-- INSERT ... RETURNING also checks SELECT RLS. Do not re-query the new client via
+-- the STABLE can_manage_client helper here: its snapshot may not see that INSERT.
+-- Check the new row's coach_id directly; all other client access stays owner-scoped.
+DROP POLICY IF EXISTS "clients scoped read" ON public.clients;
+CREATE POLICY "clients scoped read" ON public.clients FOR SELECT TO authenticated
+USING ((private.basic_is_coach() AND coach_id=auth.uid()) OR id=private.my_client_id());
+-- Existing UPDATE/DELETE, workout, notes, message, storage and food policies
 -- use private.can_manage_client; replacing it above scopes them to this owner.
 DROP POLICY IF EXISTS "clients coach insert" ON public.clients;
 CREATE POLICY "clients coach insert" ON public.clients FOR INSERT TO authenticated
@@ -96,7 +112,7 @@ RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE addr text:=lower(trim(p_email));
 BEGIN
   IF NOT public.pf_head_coach() THEN RAISE EXCEPTION 'Head coach only' USING ERRCODE='42501'; END IF;
-  IF p_action <> 'invite' THEN
+  IF p_action IS DISTINCT FROM 'invite' THEN
     RAISE EXCEPTION 'Client assignments are automatic and cannot be transferred' USING ERRCODE='42501';
   END IF;
   IF addr !~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$' OR length(addr)>254 THEN
