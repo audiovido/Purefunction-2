@@ -94,3 +94,10 @@ App: coaching PWA (like TrueCoach) for a coach in the US, up to ~100 clients. Co
 - Local validation and release requirements are recorded in `docs/BASIC_PILOT.md`. PR CI never deploys or executes SQL. Real staging SQL/JWT isolation remains unverified.
 - Database source audit: corrected clients SELECT RLS for INSERT RETURNING, added existing-owner/head-coach eligibility preflight, and rejected NULL administration actions. SQL grammar parsed without execution. `docs/BASIC_PILOT_DB_REVIEW.md` defines a separate read-only preflight approval; no SQL execution or merge is authorized yet.
 - GitHub write access verified with owner account `audiovido`; feature branch created from the exact base. Submit as a draft PR and keep merging/SQL behind Armin's explicit approval.
+
+## Basic Pilot release and role-entry follow-up (2026-11-06)
+- With Armin's explicit approval, PR #38 was merged as `3f4d60f`; Pages run 42168031599 succeeded. Ownership SQL is applied and `send-invite` v3 is active with JWT verification and owner-scoped reads.
+- Before SQL, a restricted same-database rollback snapshot of affected client/assignment data and replaced functions/policies was verified. This is not an off-site disaster-recovery backup. Client content and assignments were preserved.
+- 44 isolated PostgreSQL 17.5 checks cover migration/RLS/results/rollback; real production-role smoke tests of INSERT RETURNING, owner immutability, creator assignment, NULL action rejection and stranger isolation passed in a rolled-back transaction. Real inbox/two-device smoke tests remain outstanding.
+- Follow-up `fix/strict-account-role-login`: password sign-in now requires the database profile to match the selected coach/client entry before any workspace mounts. Rejected sessions are locally signed out; slow auth/profile callbacks cannot bypass the check. Cloud workspaces always use the profile role and expose no Coach/Client preview switches. Preview switching stays in the account-free local demo for development checks.
+- No SQL or Edge changes are needed for the role-entry follow-up. Submit it as a separate PR; PR #38's merge approval does not authorize merging another PR.

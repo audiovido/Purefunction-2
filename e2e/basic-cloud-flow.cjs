@@ -45,6 +45,51 @@ const waitFor=async (fn,timeout=9000)=>{
     await p.goto(`http://localhost:${port}/?verify=${encodeURIComponent(mail.token)}`);
     await p.getByRole('heading',{name:'Clients'}).waitFor({timeout:10000}).catch(()=>{});
   };
+  const assertLockedRole = async (p, role) => {
+    ok(await p.getByRole('button',{name:'Coach',exact:true}).count()===0,`${role} has no Coach workspace switch`);
+    ok(await p.getByRole('button',{name:'Client',exact:true}).count()===0,`${role} has no Client workspace switch`);
+  };
+  const rejectWrongEntry = async (email,pw,actualRole) => {
+    const p=await open(375,812);
+    const wrongRole=actualRole==='coach'?'client':'coach';
+    let releaseProfile, profileRequested=false;
+    const holdProfile=new Promise(resolve=>{releaseProfile=resolve;});
+    const workspaceRequests=[];
+    p.on('request',request=>{
+      const url=new URL(request.url());
+      if(url.hostname==='mock.supabase.co' && url.pathname.startsWith('/rest/v1/') && url.pathname!=='/rest/v1/profiles') workspaceRequests.push(url.pathname);
+    });
+    await p.context().route('https://mock.supabase.co/rest/v1/profiles*',async route=>{
+      profileRequested=true;
+      await holdProfile;
+      return mock.handler(route);
+    });
+    await p.getByRole('tab',{name:wrongRole==='coach'?'I’m the coach':'I’m a client'}).click();
+    await p.getByLabel('Email').fill(email);
+    await p.getByLabel('Password').fill(pw);
+    await p.locator('form button[type=submit]').click();
+    await waitFor(()=>Promise.resolve(profileRequested));
+    // SIGNED_IN has already fired; even a slow role lookup must not mount the workspace.
+    await p.waitForTimeout(250);
+    ok(workspaceRequests.length===0,`${actualRole} loads no workspace while checking wrong entry`);
+    ok(!(await p.getByRole('tab',{name:'I’m the coach'}).isEnabled()),'entry selection locked during sign-in');
+    releaseProfile();
+    await p.getByRole('alert').getByText(`This account cannot sign in as a ${wrongRole}.`,{exact:false}).waitFor();
+    ok(workspaceRequests.length===0,`${actualRole} rejected from ${wrongRole} entry before data loading`);
+    ok(!(await p.evaluate(()=>Object.entries(localStorage).some(([key,value])=>key.startsWith('sb-')&&value.includes('access_token')))), 'rejected login leaves no saved auth session');
+    await p.reload();
+    await p.getByRole('heading',{name:wrongRole==='coach'?'Coach sign in':'Client sign in'}).waitFor();
+    ok(workspaceRequests.length===0,'rejected account stays signed out after reload');
+    await p.getByRole('tab',{name:actualRole==='coach'?'I’m the coach':'I’m a client'}).click();
+    await p.getByLabel('Email').fill(email);
+    await p.getByLabel('Password').fill(pw);
+    await p.locator('form button[type=submit]').click();
+    await p.getByRole('heading',{name:actualRole==='coach'?'Clients':'Goblet Squat'}).first().waitFor();
+    await assertLockedRole(p,actualRole);
+    await p.reload();
+    await p.getByRole('heading',{name:actualRole==='coach'?'Clients':'Goblet Squat'}).first().waitFor();
+    await assertLockedRole(p,actualRole+' restored');
+  };
   const makeClient=async (p,name,email)=>{
     await p.getByRole('button',{name:'Add client'}).click();
     await p.getByPlaceholder('e.g., Jordan Taylor').fill(name);
@@ -68,6 +113,8 @@ const waitFor=async (fn,timeout=9000)=>{
   const A=await open(1440,900);
   await signUp(A,'Head Coach','coach@example.com','coachpass1','coach');
   await A.getByRole('heading',{name:'Clients'}).waitFor();
+  await assertLockedRole(A,'head coach');
+  await rejectWrongEntry('coach@example.com','coachpass1','coach');
   await A.getByRole('button',{name:'Coaches'}).click();
   await A.getByRole('heading',{name:'Coaches'}).waitFor();
   await A.getByRole('textbox',{name:'New coach email'}).fill('coach-b@example.com');
@@ -94,6 +141,7 @@ const waitFor=async (fn,timeout=9000)=>{
   const B=await open(1024,768);
   await signUp(B,'Coach B','coach-b@example.com','coachbpass1','coach');
   await B.getByRole('heading',{name:'Clients'}).waitFor();
+  await assertLockedRole(B,'coach B');
   ok((await B.getByRole('button',{name:'Coaches'}).count())===0,'non-head coach cannot see administration');
   await A.getByRole('button',{name:'Clients',exact:true}).first().click();
   const alpha=await makeClient(A,'Client Alpha','alpha@example.com');
@@ -122,6 +170,8 @@ const waitFor=async (fn,timeout=9000)=>{
   ok(!!mail,'Alpha received a verification link');
   await C.goto(`http://localhost:${port}/?verify=${encodeURIComponent(mail.token)}`);
   await C.getByRole('heading',{name:'Goblet Squat'}).first().waitFor({timeout:10000});
+  await assertLockedRole(C,'client');
+  await rejectWrongEntry('alpha@example.com','alphapass1','client');
   await C.getByRole('button',{name:'Complete set 1'}).first().click();
   await waitFor(()=>Promise.resolve(mock.db.workouts.find(w=>w.client_id===alpha.id)?.data.blocks[0].loggedSets[0].completed===true));
   ok(mock.db.workouts.find(w=>w.client_id===alpha.id)?.data.blocks[0].loggedSets[0].completed,'client logged a set via phone');

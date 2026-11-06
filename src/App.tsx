@@ -187,7 +187,8 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
   const { clients, setClients, sync, saveConflict } = store;
   const isClientUser = profile?.role === 'client';
   const [roleState, setRole] = useState<Role>(isClientUser ? 'client' : 'coach');
-  const role: Role = isClientUser ? 'client' : roleState;
+  // Signed-in accounts always use their database role; preview switching is demo-only.
+  const role: Role = profile?.role ?? roleState;
   const [headCoach, setHeadCoach] = useState(false);
   useEffect(() => {
     if (!supabase || profile?.role !== 'coach') { setHeadCoach(false); return; }
@@ -398,7 +399,8 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
               </div>
             )}
 
-            {/* Role Toggle Pill (coach can preview the client's view) */}
+            {/* Role preview is available only in the local demo, without an account. */}
+            {!profile && (
             <div className="bg-gray-300/75 p-1 rounded-xl grid grid-cols-1 lg:grid-cols-2 gap-1">
               <button
                 onClick={() => setRole('coach')}
@@ -415,6 +417,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
                 Client
               </button>
             </div>
+            )}
 
             {profile && (
               <div className="px-0 lg:px-2 flex flex-col lg:flex-row items-center lg:justify-between gap-1 lg:gap-2">
@@ -457,7 +460,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
         </div>
 
         <div className="flex items-center gap-2">
-          {role === 'client' && (
+          {!profile && role === 'client' && (
             <button
               onClick={() => setClientPreviewFrame(!clientPreviewFrame)}
               title="Toggle mobile frame preview on desktop"
@@ -497,7 +500,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
           )}
 
           {/* Role Switcher in Header */}
-          {!isClientUser && (
+          {!profile && (
           <div className="bg-gray-100 p-0.5 rounded-xl inline-flex items-center">
             <button
               onClick={() => setRole('coach')}
