@@ -1,5 +1,7 @@
 # Basic Pilot — independent coaches
 
+Production setting (2026-11-06): Armin requested the full previous coaching workspace again. The Pages build explicitly sets `VITE_FULL_FEATURES=true`, restoring the existing Assessment / Body map / Movements / Goals / Progression / Nutrition / Programs and client Progress screens. The independent-owner database rules, strict coach/client sign-in and signed-in role locks remain in force. The ownership-schema gate now applies in both cloud modes. Gait and posture-rule publication retain their separate approval gates. The Basic default described below remains available for isolated pilot/demo builds.
+
 Base: `f8018adc3b2d7fb2c113e3cbb1f2d835937b1961` (main). Branch: `feat/basic-pilot-independent-coaches`.
 
 ## Behavior

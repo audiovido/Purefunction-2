@@ -105,17 +105,17 @@ function LocalApp() {
 }
 
 function CloudApp({ profile }: { profile: Profile }) {
-  const [ownerSchemaReady, setOwnerSchemaReady] = useState<boolean | null>(FULL_FEATURES);
+  const [ownerSchemaReady, setOwnerSchemaReady] = useState<boolean | null>(null);
   useEffect(() => {
-    if (FULL_FEATURES || !supabase) return;
+    if (!supabase) return;
     let active = true;
     void supabase.from('clients').select('coach_id').limit(1).then(({ error }) => {
       if (active) setOwnerSchemaReady(!error);
     });
     return () => { active = false; };
   }, []);
-  if (!FULL_FEATURES && ownerSchemaReady === null) return <LoadingScreen label="Checking basic workspace…" />;
-  if (!FULL_FEATURES && ownerSchemaReady === false) return <main role="alert" className="min-h-screen p-6 text-[#111827]">Your workspace is temporarily unavailable. Please contact your coach or try again later.</main>;
+  if (ownerSchemaReady === null) return <LoadingScreen label="Checking workspace…" />;
+  if (ownerSchemaReady === false) return <main role="alert" className="min-h-screen p-6 text-[#111827]">Your workspace is temporarily unavailable. Please contact your coach or try again later.</main>;
   return <CloudWorkspace key={profile.id} profile={profile} />;
 }
 
