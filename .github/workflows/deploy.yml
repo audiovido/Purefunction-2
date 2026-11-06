@@ -28,6 +28,9 @@ jobs:
       # Base path = /<repo name>/ so the app works at https://audiovido.github.io/Purefunction-2/
       - run: npx vite build --base=/${{ github.event.repository.name }}/
         env:
+          # Production keeps the complete coaching workspace, including Assessment,
+          # Body map / Movements, Goals, Progression, Nutrition and client Progress.
+          VITE_FULL_FEATURES: 'true'
           # Cloud project "pure-function-2". Both values are public by design;
           # access is enforced by Row Level Security in the database.
           VITE_SUPABASE_URL: https://rugwzvztweiffprkxfdc.supabase.co

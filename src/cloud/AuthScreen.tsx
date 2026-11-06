@@ -59,6 +59,7 @@ export const AuthScreen: React.FC = () => {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (busy) return;
     setError(null);
     if (mode === 'sign-up' && password.length < 8) {
       setError('Password must be at least 8 characters.');
@@ -72,7 +73,7 @@ export const AuthScreen: React.FC = () => {
       else setSent(true);
       return;
     }
-    const err = mode === 'sign-in' ? await signIn(email, password) : await signUp(email, password, name);
+    const err = mode === 'sign-in' ? await signIn(email, password, who) : await signUp(email, password, name);
     setBusy(false);
     if (err === 'verification-email-sent') {
       setMode('sign-in');
@@ -117,6 +118,7 @@ export const AuthScreen: React.FC = () => {
             key={w}
             role="tab"
             aria-selected={who === w}
+            disabled={busy}
             onClick={() => pick(w)}
             className={`py-2.5 rounded-lg text-sm font-semibold cursor-pointer ${
               who === w ? 'bg-[#111827] text-white shadow-sm' : 'text-gray-600'

@@ -22,7 +22,7 @@ interface SessionValue {
   status: SessionStatus;
   profile: Profile | null;
   email: string | null;
-  signIn: (email: string, password: string) => Promise<string | null>;
+  signIn: (email: string, password: string, role: Profile['role']) => Promise<string | null>;
   signUp: (email: string, password: string, name: string) => Promise<string | null>;
   resendVerification: (email: string) => Promise<string | null>;
   signOut: () => Promise<void>;
@@ -50,25 +50,37 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // SIGNED_IN fires before signInWithPassword returns. Do not mount a workspace
+  // until this attempt's database role has been checked against the chosen entry.
+  const signInPending = React.useRef(false);
+  const profileVersion = React.useRef(0);
 
   const resetPending = React.useRef(new URLSearchParams(window.location.search).has('reset'));
 
-  const loadProfile = useCallback(async (s: Session | null) => {
-    if (!supabase) return;
+  const loadProfile = useCallback(async (s: Session | null, expectedRole?: Profile['role']): Promise<string | null> => {
+    if (!supabase) return 'Cloud is not configured.';
+    const version = ++profileVersion.current;
     if (!s) {
       setProfile(null);
       setStatus('signed-out');
-      return;
+      return null;
     }
     const { data, error } = await supabase
       .from('profiles')
       .select('id, role, display_name, client_id')
       .eq('id', s.user.id)
       .maybeSingle();
-    if (error || !data) {
+    if (version !== profileVersion.current) return 'Sign-in changed. Please try again.';
+    if (expectedRole && (error || !data || data.role !== expectedRole)) {
+      if (error) return 'Could not verify your account. Please try again.';
+      return expectedRole === 'coach'
+        ? 'This account cannot sign in as a coach. Choose “I’m a client” to sign in with a client account.'
+        : 'This account cannot sign in as a client. Choose “I’m the coach” to sign in with a coach account.';
+    }
+    if (error || !data || (data.role !== 'coach' && data.role !== 'client')) {
       setProfile(null);
       setStatus('no-access');
-      return;
+      return null;
     }
     const next: Profile = {
       id: data.id,
@@ -90,6 +102,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         : next
     );
     setStatus('ready');
+    return null;
   }, []);
 
   useEffect(() => {
@@ -129,10 +142,13 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
     void start();
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      if (signInPending.current) return;
       setSession(s);
       if (event === 'SIGNED_OUT' || ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && !resetPending.current)) {
         // defer: Supabase recommends not awaiting other calls inside this callback
-        window.setTimeout(() => void loadProfile(s), 0);
+        window.setTimeout(() => {
+          if (!signInPending.current) void loadProfile(s);
+        }, 0);
       }
     });
     return () => {
@@ -141,10 +157,37 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
   }, [loadProfile]);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, role: Profile['role']) => {
     if (!supabase) return 'Cloud is not configured.';
-    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    return error ? friendlyAuthError(error.message) : null;
+    if (signInPending.current) return 'Sign-in is already in progress.';
+    signInPending.current = true;
+    ++profileVersion.current;
+    let accepted = false;
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      if (error) return friendlyAuthError(error.message);
+      if (!data.session) return 'Could not sign in. Please try again.';
+      const roleError = await loadProfile(data.session, role);
+      if (roleError) return roleError;
+      setSession(data.session);
+      accepted = true;
+      return null;
+    } catch {
+      return 'Could not verify your account. Please try again.';
+    } finally {
+      if (!accepted) {
+        // Reject this browser session without signing out other devices.
+        try { await supabase.auth.signOut({ scope: 'local' }); } catch {
+          // Keep the workspace blocked even if local storage is unavailable.
+        } finally {
+          ++profileVersion.current;
+          setSession(null);
+          setProfile(null);
+          setStatus('signed-out');
+        }
+      }
+      signInPending.current = false;
+    }
   };
 
   const signUp = async (email: string, password: string, name: string) => {
@@ -222,7 +265,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         notice,
         forgotPassword,
         setNewPassword,
-        refresh: () => loadProfile(session)
+        refresh: async () => { await loadProfile(session); }
       }}
     >
       {children}

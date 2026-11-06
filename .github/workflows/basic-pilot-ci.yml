@@ -64,6 +64,7 @@ jobs:
         run: |
           npx vite build --outDir /tmp/pf-full-cloud --base /
           node e2e/cloud-flow.cjs /tmp/pf-full-cloud
+          node e2e/basic-cloud-flow.cjs /tmp/pf-full-cloud
         env:
           VITE_FULL_FEATURES: 'true'
           VITE_SUPABASE_URL: https://mock.supabase.co
