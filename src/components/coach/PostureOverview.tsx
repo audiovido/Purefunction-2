@@ -11,6 +11,8 @@ import {
 import { REVIEW_STATUS, PATTERN_FRAMEWORKS } from '../../lib/patternRules/v1';
 
 const btn='min-h-11 rounded-xl px-3 py-2 text-sm font-semibold border border-gray-200';
+// Separate, coach-only photo overlay. Loaded only if the feature is enabled.
+const PosturePhotoReview = React.lazy(() => import('./PosturePhotoReview'));
 /** Reuses Gemini's existing BodyFigure. No reconstructed anatomy. Front/rear have opposite viewer mapping. */
 export const PostureOverview: React.FC<{
   client: ClientProfile; onUpdateClient?: (c: ClientProfile) => void; coach?: boolean; children?: React.ReactNode;
@@ -130,6 +132,13 @@ export const PostureOverview: React.FC<{
       <h3 className="font-bold">What we still need to check</h3><p>{missing.length?`${missing.length} unmeasured sides. `:''}Confirm posture and gait findings through direct observation; review conflicting tests before assigning patterns.</p>
       <p className="text-xs text-gray-500">Discomfort is reported separately; ROM does not measure pain, tissue damage or forces.</p>
     </div>
+    {coach && onUpdateClient && import.meta.env.VITE_ENABLE_POSTURE_PHOTO === 'true' &&
+      <React.Suspense fallback={<p className="text-sm text-gray-500">Loading photo tools…</p>}>
+        <PosturePhotoReview records={active.photoReviews ?? []} onSave={async (record) =>
+          save({ ...active, recordedAt: new Date().toISOString(), summaryApprovedByCoach: false,
+            photoReviews: [...(active.photoReviews ?? []).filter(r => r.view !== record.view), record] })
+        } />
+      </React.Suspense>}
     {saveError && <p role="alert" className="text-sm text-red-700">Not saved: {saveError}</p>}
     {import.meta.env.VITE_ENABLE_GAIT_COMPARE === 'true' && <GaitCompare assessment={coach ? active : original} />}
     {children}
