@@ -9,6 +9,7 @@ import { ReferView } from './components/client/ReferView';
 import { ReferralLanding } from './components/ReferralLanding';
 import { ReferralsPanel } from './components/coach/ReferralsPanel';
 import { TrainersPanel } from './components/coach/TrainersPanel';
+import { FULL_FEATURES, isBasicClientNav, isBasicCoachNav, isBasicClientSection } from './lib/basicMode';
 import { refCodeFromUrl } from './cloud/referrals';
 import { createClientProfile } from './lib/clients';
 import {
@@ -69,7 +70,8 @@ const COACH_NAV_ITEMS: {
   { id: 'clients', label: 'Clients', shortLabel: 'Clients', icon: Users },
   { id: 'library', label: 'Library', shortLabel: 'Library', icon: BookOpen },
   { id: 'programs', label: 'Programs', shortLabel: 'Programs', icon: Dumbbell },
-  { id: 'messages', label: 'Messages', shortLabel: 'Messages', icon: MessageCircle }
+  { id: 'messages', label: 'Messages', shortLabel: 'Messages', icon: MessageCircle },
+  { id: 'coaches', label: 'Coaches', shortLabel: 'Coaches', icon: UserPlus }
 ];
 
 /* ===========================================================================
@@ -88,7 +90,7 @@ export default function App() {
 
 /** Invite links (?ref=CODE) show the referral form; everyone else sees sign-in. */
 function SignedOut() {
-  const [code, setCode] = useState(() => refCodeFromUrl());
+  const [code, setCode] = useState(() => FULL_FEATURES ? refCodeFromUrl() : null);
   if (code) return <ReferralLanding code={code} onSignIn={() => setCode(null)} />;
   return <AuthScreen />;
 }
@@ -103,6 +105,22 @@ function LocalApp() {
 }
 
 function CloudApp({ profile }: { profile: Profile }) {
+  const [ownerSchemaReady, setOwnerSchemaReady] = useState<boolean | null>(FULL_FEATURES);
+  useEffect(() => {
+    if (FULL_FEATURES || !supabase) return;
+    let active = true;
+    void supabase.from('clients').select('coach_id').limit(1).then(({ error }) => {
+      if (active) setOwnerSchemaReady(!error);
+    });
+    return () => { active = false; };
+  }, []);
+  if (!FULL_FEATURES && ownerSchemaReady === null) return <LoadingScreen label="Checking basic workspace…" />;
+  if (!FULL_FEATURES && ownerSchemaReady === false) return <main role="alert" className="min-h-screen p-6 text-[#111827]">Your workspace is temporarily unavailable. Please contact your coach or try again later.</main>;
+  return <CloudWorkspace key={profile.id} profile={profile} />;
+}
+
+// Mount data loading and pending-write replay only after the ownership schema check.
+function CloudWorkspace({ profile }: { profile: Profile }) {
   const store = useCloudClientsStore(profile);
   if (!store.loaded) return <LoadingScreen label="Loading your data…" />;
   if (store.loadError) return <LoadingScreen label={`Couldn’t load data: ${store.loadError}`} />;
@@ -170,10 +188,23 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
   const isClientUser = profile?.role === 'client';
   const [roleState, setRole] = useState<Role>(isClientUser ? 'client' : 'coach');
   const role: Role = isClientUser ? 'client' : roleState;
+  const [headCoach, setHeadCoach] = useState(false);
+  useEffect(() => {
+    if (!supabase || profile?.role !== 'coach') { setHeadCoach(false); return; }
+    let active = true;
+    void supabase.rpc('pf_head_coach').then(({ data, error }) => {
+      if (active) setHeadCoach(!error && data === true);
+    });
+    return () => { active = false; };
+  }, [profile?.id, profile?.role]);
+  const coachNav = COACH_NAV_ITEMS.filter(item => item.id === 'coaches' ? headCoach : (FULL_FEATURES || isBasicCoachNav(item.id)));
   const [coachTab, setCoachTab] = useState<CoachTab>(() => {
     const saved = readSaved('pf.coachTab');
     return COACH_NAV_ITEMS.some((i) => i.id === saved) ? (saved as CoachTab) : 'clients';
   });
+  useEffect(() => {
+    if (!coachNav.some(item => item.id === coachTab)) setCoachTab('clients');
+  }, [headCoach, coachTab]);
   const [clientTab, setClientTab] = useState<ClientTab>('today');
   const [selectedClientIdState, setSelectedClientId] = useState<string>(() => {
     const saved = readSaved('pf.clientId');
@@ -181,7 +212,10 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
   });
   useEffect(() => writeSaved('pf.coachTab', coachTab), [coachTab]);
   const [clientOpen, setClientOpen] = useState<boolean>(() => readSaved('pf.clientOpen') === '1');
-  const [clientSection, setClientSection] = useState<ClientSection>(() => (readSaved('pf.clientSection') as ClientSection) || 'exercises');
+  const [clientSection, setClientSection] = useState<ClientSection>(() => {
+    const saved = (readSaved('pf.clientSection') as ClientSection) || 'exercises';
+    return FULL_FEATURES || isBasicClientSection(saved) ? saved : 'exercises';
+  });
   useEffect(() => writeSaved('pf.clientOpen', clientOpen ? '1' : '0'), [clientOpen]);
   useEffect(() => writeSaved('pf.clientSection', clientSection), [clientSection]);
   useEffect(() => writeSaved('pf.clientId', selectedClientIdState), [selectedClientIdState]);
@@ -309,7 +343,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
 
             {/* Primary Navigation Links */}
             <nav className="space-y-1.5">
-              {COACH_NAV_ITEMS.map((item) => {
+              {coachNav.map((item) => {
                 const Icon = item.icon;
                 const isActive = coachTab === item.id;
                 return (
@@ -520,14 +554,13 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
                     onUpdateClient={handleUpdateClient}
                     joinedIds={joinedIds}
                   />
-                  {supabase && <ReferralsPanel clients={clients} />}
-                  {supabase && <TrainersPanel clients={clients} />}
+                  {FULL_FEATURES && supabase && <ReferralsPanel clients={clients} />}
                 </>
               )
             )}
 
-            {coachTab === 'programs' && !selectedClient && <NoClientsYet onAdd={() => setCoachTab('clients')} />}
-            {coachTab === 'programs' && selectedClient && (
+            {FULL_FEATURES && coachTab === 'programs' && !selectedClient && <NoClientsYet onAdd={() => setCoachTab('clients')} />}
+            {FULL_FEATURES && coachTab === 'programs' && selectedClient && (
               <ProgramsView
                 clients={clients}
                 client={selectedClient}
@@ -546,6 +579,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
             )}
 
             {coachTab === 'messages' && <CoachMessages clients={clients} initialClientId={clientOpen ? selectedClient?.id : undefined} />}
+            {coachTab === 'coaches' && headCoach && <TrainersPanel clients={[]} />}
           </div>
         </main>
       ) : (
@@ -566,7 +600,7 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
             ) : clientTab === 'today' ? (
               <>
               <CoachNotesCard client={selectedClient} />
-              <FoodDiary clientId={selectedClient.id} mode="client" legacy={<NutritionTodayCard client={selectedClient} onUpdateClient={handleUpdateClient} />} legacyPlan={selectedClient.nutrition} />
+              {FULL_FEATURES && <FoodDiary clientId={selectedClient.id} mode="client" legacy={<NutritionTodayCard client={selectedClient} onUpdateClient={handleUpdateClient} />} legacyPlan={selectedClient.nutrition} />}
               <ClientTodayView
                 client={selectedClient}
                 onUpdateClient={handleUpdateClient}
@@ -574,10 +608,12 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
               </>
             ) : clientTab === 'messages' ? (
               <ClientMessages clientId={selectedClient.id} />
-            ) : clientTab === 'refer' ? (
+            ) : FULL_FEATURES && clientTab === 'refer' ? (
               <ReferView firstName={selectedClient.name.split(' ')[0]} />
-            ) : (
+            ) : FULL_FEATURES && clientTab === 'progress' ? (
               <ClientProgressView client={selectedClient} onUpdateClient={handleUpdateClient} />
+            ) : (
+              <ClientTodayView client={selectedClient} onUpdateClient={handleUpdateClient} />
             )}
           </div>
         </main>
@@ -587,8 +623,8 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
           COACH MOBILE BOTTOM NAVIGATION BAR (< md)
          ===================================================================== */}
       {role === 'coach' && (
-        <nav className="no-print md:hidden fixed bottom-0 inset-x-0 bg-[#EAECEF] border-t border-gray-300/80 z-40 grid grid-cols-4 px-1 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]">
-          {COACH_NAV_ITEMS.map((item) => {
+        <nav className={`no-print md:hidden fixed bottom-0 inset-x-0 bg-[#EAECEF] border-t border-gray-300/80 z-40 grid ${coachNav.length === 5 ? 'grid-cols-5' : coachNav.length === 4 ? 'grid-cols-4' : 'grid-cols-3'} px-1 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]`}>
+          {coachNav.map((item) => {
             const Icon = item.icon;
             const isActive = coachTab === item.id;
             return (
@@ -624,13 +660,13 @@ function Workspace({ store, profile }: { store: ClientsStore; profile: Profile |
          ===================================================================== */}
       {role === 'client' && (
         <nav className="no-print fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 z-40 pb-[env(safe-area-inset-bottom)]">
-          <div className="max-w-md mx-auto grid grid-cols-4 gap-1.5 px-3 py-2">
+          <div className={`max-w-md mx-auto grid ${FULL_FEATURES ? 'grid-cols-4' : 'grid-cols-2'} gap-1.5 px-3 py-2`}>
             {([
               { id: 'today', label: 'Today', icon: CalendarCheck },
               { id: 'progress', label: 'Progress', icon: TrendingUp },
               { id: 'messages', label: 'Chat', icon: MessageCircle },
               { id: 'refer', label: 'Refer', icon: Gift }
-            ] as const).map((t) => {
+            ] as const).filter(t => FULL_FEATURES || isBasicClientNav(t.id)).map((t) => {
               const Icon = t.icon;
               const active = clientTab === t.id;
               return (

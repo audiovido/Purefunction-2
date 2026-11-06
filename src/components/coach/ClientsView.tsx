@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Plus, X, ArrowUpRight, ClipboardCheck, Dumbbell, LineChart, FileText, Send } from 'lucide-react';
 import { ClientInviteModal } from './ClientInviteModal';
+import { FULL_FEATURES } from '../../lib/basicMode';
 import { ClientProfile, ClientSection } from '../../types';
 import { ClientAvatar } from '../VisualAssets';
 
@@ -87,7 +88,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       </h1>
 
       {/* Top 3 Summary KPI Cards matching Mockup 6 */}
-      <div className="grid grid-cols-3 gap-3 sm:gap-5 max-w-2xl mb-7">
+      <div className={`grid ${FULL_FEATURES ? 'grid-cols-3' : 'grid-cols-2'} gap-3 sm:gap-5 max-w-2xl mb-7`}>
         <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-gray-100 flex flex-col justify-between">
           <div className="text-xs sm:text-[13px] font-medium text-gray-500 mb-1.5 leading-snug">
             Clients
@@ -97,14 +98,14 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-gray-100 flex flex-col justify-between">
+        {FULL_FEATURES && <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-gray-100 flex flex-col justify-between">
           <div className="text-xs sm:text-[13px] font-medium text-gray-500 mb-1.5 leading-snug">
             Assessments due
           </div>
           <div className="text-2xl sm:text-[32px] font-bold text-[#111827] leading-none tabular-nums">
             {assessmentsDueCount}
           </div>
-        </div>
+        </div>}
 
         <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-gray-100 flex flex-col justify-between">
           <div className="text-xs sm:text-[13px] font-medium text-gray-500 mb-1.5 leading-snug">
@@ -134,13 +135,13 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <button type="button" disabled={clients.some((c) => c.isTestClient)} onClick={onCreateTestClient}
+          {FULL_FEATURES && <button type="button" disabled={clients.some((c) => c.isTestClient)} onClick={onCreateTestClient}
             className="min-h-[44px] px-4 py-2.5 border border-gray-300 rounded-xl font-semibold text-sm disabled:opacity-50">
             + Test Client
-          </button>
+          </button>}
         <button
           onClick={() => setIsAddModalOpen(true)}
-          className="inline-flex items-center justify-center gap-2 bg-[#111827] hover:bg-[#1F2937] text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors cursor-pointer whitespace-nowrap shrink-0"
+          className="min-h-11 inline-flex items-center justify-center gap-2 bg-[#111827] hover:bg-[#1F2937] text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-colors cursor-pointer whitespace-nowrap shrink-0"
         >
           <Plus className="w-4 h-4" />
           <span>Add client</span>
@@ -184,9 +185,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     <span className="text-[16px] font-semibold text-[#111827] truncate">
                       {client.name}
                     </span>
-                    <span className="inline-flex items-center bg-[#F3F4F6] text-[#374151] text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap">
+                    {FULL_FEATURES && <span className="inline-flex items-center bg-[#F3F4F6] text-[#374151] text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap">
                       Phase {client.phaseNumber} · {client.phaseName}
-                    </span>
+                    </span>}
                     {client.isTestClient && <span className="text-xs font-bold rounded-full bg-[#FEF3C7] px-3 py-1">DEMO — NOT REAL</span>}
                     {joinedIds && !joinedIds.has(client.id) && !client.isTestClient && (
                       <button
@@ -194,7 +195,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                           e.stopPropagation();
                           setInviteFor(client.id);
                         }}
-                        className="inline-flex items-center gap-1 bg-[#FEF3C7] text-[#92400E] text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap cursor-pointer"
+                        className="min-h-11 inline-flex items-center gap-1 bg-[#FEF3C7] text-[#92400E] text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap cursor-pointer"
                       >
                         <Send className="w-3 h-3" /> Not joined · Invite
                       </button>
@@ -232,12 +233,12 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
 
                 {/* Right: Next Assessment Date + Quick Actions */}
                 <div className="flex flex-wrap items-center justify-between @2xl:justify-end gap-x-4 gap-y-2 @2xl:w-[34%]">
-                  <div className="text-xs sm:text-[13px] text-gray-500 whitespace-nowrap tabular-nums">
+                  {FULL_FEATURES && <div className="text-xs sm:text-[13px] text-gray-500 whitespace-nowrap tabular-nums">
                     Next assessment in{' '}
                     <span className="font-semibold text-[#111827]">
                       {client.nextAssessmentDays} days
                     </span>
-                  </div>
+                  </div>}
 
                   {client.isTestClient && (
                     <button type="button" onClick={(e) => { e.stopPropagation(); if (window.confirm('Delete the TEST CLIENT and all of its demo workouts and assessments?')) onDeleteTestClient(client.id); }}
@@ -253,39 +254,39 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                         onClick={() => setInviteFor(client.id)}
                         title="Edit client & invite"
                         aria-label={`Edit ${client.name} and invite`}
-                        className="p-1.5 rounded-lg text-gray-500 hover:text-[#111827] hover:bg-gray-100 transition-colors cursor-pointer"
+                        className="min-h-11 min-w-11 p-1.5 rounded-lg text-gray-500 hover:text-[#111827] hover:bg-gray-100 transition-colors cursor-pointer"
                       >
                         <Send className="w-4 h-4" />
                       </button>
                     )}
-                    <button
+                    {FULL_FEATURES && <button
                       onClick={() => onSelectClient(client.id, 'assessment')}
                       title="New Assessment"
-                      className="p-1.5 rounded-lg text-gray-500 hover:text-[#111827] hover:bg-gray-100 transition-colors cursor-pointer"
+                      className="min-h-11 min-w-11 p-1.5 rounded-lg text-gray-500 hover:text-[#111827] hover:bg-gray-100 transition-colors cursor-pointer"
                     >
                       <ClipboardCheck className="w-4 h-4" />
-                    </button>
+                    </button>}
                     <button
                       onClick={() => onSelectClient(client.id, 'exercises')}
                       title="Workout Builder"
-                      className="p-1.5 rounded-lg text-gray-500 hover:text-[#111827] hover:bg-gray-100 transition-colors cursor-pointer"
+                      className="min-h-11 min-w-11 p-1.5 rounded-lg text-gray-500 hover:text-[#111827] hover:bg-gray-100 transition-colors cursor-pointer"
                     >
                       <Dumbbell className="w-4 h-4" />
                     </button>
-                    <button
+                    {FULL_FEATURES && <button
                       onClick={() => onSelectClient(client.id, 'progression')}
                       title="Progress"
-                      className="p-1.5 rounded-lg text-gray-500 hover:text-[#111827] hover:bg-gray-100 transition-colors cursor-pointer"
+                      className="min-h-11 min-w-11 p-1.5 rounded-lg text-gray-500 hover:text-[#111827] hover:bg-gray-100 transition-colors cursor-pointer"
                     >
                       <LineChart className="w-4 h-4" />
-                    </button>
-                    <button
+                    </button>}
+                    {FULL_FEATURES && <button
                       onClick={() => onSelectClient(client.id, 'assessment')}
                       title="Monthly Report"
-                      className="p-1.5 rounded-lg text-gray-500 hover:text-[#111827] hover:bg-gray-100 transition-colors cursor-pointer"
+                      className="min-h-11 min-w-11 p-1.5 rounded-lg text-gray-500 hover:text-[#111827] hover:bg-gray-100 transition-colors cursor-pointer"
                     >
                       <FileText className="w-4 h-4" />
-                    </button>
+                    </button>}
                   </div>
                 </div>
               </div>

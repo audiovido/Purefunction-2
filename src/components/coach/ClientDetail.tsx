@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { ClientProfile, ClientSection, Exercise } from '../../types';
 import { ClientAvatar } from '../VisualAssets';
+import { FULL_FEATURES, isBasicClientSection } from '../../lib/basicMode';
 import { WorkoutBuilderView } from './WorkoutBuilderView';
 import { NewAssessmentView } from './NewAssessmentView';
 import { MonthlyReportView } from './MonthlyReportView';
@@ -76,7 +77,7 @@ export const ClientDetail: React.FC<{
 
       <div className="min-w-0 mb-5 no-print">
         <div className="flex flex-wrap gap-1 bg-[#E5E7EB] rounded-2xl p-1.5">
-          {SECTIONS.map((s) => (
+          {SECTIONS.filter(s => FULL_FEATURES || isBasicClientSection(s.id)).map((s) => (
             <button
               key={s.id}
               onClick={() => onSection(s.id)}
@@ -103,7 +104,7 @@ export const ClientDetail: React.FC<{
           </>
         )}
 
-        {section === 'assessment' && (
+        {FULL_FEATURES && section === 'assessment' && (
           <>
             <Sub
               items={[
@@ -141,7 +142,7 @@ export const ClientDetail: React.FC<{
 
         {section === 'notes' && <NotesPanel client={client} onUpdateClient={onUpdateClient} />}
 
-        {section === 'goals' && (
+        {FULL_FEATURES && section === 'goals' && (
           <GoalsPanel
             goals={client.goals ?? []}
             assessments={assessments}
@@ -150,9 +151,9 @@ export const ClientDetail: React.FC<{
           />
         )}
 
-        {section === 'progression' && <ProgressView clients={one} client={client} onSelectClientId={noop} onUpdateClient={onUpdateClient} />}
+        {FULL_FEATURES && section === 'progression' && <ProgressView clients={one} client={client} onSelectClientId={noop} onUpdateClient={onUpdateClient} />}
 
-        {section === 'nutrition' && <FoodDiary clientId={client.id} mode="coach" legacy={<NutritionPanel client={client} onUpdateClient={onUpdateClient} />} legacyPlan={client.nutrition} />}
+        {FULL_FEATURES && section === 'nutrition' && <FoodDiary clientId={client.id} mode="coach" legacy={<NutritionPanel client={client} onUpdateClient={onUpdateClient} />} legacyPlan={client.nutrition} />}
       </div>
     </div>
   );
